@@ -95,3 +95,5 @@
 #panel #status,#panel #status *:not(svg):not(svg *){font-size:15px!important}
 #panel #restoreFile[hidden]{display:none!important}
 #panel button[data-act=restoreChoose]{min-height:44px!important;min-width:44px!important;font-size:15px!important}
+/* 1.5.0-lv.1: the pick boxes of 알게 된 사실 / 끝나지 않은 일 (0.31+) are 22px; the port's rule is a 44px tap area */
+#panel :is(input.pick-fact,.pick-row>input[type=checkbox]){width:44px!important;height:44px!important;min-width:44px!important;margin:0!important;accent-color:var(--t-ink,currentColor)}

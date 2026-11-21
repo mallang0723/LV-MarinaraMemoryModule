@@ -16,6 +16,8 @@
 
 **앵커 패치**: 서비스 패치 중 `meter base kind`가 새 원작 줄(`...extra, ...(useLight ? light : {})`)에 맞지 않아 앵커를 고쳐 다시 걸었고, 새 「가벼운 추론 거절 시 재호출」(`return askModel(model, messages, { maxTokens })`)이 호출 종류 표시를 잃지 않도록 패치 1개(`meter light retry kind`)를 더했습니다. 화면 앵커는 기존 것이 모두 그대로 맞았고, 새로 세계관 칸의 직접 `fetch` 3곳(`world status/get/send fetch`)과 세계관 화면 붙이기(`world panel embed`) 패치를 더했습니다. 장면·회상 등 코어 패치(길이 상한·보존·재요청 연결)는 변경 없이 모두 맞습니다. 코어 새 모듈 3개(`simulator`·`petnotes`·`worldlink`)는 패치가 필요 없습니다.
 
+**시험·QA 쪽 변경(원작 파일 아님)**: `tests/dist-frontend.test.js`의 「맨 `fetch('/api/…')` 금지」 검사가 `LV.fetch('/api/…')`(shim 경유)는 통과시키도록 느슨해졌고, 세계관 칸 전용 시험 `tests/world-tab.test.js`를 더했습니다. 브라우저 QA 하네스(`qa/`, `scripts/`)는 1.3.0 때 화면을 기준으로 남아 있어 **1.4.2에서도 「missing tab scenes」로 실패하던 상태**였습니다(기준 커밋 `7098f25`를 같은 명령으로 돌려 확인): 7개 탭(그룹 버튼 `data-group-tab` → 하위 탭)과 1.4+의 저장소 목록(고아 방 시드는 사용자 트리를 처음 읽기 전에 넣어야 보임)에 맞게 고쳤습니다. 그 뒤 드러난 22px 선택 상자(`input.pick-fact`, `.pick-row>input`)는 이식판의 44px 터치 규칙에 맞게 `src/overrides.memory.css`에서 키웠습니다(원작 CSS 원본은 그대로).
+
 **원작 커밋별 PORT / SKIP** (`165d488` 이후 34커밋)
 
 | 원작 커밋 | 내용 | 판정 |
@@ -25,7 +27,7 @@
 | 3f4ce36, a3836e2, 2e3a2fd, 47e241c, dd2821e, 4b4da5b | 시뮬레이터 보정 | PORT |
 | a714edd | 0.35.3 영어 기억 한국어 검색·낱말 거르기·단어장 표기 | PORT. marinara-memory-runtime 버전 줄은 SKIP |
 | 425c738 | 0.35.4 이름 자동 합치기 | PORT |
-| 52e647a | 병합(시뮬레이터 ↔ 0.35.4) | PORT (결과 파일 기준) |
+| 52e647a | 병합(시뮬레이터 ↔ 0.35.4) | 병합(결과 파일 기준으로 반영) |
 | fe3eef8, 0931d21 | 0.36.1 반려동물 수첩 | PORT (petnotes·features·service). install.* SKIP |
 | b6cecd8, 3171fb8, a0867a2, 3245b84 | 세계관 설정집 연동 v2 서버쪽 | PORT, 루미버스에선 설정집이 없어 **대역(꺼짐)** |
 | 43f60f0, 68fa54b, e649574, fc4246f | 0.37.0~0.37.1 「세계관」 칸·스위치·vendor/world-panel.js | PORT (화면은 바이트 고정으로 붙임, 칸은 설정집이 없어 숨음 = **대역**). build.py·deliverable SKIP |
@@ -38,7 +40,7 @@
 | 32f72b9 | 0.38.3 지운 호칭 | PORT |
 | 4c7e778, 7edd097, 6404247 | 병합 커밋 | 내용은 위 커밋에 포함 |
 
-반영 31 / SKIP 0(파일 단위 SKIP만 위에 표기) / 병합 3. 시험: 원작 시험 9개 추가(`test-date-fixes`·`glossary-merge`·`glossary-names`·`pet-notebook`·`reply-wait`·`routine-skip`·`simulator-mode`·`tracker-days`·`world-link`)와 기존 원작 시험 갱신.
+커밋 34개 = 반영 30 + 병합 4(52e647a 포함). 커밋 전체를 건너뛴 것은 없고 파일 단위 SKIP만 위 표에 적었습니다(설치기·`marinara-memory-runtime.cjs` 버전 줄·`build.py`·`deliverable/`·스크린샷·`test-library-folds.mjs`). 시험: 원작 시험 9개 추가(`test-date-fixes`·`glossary-merge`·`glossary-names`·`pet-notebook`·`reply-wait`·`routine-skip`·`simulator-mode`·`tracker-days`·`world-link`)와 기존 원작 시험 갱신.
 
 ## 1.4.2-lv.3
 
