@@ -32,6 +32,8 @@
     ['todo', '할 일', 'note', ['ledger', 'promises', 'life']],
     ['search', '검색', 'search', ['search']],
     ['inject', '주입 확인', 'search', ['inject']],
+    // 세계관 설정집 연동 v2: World Archive's own screen, shown only while its server answers (worldTab).
+    ['worldarchive', '세계관', 'globe', ['worldarchive']],
     ['settings', '설정', 'settings', ['settings']],
   ];
   const SUBTAB = { timeline: '시간순', lines: '줄기', scenes: '장면·챕터', setup: '배경 설정', person: '인물별', facts: '알게 된 사실', notebook: '수첩', world: '상태·장소·물건', names: '이름 정리', ledger: '끝나지 않은 일', promises: '약속', life: '최근 생활' };
@@ -174,6 +176,7 @@
       close: '<path d="m6 6 12 12M6 18 18 6"/>',
       refresh: '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 6a8 8 0 0 1 14 6M4 12a8 8 0 0 0 14 6"/>',
       spark: '<path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z"/>',
+      globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
     };
     return `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.note}</svg>`;
   }
@@ -584,7 +587,8 @@
         if (!busy) {
           // Idle: only the small status is asked for; the whole room is loaded while a run is on and when it ends.
           if (was) {
-            store = null;
+            // The scenes on screen stay until the new ones arrive (emptied first, the page became "불러오는 중"
+            // for a moment every 3 seconds and the reader was thrown back to the top).
             storeRoom = '';
             await loadRoom(room);
           }
@@ -617,6 +621,35 @@
     }, was || info?.translationPrep?.working || info?.displayTranslating || info?.notebookJob?.state === 'running' ? 3000 : 10000);
   }
 
+  /**
+   * Which folding sections (<details>) the reader has opened or closed, so a redraw (the check every few seconds,
+   * the first press of a two-press button) leaves them as they were. Without it, every redraw folded them all:
+   * the page got shorter, the reader was thrown up, and a 「끝난 일로 닫기」 pressed once was folded away before the
+   * second press. Known by the tab and the summary's words (and which one of the same words it is).
+   */
+  let foldTab = '';
+  function foldKeys(content) {
+    const seen = new Map();
+    if (typeof content?.querySelectorAll !== 'function') return [];
+    return [...(content.querySelectorAll('details') || [])].map((d) => {
+      const summary = d.querySelector(':scope > summary');
+      // Its own id when it has one (a 할 일 item, a list, a scene), else the summary's words.
+      const own = Object.entries(d.dataset).find(([k, v]) => v && k !== 'act')?.join(':');
+      const words = (own || summary?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      const n = (seen.get(words) || 0) + 1;
+      seen.set(words, n);
+      return [d, `${words}#${n}`];
+    });
+  }
+  function foldState(content) {
+    if (foldTab !== tab) { foldTab = tab; return null; }
+    return new Map(foldKeys(content).map(([d, key]) => [key, d.open]));
+  }
+  function restoreFolds(content, folds) {
+    if (!folds?.size) return;
+    for (const [d, key] of foldKeys(content)) if (folds.has(key) && d.open !== folds.get(key)) d.open = folds.get(key);
+  }
+
   /** Someone is typing in the library: a background check must not redraw the form under them. */
   function editing() {
     const el = root?.activeElement;
@@ -640,7 +673,7 @@
       await fn();
       if (done) notice = done;
       if (options.reload !== false) {
-        store = null;
+        // Reloaded in place (see schedulePoll): the page keeps its length and the reader's place.
         storeRoom = '';
         await loadRoom(room);
       }
@@ -890,14 +923,19 @@
   // fingerprints and internal marks ("critical", "m12") are not searched or shown.
   const SEARCH_TEXT = new Set(['title', 'summary', 'text', 'why', 'time', 'place', 'weather', 'what', 'kept', 'detail', 'cause', 'need', 'about', 'who', 'toward', 'by', 'to', 'how', 'turns', 'keep', 'present']);
   const SEARCH_NESTED = new Set(['events', 'quotes', 'loose', 'recollections', 'later', 'learned', 'latest', 'closed', 'evidence', 'clues']);
+  // An English (or Chinese) memory text is found by its Korean translation too, when the library has one.
+  const withKoText = (text) => {
+    const k = ko(text);
+    return k ? `${text} ${k}` : text;
+  };
   function searchableText(value) {
     if (value == null) return '';
     if (Array.isArray(value)) return value.map(searchableText).filter(Boolean).join(' ');
-    if (typeof value !== 'object') return String(value);
+    if (typeof value !== 'object') return withKoText(String(value));
     const parts = [];
     for (const [k, v] of Object.entries(value)) {
       if (v == null) continue;
-      if (SEARCH_TEXT.has(k)) parts.push(Array.isArray(v) ? v.filter((x) => typeof x === 'string').join(' ') : typeof v === 'string' ? v : '');
+      if (SEARCH_TEXT.has(k)) parts.push(Array.isArray(v) ? v.filter((x) => typeof x === 'string').map(withKoText).join(' ') : typeof v === 'string' ? withKoText(v) : '');
       else if (SEARCH_NESTED.has(k)) parts.push(searchableText(v));
     }
     return parts.filter(Boolean).join(' ').replace(/\s+/g, ' ');
@@ -908,7 +946,9 @@
     const out = [];
     for (const sc of store?.scenes || []) for (const e of sc.events || []) for (const q of e.quotes || []) {
       const l = quoteLine(q);
-      out.push({ id: sc.id, title: `${sc.id} · ${l.who}`, text: l.text, people: [q.by, q.to].filter(Boolean) });
+      // A line with no Korean of its own beside it is found by the library's translation of it.
+      const korean = q.translation ? null : ko(q.text);
+      out.push({ id: sc.id, title: `${sc.id} · ${l.who}`, text: korean ? `${l.text} (${korean})` : l.text, people: [q.by, q.to].filter(Boolean) });
     }
     return out;
   }
@@ -938,7 +978,7 @@
       const excerpt = `${start ? '…' : ''}${text.slice(start, at + query.length + 110)}${text.length > at + query.length + 110 ? '…' : ''}`;
       results.push(`<a href="#" class="record-link record-row" data-goto-${kind === 'quote' ? 'scene' : kind}="${esc(record.id)}"><span class="pill neutral">${label}</span><span class="row-main"><b>${esc(record.title || record.about || record.id)}</b><small>${esc(excerpt)}</small></span><span class="chip-arrow">›</span></a>`);
     }
-    return `<h1>기억 검색</h1><p class="intro">이 방의 장면·대사·챕터·큰 흐름·사실·미해결 기록과 닫힌 기록에서 입력한 글자를 찾습니다. 종류와 인물로 거를 수 있습니다. 결과를 누르면 해당 기록으로 이동합니다.</p>
+    return `<h1>기억 검색</h1><p class="intro">이 방의 장면·대사·챕터·큰 흐름·사실·미해결 기록과 닫힌 기록에서 입력한 글자를 찾습니다. 영어·중국어 기억은 한국어 번역으로도 찾습니다(번역이 아직 없는 기억은 원문으로만). 종류와 인물로 거를 수 있습니다. 결과를 누르면 해당 기록으로 이동합니다.</p>
       <form id="memorySearch" class="memory-search"><label for="memorySearchInput">검색어</label><div class="buttons"><input id="memorySearchInput" type="search" value="${esc(searchDraft)}" placeholder="이름, 대사, 장소 등" autocomplete="off"><button class="primary" type="submit">${icon('search')}검색</button><button type="button" data-act="clearSearch">초기화</button></div>
         <div class="buttons search-filters"><select id="searchKind" aria-label="종류로 거르기"><option value="all">모든 종류</option>${[['scene', '장면'], ['quote', '대사'], ['chapter', '챕터'], ['arc', '큰 흐름'], ['fact', '사실'], ['thread', '미해결·닫힌 기록']].map(([k, l]) => `<option value="${k}" ${searchKind === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
         <select id="searchWho" aria-label="인물로 거르기"><option value="all">모든 인물</option>${personNames().map((n) => `<option value="${esc(n)}" ${searchWho === n ? 'selected' : ''}>${esc(nameShown(n))}</option>`).join('')}</select></div></form>
@@ -1609,6 +1649,12 @@
         <button data-act="aliasPreview" data-alias="${esc(a)}" data-input="${id}">글 속 표기 바꾸기</button></div>`;
     };
     const table = Object.entries(names.people || {}).filter(([, v]) => v.aliases?.length || v.display).map(([k, v]) => `<li><b>${esc(k)}</b>${v.display ? ` · 글에는 ${esc(v.display)}` : ''}${v.aliases?.length ? ` · 별칭: ${v.aliases.map(esc).join(', ')}` : ''}${v.aliases?.length ? v.aliases.map((a) => aliasRow(k, a)).join('') : ''}</li>`).join('');
+    // Merges made on their own from the 번역 단어장: each can be taken back alone (and is not made again).
+    const auto = (names.autoMerged || []).map((r) => {
+      const key = `nameAutoUndo:${r.id}`;
+      return `<div class="routine-row"><span>${esc(day(r.at))} · <b>${esc(r.source)}</b> → <b>${esc(r.target)}</b> (${r.changes}곳)${r.why ? `<br><small>단어장: ${esc(r.why)}</small>` : ''}</span>
+        <button class="ghost" data-act="nameAutoUndo" data-id="${esc(r.id)}">${armed === key ? '한 번 더 누르면 되돌립니다' : '되돌리기'}</button></div>`;
+    }).join('');
     const last = (names.history || []).at(-1);
     const history = (names.history || []).slice().reverse().map((h) => `<li>${esc(day(h.at))} · ${h.kind === 'merge' ? '중복 합치기' : h.kind === 'alias-text' ? '글 속 표기 바꾸기' : '이름 바꾸기'}: ${esc(h.source)} → ${esc(h.target)} (${h.changes}곳)</li>`).join('');
     return `<div class="eyebrow">NAMES</div><h1>이름 정리</h1>
@@ -1617,6 +1663,7 @@
       ${previewBox()}
       ${addressPaper(names.address, addressForm, armed, names.known || [])}
       ${form}
+      <div class="paper"><h2>자동으로 합친 이름 · ${names.autoMerged?.length || 0}건</h2><p class="hint">번역 단어장에 짝지어 둔 이름(예: Daniel = 다니엘)이 기억에 따로 저장돼 있으면 한 사람으로 자동으로 합칩니다. 남기는 이름은 기억을 정리하는 언어를 따릅니다(한국어로 정리하면 한국어 이름, 영어로 정리하면 영어 이름). 되돌리면 그 합침으로 바뀐 곳이 원래대로 돌아가고(그 뒤에 다시 고친 곳은 그대로), 그 짝은 다시 자동으로 합치지 않습니다.</p>${auto ? auto : '<p class="hint">없습니다.</p>'}</div>
       <div class="paper"><h2>같은 사람일 수 있음 · ${names.suggestions?.length || 0}건</h2><p class="hint">철자나 소리가 비슷할 뿐 확실하지 않아 자동으로 합치지 않습니다. 같은 사람이면 미리 보기 뒤 합치고, 다른 사람이면 '다른 사람'을 눌러 다시 묻지 않게 하세요.</p>${sug || '<p class="hint">없습니다.</p>'}</div>
       <div class="paper"><h2>이미 저장된 중복 · ${names.duplicates?.length || 0}명</h2><p class="hint">별칭이나 이름만 부른 형태(조사 포함)처럼 규칙으로 같은 사람인 이름이 따로 저장된 경우입니다. 합치면 기록은 하나도 버리지 않고 이야기 순서대로 모읍니다(같은 기록이 두 번 저장된 것만 하나로).</p>${dup ? `<ul>${dup}</ul><div class="buttons"><button data-act="mergePreview">중복 합치기 미리 보기</button></div>` : '<p class="hint">없습니다.</p>'}</div>
       <div class="paper"><h2>별칭 표</h2>${table ? `<ul>${table}</ul>` : '<p class="hint">아직 별칭이 없습니다.</p>'}</div>
@@ -1640,6 +1687,7 @@
     const book = a.addressBook ? `<div class="paper"><h2>호칭 사전 · ${entries.length}개</h2>
       <p class="hint">누가 누구를 어떻게 부르는지입니다. 저장된 대사에서 같은 부르는 말을 두 번 이상 쓴 것만 자동으로 올라오고(모델을 부르지 않습니다), 직접 추가한 것은 횟수와 상관없이 남습니다. ‘대사 확인에 쓰기’를 켜 둔 말은 대사의 화자·상대를 확인할 때 쓰입니다(그 말로 불린 사람은 상대이고 화자가 아님). 자동으로 올라온 항목은 다음 정리 때 대사에 맞게 다시 계산되고, 고치면 직접 추가한 것이 됩니다.</p>
       ${entries.length ? entries.map(row).join('') : '<p class="hint">아직 없습니다.</p>'}
+      ${(a.blocked || []).length ? `<details class="address-blocked" data-list="address-blocked"><summary>지운 호칭 · ${a.blocked.length}개 (다시 자동으로 만들지 않음)</summary><p class="hint">지운 호칭은 저장된 대사에 다시 나와도 자동으로 올리지 않습니다. 되살리면 다음 정리 때 대사에 있으면 다시 올라옵니다(직접 추가해도 됩니다).</p>${a.blocked.map((b) => `<div class="routine-row"><span><b>${esc(b.from)}</b> → <b>${esc(b.to)}</b>: ${esc(b.term)}</span><button class="ghost" data-act="addressUnblock" data-key="${esc(b.key)}">되살리기</button></div>`).join('')}</details>` : ''}
       <h3>${f.id ? '호칭 고치기' : '호칭 직접 추가'}</h3>
       <div class="routine-row address-form"><input id="addrFrom" list="addrPeople" value="${esc(f.from)}" placeholder="부르는 사람" aria-label="부르는 사람"><input id="addrTo" list="addrPeople" value="${esc(f.to)}" placeholder="불리는 사람" aria-label="불리는 사람"><input id="addrTerm" value="${esc(f.term)}" placeholder="부르는 말 (예: 보스)" aria-label="부르는 말"><input id="addrNote" value="${esc(f.note)}" placeholder="메모(선택)" aria-label="메모">
         <datalist id="addrPeople">${people}</datalist>
@@ -1809,6 +1857,21 @@
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
+  // 작중 날짜 바로잡기: the story's day as the memory reads it now, the dates set by hand, and reading dates from text.
+  function datesPaper(d) {
+    if (!d) return '';
+    const list = (d.fixes || []).map((f) => `<div class="routine-row"><span>메시지 ${esc(f.number)}번부터 <b>${esc(f.date)}${f.time ? ` ${esc(f.time)}` : ''}</b></span><button class="ghost" data-act="dateFixRemove" data-id="${esc(f.id)}">지우기</button></div>`).join('');
+    return `<div class="paper"><h2>작중 날짜</h2>
+      <p class="hint">지금 기억 서재가 읽은 이 방의 작중 날짜: <b>${d.today ? esc(d.today) : '모름'}</b>. 트래커나 메시지 글에서 날짜를 자동으로 읽는데, 잘못 읽었으면 여기서 바로잡을 수 있습니다. 정한 날짜는 그 메시지부터 다음 날짜가 나올 때까지 이어지고, 그 때문에 날짜가 바뀐 장면은 모델을 부르지 않고 바로 고쳐집니다.</p>
+      <label>메시지 번호<input id="dateFixNumber" type="number" min="1" inputmode="numeric" placeholder="비우면 마지막 메시지"></label>
+      <label>날짜 (연도-월-일)<input id="dateFixDate" type="text" inputmode="numeric" placeholder="예: 2024-03-01, 1766-08-19"></label>
+      <label>시각 (없어도 됨)<input id="dateFixTime" type="text" inputmode="numeric" placeholder="예: 14:30"></label>
+      <div class="buttons"><button class="primary" data-act="dateFixAdd">이 메시지부터 이 날짜로</button></div>
+      ${list ? `<h3>직접 정한 날짜</h3>${list}` : ''}
+      <label class="setting-switch"><span>메시지 글에서도 날짜 읽기<small>끄면 메시지 글(상태창 등)에 적힌 날짜는 읽지 않고, 트래커와 여기서 정한 날짜만 씁니다. 상태창의 숫자(예: 3/10)를 날짜로 잘못 읽을 때 끄세요.</small></span><input type="checkbox" id="setDatesFromText" ${d.fromText !== false ? 'checked' : ''}></label>
+    </div>`;
+  }
+
   function viewSettings() {
     if (!info) return emptyRoom();
     const current = serverSettings?.connection || '';
@@ -1824,6 +1887,7 @@
       </div>
       <div class="paper"><h2>이 방</h2>
         <label class="setting-switch"><span>기억 사용<small>켜면 답변마다 장부와 장면을 자동으로 갱신합니다.</small></span><input type="checkbox" id="setEnabled" ${info.enabled ? 'checked' : ''}></label>
+        <label>기억 관리 모드<select id="setRoomMode"><option value="character" ${info.mode !== 'simulator' ? 'selected' : ''}>캐릭터 RP</option><option value="simulator" ${info.mode === 'simulator' ? 'selected' : ''}>세계 시뮬레이터</option></select></label>${info.worldLink?.linked ? `<label class="setting-switch"><span>설정집 연동<small>이 방은 세계관 설정집에 연결돼 있습니다. 켜 두면 기억을 정리할 때 그 묶음에 나온 사람끼리의 설정집 관계(가족·친구·연인 등)를 「처음부터 아는 사이」로 알려 주고(정리 한 번에 100~170토큰쯤), 설정집의 영어·한국어 이름 쌍으로 같은 사람을 합칩니다. 끄면 둘 다 멈추고 지시문은 연동이 없을 때와 같아집니다(이미 합친 이름은 그대로, 이름 정리에서 되돌리기).</small></span><input type="checkbox" id="setWorldLink" ${info.worldLink.on ? 'checked' : ''}></label>` : ''}<p class="hint">세계 시뮬레이터는 봇 카드를 이야기를 진행하는 내레이터로 보고, 카드가 연기하는 NPC들을 한 명씩 인물로 기억합니다(수첩·아는 사람·관계). 카드 이름으로는 인물·수첩을 만들지 않고, 대사 앞 이름도 카드 이름으로 붙이지 않습니다. 세계관 설정집이 이 방에 연결돼 있으면 그 인물 목록을 읽어 씁니다. 바꿔도 지우는 기억은 없고, 다음 정리부터 적용됩니다.</p>
         <label class="setting-switch"><span>말풍선 태그 되살리기<small>화자 색상이 켜진 '합쳐서' 그룹 RP에서 모델이 원래의 숨은 화자 태그를 출력하도록 지침을 보강합니다. 보이는 이름표 없이 따옴표만 쓰는 대사에도 적용됩니다.</small></span><input type="checkbox" id="setTags" ${info.speakerTags ? 'checked' : ''}></label>
         <label class="setting-switch"><span>대사 앞에 이름 표시<small>캐릭터 대사에 '이름 | 대사'를 출력하도록 요청합니다. 말풍선 태그 기능과 독립적으로 설정할 수 있습니다.</small></span><input type="checkbox" id="setSpeakerNames" ${info.speakerNames ? 'checked' : ''}></label>
         <label>장면의 디테일<select id="setDetailLevel"><option value="standard" ${!info.organize?.detailLevel || info.organize.detailLevel === 'standard' ? 'selected' : ''}>보통</option><option value="detailed" ${info.organize?.detailLevel === 'detailed' ? 'selected' : ''}>자세히</option><option value="very_detailed" ${info.organize?.detailLevel === 'very_detailed' ? 'selected' : ''}>아주 자세히</option></select></label><p class="hint">자세할수록 행동과 반응, 사건의 앞뒤를 더 세밀하게 기록하도록 요청합니다. 정리와 회상에 쓰이는 토큰이 늘어날 수 있습니다.</p>
@@ -1832,6 +1896,7 @@
         <label>원문 인용 방식<select id="setQuoteMode"><option value="dialogue" ${!info.organize?.quoteMode || info.organize.quoteMode === 'dialogue' ? 'selected' : ''}>대사 위주</option><option value="narration" ${info.organize?.quoteMode === 'narration' ? 'selected' : ''}>서술 위주</option><option value="both" ${info.organize?.quoteMode === 'both' ? 'selected' : ''}>대사 + 서술 둘 다 · 토큰량 높음</option></select></label><p class="hint">대사 위주는 중요한 대사를 중심으로, 서술 위주는 장면의 행동·상황을 보여 주는 서술을 중심으로 인용합니다. 서술 위주에서도 중요한 대사는 함께 보존하도록 요청합니다. 둘 다를 선택하면 대사와 서술을 더 넉넉히 인용하므로 정리와 회상에 쓰이는 토큰이 늘어날 수 있습니다.</p><p class="hint">이 방에만 적용됩니다. 저장 후 새로 정리하는 장면부터 적용되며, 이미 정리한 장면을 바꾸려면 원문부터 다시 정리해야 합니다. 실제 정리 결과는 사용하는 모델에 따라 달라질 수 있습니다.</p><div class="buttons"><button data-act="saveOrganizePreferences">이 방의 정리 방식 저장</button></div>
         <label>이 방의 대사 확인 방식<select id="setAttributionRoom" data-attribution-room="1"><option value="follow" ${(info.attributionCheck?.room || 'follow') === 'follow' ? 'selected' : ''}>기본값 따름 (지금 모든 방 기본값: ${esc(attributionModeLabel(info.attributionCheck?.global))})</option>${attributionModeOptions(info.attributionCheck?.room)}</select></label><p class="hint">${ATTRIBUTION_MODE_HINT} 바꾸면 바로 저장되고, 다음 정리부터 적용됩니다.</p>
       </div>
+      ${datesPaper(info.dates)}
       ${featuresPaper(info.features)}
       ${backupPaper({ armed, preview: restorePreview && restorePreview.room === room ? restorePreview : null, withVectors: backupVectors, running: running(), undo: info.restoreUndo })}
       <div class="paper"><h2>모든 방 공통</h2>
@@ -1913,6 +1978,11 @@
   }
 
   function inspector() {
+    // 0.38.0: on the 「세계관」 tab, World Archive's panel says what goes here (이 세계관 · 이 방 · {{세계}})
+    if (tab === 'worldarchive' && worldTab.linked === true && worldTab.instance?.railHtml) {
+      const html = worldTab.instance.railHtml();
+      if (html) return `${html}<div class="rail-footer">기억 서재 · 기억 모듈판 v${VERSION}</div>`;
+    }
     if (!info) return '';
     const stats = threadStats();
     return `<div class="rail-title">이 방의 기억</div>
@@ -2152,8 +2222,13 @@
     if (!store) return emptyRoom();
     const people = personNames();
     if (!people.length) return `<h1>인물별</h1><div class="empty">${icon('person')}아직 인물이 없습니다.</div>`;
-    if (!people.includes(selectedPerson)) selectedPerson = people[0];
-    const p = selectedPerson;
+    if (selectedPerson && !people.includes(selectedPerson)) selectedPerson = '';
+    loadWaPeople();
+    return `<div class="eyebrow">PEOPLE · ${people.length}</div><h1>인물별</h1>
+      <p class="intro">사람마다 두 구역으로 모았습니다. 「설정집에서」는 세계관 설정집의 외형 · 성격 · 관계(이 방이 세계관에 연결돼 있을 때, 고치는 것은 설정집에서), 「이 방의 기억」은 이 방에서 정리된 지금 상태 · 알게 된 사실 · 수첩입니다. 「자세히」에서 장면 · 대사 · 끝나지 않은 일까지 봅니다.</p>
+      ${people.map(personCard).join('')}`;
+  }
+  function personDetail(p) {
     const all = store.facts || [];
     const facts = all.filter((f) => f.about === p && !(f.replacedBy && all.some((x) => x.id === f.replacedBy)));
     const notes = (world?.notes || {})[p] || [];
@@ -2168,10 +2243,7 @@
     const calls = allCalls.filter((e) => (e.from === p || e.to === p) && !(e.pairOf && allCalls.some((x) => x.id === e.pairOf)));
     const field = (label, v) => (v && (!Array.isArray(v) || v.length) ? `<dt>${label}</dt><dd>${esc(Array.isArray(v) ? v.join(' · ') : v)}</dd>` : '');
     const section = (key, title, count, body, openNow = false) => `<details class="paper person-sec" data-list="person:${esc(key)}" ${openLists.has(`person:${key}`) || openNow ? 'open' : ''}><summary><b>${title}</b> · ${count}</summary>${body}</details>`;
-    return `<div class="eyebrow">PEOPLE · ${people.length}</div><h1>인물별</h1>
-      <p class="intro">한 사람에 대한 기억을 한곳에 모았습니다: 지금 상태, 부르는 말, 알게 된 사실, 수첩, 끝나지 않은 일, 함께한 장면과 주고받은 대사. 고치는 것은 각 항목의 원래 화면에서 합니다(링크).</p>
-      <div class="person-chips">${people.map((n) => `<button class="${n === p ? 'selected' : ''}" data-act="selectPerson" data-id="${esc(n)}">${esc(nameShown(n))}</button>`).join('')}</div>
-      <div class="paper"><h2>${esc(nameShown(p))}</h2>
+    return `<div class="person-detail"><div class="paper"><h2>${esc(nameShown(p))} · 자세히</h2>
         ${card ? `<dl class="person-now">${field('있는 곳', card.location)}${field('차림', card.outfit)}${field('다친 곳', card.injuries)}${field('가진 것', card.carrying)}${field('기분', card.mood)}${field('그 밖', card.other)}</dl>` : '<p class="hint">지금 상태 기록이 없습니다(상태·장소·물건에서 켜고 고칠 수 있음).</p>'}
         ${(() => {
           // What this person calls others, apart from what others call them.
@@ -2187,8 +2259,72 @@
       ${section('notes', '수첩 (본인만 아는 다짐)', notes.length, notes.length ? notes.map((n) => `<p class="person-row">${n.star ? '★ ' : ''}${n.when ? `<small>(${esc(shown(n.when))})</small> ` : ''}${esc(shown(n.text))}</p>`).join('') + '<div class="buttons"><button class="ghost" data-tab="notebook">수첩에서 고치기</button></div>' : '<p class="hint">없습니다.</p>')}
       ${section('items', '이 사람의 끝나지 않은 일', items.length, items.length ? items.map((t) => `<p class="person-row"><span class="pill ${t.kind === 'promise' ? '' : 'neutral'}">${esc(KIND[t.kind] || t.kind)}</span> ${esc(shown(t.title))} <a href="#" class="record-link chip" data-goto-thread="${esc(t.id)}"><span class="chip-id">${esc(t.id)}</span></a></p>`).join('') : '<p class="hint">없습니다.</p>', items.length > 0)}
       ${section('scenes', '함께한 장면', scenes.length, scenes.length ? `<div class="record-links">${scenes.slice(-30).map((x) => sceneLink(x)).join('')}</div>` : '<p class="hint">없습니다.</p>')}
-      ${section('quotes', '주고받은 대사 (최근 12개)', quotes.length, quotes.length ? quotes.map(({ sc, q }) => { const l = quoteLine(q); return `<div class="quote-card"><small>${esc(sc.id)} · ${esc(l.who)}</small><blockquote>${esc(l.text)}</blockquote></div>`; }).join('') : '<p class="hint">없습니다.</p>')}`;
+      ${section('quotes', '주고받은 대사 (최근 12개)', quotes.length, quotes.length ? quotes.map(({ sc, q }) => { const l = quoteLine(q); return `<div class="quote-card"><small>${esc(sc.id)} · ${esc(l.who)}</small><blockquote>${esc(l.text)}</blockquote></div>`; }).join('') : '<p class="hint">없습니다.</p>')}</div>`;
   }
+
+  /* ---------- 인물별 (0.38.0 · 시안 B): 카드마다 두 구역 — 「설정집에서」(세계관 설정집, 읽기만) · 「이 방의 기억」 ---------- */
+
+  // 세계관 설정집의 이 방 인물 · 관계 (읽기만; 기억 서재는 설정집에 쓰지 않음). 방마다 30초 동안 다시 묻지 않음.
+  const waPeople = { room: '', at: 0, loading: false, entities: [], relations: [], linked: false };
+  function loadWaPeople() {
+    if (waPeople.loading || (waPeople.room === room && Date.now() - waPeople.at < 30000)) return;
+    if (!worldTab.available) return;
+    waPeople.loading = true;
+    const id = room;
+    (async () => {
+      try {
+        const e = await api('GET', `/api/world-archive/rooms/${encodeURIComponent(id)}/entities`);
+        const r = e?.worldId ? await api('GET', `/api/world-archive/rooms/${encodeURIComponent(id)}/relations`).catch(() => ({ relations: [] })) : { relations: [] };
+        Object.assign(waPeople, { room: id, at: Date.now(), linked: Boolean(e?.worldId), entities: (e?.entities || []).filter((x) => x.type === 'person'), relations: r?.relations || [] });
+      } catch {
+        Object.assign(waPeople, { room: id, at: Date.now(), linked: false, entities: [], relations: [] });
+      } finally {
+        waPeople.loading = false;
+        if (tab === 'person') render();
+      }
+    })();
+  }
+  const waKey = (x) => String(x || '').normalize('NFC').toLowerCase().replace(/[\s"'“”‘’·,.()]+/g, '');
+  function waPersonOf(name) {
+    if (waPeople.room !== room || !waPeople.linked) return null;
+    const keys = new Set([name, nameShown(name)].map(waKey).filter(Boolean));
+    return waPeople.entities.find((e) => [e.name, ...(e.aliases || [])].some((n) => keys.has(waKey(n)))) || null;
+  }
+  /** 「테오 마렌 · 친구」, 「벨로나 하르트 · 스승」: this person's relations in the world, as the other one is to them. */
+  function waRelationsOf(ent) {
+    return waPeople.relations.filter((r) => r.from === ent.entityId || r.to === ent.entityId).map((r) => {
+      const mine = r.from === ent.entityId;
+      const other = mine ? r.toName : r.fromName;
+      // 스승·제자: from is the pupil
+      // a note says what the other one is from the first one's side (「반려동물」): on the other side only the kind
+      const what = r.type === '스승·제자' ? (mine ? '스승' : '제자') : r.type === '가족' && r.note && mine ? r.note.replace(/과거에는.*$/, '').trim() || '가족' : r.type;
+      return `${other} · ${what}`;
+    });
+  }
+  const wfRow = (label, value) => (value ? `<div class="world-field"><span>${esc(label)}</span><input readonly value="${esc(value)}" aria-label="${esc(label)}"></div>` : '');
+  function personCard(p) {
+    const all = store.facts || [];
+    const facts = all.filter((f) => f.about === p && !(f.replacedBy && all.some((x) => x.id === f.replacedBy)));
+    const notes = (world?.notes || {})[p] || [];
+    const card = (world?.cards || []).find((c) => c.name === p);
+    const ent = waPersonOf(p);
+    const pill = ent ? String(ent.fields?.species || '').trim() || String(ent.fields?.affiliation || '').split(/[,，、]/)[0].trim() : '';
+    const rels = ent ? waRelationsOf(ent) : [];
+    const wa = ent ? `<p class="eyebrow person-zone">설정집에서 · 세계관</p>
+        ${wfRow('외형', ent.fields?.appearance)}${wfRow('성격', ent.fields?.personality)}
+        ${rels.length ? `<div class="world-field"><span>관계</span><div class="wf-caps">${rels.map((x) => `<span class="wf-cap">${esc(x)}</span>`).join('')}</div></div>` : ''}
+        ${!ent.fields?.appearance && !ent.fields?.personality && !rels.length ? '<p class="hint">설정집에 이 사람의 외형 · 성격 · 관계가 아직 없습니다.</p>' : ''}` : '';
+    const now = card ? [card.location, card.carrying, card.injuries, card.mood, card.other].filter(Boolean).join(' · ') : '';
+    const last = (list, get) => (list.length ? ` · 「${clipText(shown(get(list[list.length - 1])), 40)}」` : '');
+    const mem = `<p class="eyebrow person-zone">이 방의 기억</p>
+        ${wfRow('지금', now)}${wfRow('알게 된 사실', facts.length ? `${facts.length}개${last(facts, (f) => f.text)}` : '')}${wfRow('수첩', notes.length ? `${notes.length}개${last(notes, (n) => n.text)}` : '')}
+        ${!now && !facts.length && !notes.length ? '<p class="hint">이 방의 기억에 아직 이 사람의 상태 · 사실 · 수첩이 없습니다.</p>' : ''}`;
+    const open = p === selectedPerson;
+    return `<div class="world-card person-card${open ? ' is-open' : ''}"><h3>${esc(nameShown(p))}${pill ? ` <span class="pill">${esc(clipText(pill, 16))}</span>` : ''}
+        <button class="ghost person-more" data-act="selectPerson" data-id="${esc(open ? '' : p)}" aria-expanded="${open}">${open ? '접기' : '자세히'}</button></h3>${wa}${mem}${open ? personDetail(p) : ''}</div>`;
+  }
+  const clipText = (t, n) => { const s = String(t || ''); return s.length > n ? `${s.slice(0, n)}…` : s; };
+
 
   /* ---------- 할 일: 거르기 · 여러 개 고르기 · 되돌리기 ---------- */
 
@@ -2329,7 +2465,7 @@
     return `<div class="paper"><h2>섹션별 분량</h2>${merged.map(([name, size]) => `<div class="bar-row"><span>${esc(name)}</span><span class="bar"><span style="width:${Math.max(1, Math.round((size / total) * 100))}%"></span></span><small>${Math.round((size / total) * 100)}%</small></div>`).join('')}</div>`;
   }
 
-  const VIEWS = { timeline: viewTimeline, lines: viewLines, person: viewPerson, notebook: viewNotebook, home: viewHome, setup: viewSetup, scenes: viewScenes, search: viewSearch, facts: viewFacts, ledger: viewLedger, promises: viewPromises, life: viewLife, world: viewWorld, names: viewNames, inject: viewInject, settings: viewSettings };
+  const VIEWS = { timeline: viewTimeline, lines: viewLines, person: viewPerson, notebook: viewNotebook, home: viewHome, setup: viewSetup, scenes: viewScenes, search: viewSearch, facts: viewFacts, ledger: viewLedger, promises: viewPromises, life: viewLife, world: viewWorld, names: viewNames, inject: viewInject, settings: viewSettings, worldarchive: () => '' };
 
   /** The screens of the current tab, as a row of chips under the panel's top (nothing for a one-screen tab). */
   function subTabs() {
@@ -2352,6 +2488,7 @@
     for (const b of root.querySelectorAll('nav button')) {
       const g = GROUPS.find((x) => x[0] === b.dataset.groupTab);
       if (!g) { b.classList.toggle('selected', b.dataset.tab === tab); continue; }
+      if (g[0] === 'worldarchive') b.hidden = !worldTab.available;
       b.classList.toggle('selected', g === here);
       b.dataset.tab = lastIn[g[0]] || g[3][0];
     }
@@ -2370,11 +2507,14 @@
     err.textContent = lastError;
     const content = root.querySelector('#content');
     const scroll = content.scrollTop;
+    const folds = foldState(content);
     const jobError = info?.job?.error || info?.sceneJob?.error;
     const warning = jobError ? `<div class="note" role="alert">기억 정리를 마치지 못했습니다. ${esc(jobError)}</div>` : '';
     const translation = trPending || trError ? `<div class="note" role="status">${trError ? `한국어 번역을 마치지 못했습니다. ${esc(trError)}` : trWorking ? '한국어 번역 중입니다.' : trAuto ? '한국어 번역이 남아 있습니다.' : '자동 번역이 꺼져 있어 일부 항목이 영어로 보입니다.'} ${trPending ? `남은 항목: ${trPending}개.` : ''} <button data-act="retryTranslation">${trAuto || trError ? '남은 항목 다시 번역' : '지금 번역'}</button></div>` : '';
     content.innerHTML = warning + translation + subTabs() + VIEWS[tab]();
+    restoreFolds(content, folds);
     content.scrollTop = scroll;
+    showWorldTab(content);
     root.querySelector('#inspector').innerHTML = inspector();
     const n = root.querySelector('#themeToggle');
     n.innerHTML = icon(theme === 'dark' ? 'sun' : 'moon');
@@ -2403,7 +2543,7 @@
   async function handle(actName, el) {
     const id = el?.dataset?.id;
     const chat = encodeURIComponent(room);
-    if (actName !== 'fresh' && !actName.startsWith('deleteFact') && actName !== 'closeThread' && actName !== 'factBulkDelete' && actName !== 'rebuildChapters' && actName !== 'deleteRoutine' && !['trackerUndoApplied', 'nameApply', 'mergeApply', 'aliasApply', 'nameUndo', 'backupDownload', 'restoreApply', 'restoreUndo', 'addressDelete', 'stateReset', 'placeDelete', 'keepDelete', 'noteDelete', 'noteRebuildAll', 'trackerDelete', 'trackerDropStart'].includes(actName)) armed = '';
+    if (actName !== 'fresh' && !actName.startsWith('deleteFact') && actName !== 'closeThread' && actName !== 'factBulkDelete' && actName !== 'rebuildChapters' && actName !== 'deleteRoutine' && !['trackerUndoApplied', 'nameApply', 'mergeApply', 'aliasApply', 'nameUndo', 'nameAutoUndo', 'backupDownload', 'restoreApply', 'restoreUndo', 'addressDelete', 'stateReset', 'placeDelete', 'keepDelete', 'noteDelete', 'noteRebuildAll', 'trackerDelete', 'trackerDropStart'].includes(actName)) armed = '';
     switch (actName) {
       case 'factPickClear':
         pickedFacts.clear();
@@ -2563,6 +2703,10 @@
       case 'refresh':
         rooms = [];
         return act(refresh, '새로 불러왔습니다.', { reload: false });
+      case 'worldLinkRoom':
+        // 세계관 칸, a room not linked yet: link it (the chosen world, or a new one named after the room).
+        worldTab.working = true;
+        return act(async () => { try { await linkRoomToWorld(); } finally { worldTab.working = false; } }, '이 방을 세계관에 연결했습니다.');
       case 'start':
         return act(() => api('POST', `/chats/${chat}/start`, { fresh: false }), '정리를 시작했습니다.');
       case 'fresh':
@@ -2914,7 +3058,14 @@
           await api('POST', `/chats/${chat}/address`, { action: 'delete', id });
           if (addressForm.id === id) addressForm = { id: '', from: '', to: '', term: '', note: '' };
           names = null;
-        }, '호칭을 지웠습니다.');
+        }, '호칭을 지웠습니다. 대사에 다시 나와도 자동으로 만들지 않습니다(아래 「지운 호칭」에서 되살릴 수 있습니다).');
+      case 'addressUnblock': {
+        const key = el.dataset.key || '';
+        return act(async () => {
+          await api('POST', `/chats/${chat}/address`, { action: 'unblock', key });
+          names = null;
+        }, '지운 호칭을 되살렸습니다. 다음 정리 때 대사에 있으면 다시 올라옵니다.');
+      }
       case 'suggestAccept':
       case 'suggestIgnore': {
         const accept = actName === 'suggestAccept';
@@ -2937,6 +3088,14 @@
           await api('POST', `/chats/${chat}/names/dismiss`, { source: el.dataset.source, target: el.dataset.target });
           names = null;
         }, '다른 사람으로 두었습니다. 다시 묻지 않습니다.');
+      case 'nameAutoUndo':
+        if (armed !== `nameAutoUndo:${id}`) { armed = `nameAutoUndo:${id}`; return render(); }
+        armed = '';
+        return act(async () => {
+          const r = await api('POST', `/chats/${chat}/names/auto-undo`, { id });
+          names = null;
+          notice = `${r.source} → ${r.target} 자동 합침을 되돌렸습니다. 이 짝은 다시 자동으로 합치지 않습니다.${r.kept ? ` 그 뒤에 다시 고친 ${r.kept}곳은 그대로 두었습니다.` : ''}`;
+        });
       case 'nameUndo':
         if (armed !== 'nameUndo') { armed = 'nameUndo'; return render(); }
         armed = '';
@@ -3064,6 +3223,20 @@
         const mode = serverSettings?.routine === false ? 'on' : 'default';
         return act(() => api('POST', `/chats/${encodeURIComponent(room)}/routine-mode`, { mode }), '이 방에서 최근 생활 기록을 켰습니다. 새 메시지부터 이어서 기록합니다.');
       }
+      case 'dateFixAdd': {
+        const number = root.querySelector('#dateFixNumber')?.value.trim();
+        const date = root.querySelector('#dateFixDate')?.value.trim();
+        const time = root.querySelector('#dateFixTime')?.value.trim();
+        return act(async () => {
+          const r = await api('POST', `/chats/${encodeURIComponent(room)}/dates`, { action: 'add', number: number ? Number(number) : null, date, time });
+          notice = `작중 날짜를 정했습니다.${r.redated ? ` 날짜가 바뀐 장면 ${r.redated}개를 고쳤습니다.` : ''}`;
+        });
+      }
+      case 'dateFixRemove':
+        return act(async () => {
+          const r = await api('POST', `/chats/${encodeURIComponent(room)}/dates`, { action: 'remove', id });
+          notice = `직접 정한 날짜를 지웠습니다.${r.redated ? ` 날짜가 바뀐 장면 ${r.redated}개를 고쳤습니다.` : ''}`;
+        });
       case 'saveOrganizePreferences': {
         const npcCoverage = root.querySelector('#setNpcCoverage')?.value, quoteMode = root.querySelector('#setQuoteMode')?.value, detailLevel = root.querySelector('#setDetailLevel')?.value;
         if (!room) throw Error('현재 채팅방을 먼저 선택해 주세요.');
@@ -3364,9 +3537,88 @@
     return button;
   }
 
+  /*
+   * 세계관 설정집 연동 v2: World Archive's screen as the 「세계관」 tab. build.py builds its extension.js in (vendor/
+   * world-panel.js, embedded: it starts only here, inside #worldMount). The tab is there while the World Archive
+   * server answers /status; without it (not installed, turned off) the tab is gone and nothing else changes. While the
+   * tab is there, World Archive's own floating button hides (document data-memory-world-tab="on").
+   */
+  const worldTab = { available: false, gone: false, instance: null, linked: null, linkRoom: '', worlds: null, working: false };
+  /** World Archive's /status: when the page loads, and on opening the library only while it was there. A 404 or a
+   * failure: not asked again until the page is opened anew (no requests for someone without World Archive). */
+  async function checkWorldTab() {
+    if (worldTab.gone) return;
+    let ok = false;
+    try {
+      const r = await fetch('/api/world-archive/status', { credentials: 'same-origin', cache: 'no-store', headers: { 'x-marinara-csrf': '1' } });
+      ok = r.ok && Boolean((await r.json())?.version);
+    } catch {}
+    ok = ok && Boolean(globalThis.__memoryWorldPanel?.start);
+    const was = worldTab.available;
+    worldTab.available = ok;
+    if (!ok) worldTab.gone = true;
+    try { if (ok) document.documentElement.dataset.memoryWorldTab = 'on'; else delete document.documentElement.dataset.memoryWorldTab; } catch {}
+    if (!ok && tab === 'worldarchive') tab = 'home';
+    if (was !== ok) render();
+  }
+  /** Is this room linked to a world (asked when the tab is shown for another room than last time). */
+  async function loadWorldLinkState() {
+    const id = room;
+    worldTab.linkRoom = id;
+    worldTab.linked = null;
+    try {
+      const get = async (p) => { const r = await fetch(p, { credentials: 'same-origin', cache: 'no-store', headers: { 'x-marinara-csrf': '1' } }); if (!r.ok) throw Error(String(r.status)); return r.json(); };
+      const r = await get(`/api/world-archive/rooms/${encodeURIComponent(id)}`);
+      if (worldTab.linkRoom !== id) return;
+      worldTab.linked = Boolean(r?.worldId);
+      if (!worldTab.linked) worldTab.worlds = (await get('/api/world-archive/worlds')).worlds || [];
+    } catch (error) {
+      worldTab.linked = false;
+      worldTab.worlds = worldTab.worlds || [];
+    }
+    render();
+  }
+  /** The tab for a room not linked to a world: only linking it (to a world there is, or a new one named after the room). */
+  function worldLinkCard() {
+    const worlds = worldTab.worlds || [];
+    const opts = worlds.map((w) => `<option value="${esc(w.worldId)}">${esc(w.name)}</option>`).join('');
+    return `<div class="paper"><h2>세계관</h2><p class="hint">이 방은 세계관 설정집의 세계관에 연결돼 있지 않습니다. 연결하면 이 칸에서 설정집을 보고 고칠 수 있고, 기억을 정리할 때 설정집 관계를 함께 씁니다.</p>
+      ${worlds.length ? `<label>연결할 세계관<select id="worldLinkPick">${opts}</select></label>` : '<p class="hint">아직 세계관이 없습니다. 이 방 이름으로 새 세계관을 만들어 연결합니다.</p>'}
+      <div class="buttons"><button class="primary" data-act="worldLinkRoom" ${worldTab.working ? 'disabled' : ''}>이 방을 세계관에 연결하기</button></div></div>`;
+  }
+  async function linkRoomToWorld() {
+    const pick = root.querySelector('#worldLinkPick')?.value || '';
+    const send = async (method, p, body) => { const r = await fetch(p, { method, credentials: 'same-origin', cache: 'no-store', headers: { 'x-marinara-csrf': '1', 'content-type': 'application/json' }, body: JSON.stringify(body) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw Error(d?.error || String(r.status)); return d; };
+    let worldId = pick;
+    if (!worldId) worldId = (await send('POST', '/api/world-archive/worlds', { name: roomLabel(rooms.find((r) => r.id === room) || { id: room }) || '새 세계관' })).worldId;
+    await send('PUT', `/api/world-archive/rooms/${encodeURIComponent(room)}`, { worldId });
+    worldTab.linked = true;
+  }
+  function showWorldTab(content) {
+    const box = root.querySelector('#worldMount');
+    const here = tab === 'worldarchive' && worldTab.available;
+    if (here && worldTab.linkRoom !== room) void loadWorldLinkState();
+    const panel = here && worldTab.linked === true;
+    content.hidden = panel;
+    box.hidden = !panel;
+    if (here && !panel) content.innerHTML = worldTab.linked === false ? worldLinkCard() : '<p class="hint">세계관 연결을 확인하는 중…</p>';
+    if (!panel) return;
+    if (!worldTab.instance) {
+      try { worldTab.instance = globalThis.__memoryWorldPanel.start(box, { theme }); } catch (error) { box.textContent = `세계관 칸을 열지 못했습니다: ${error?.message || error}`; }
+    } else worldTab.instance.setTheme?.(theme);
+    // the panel loads on its own: keep the right column in step while this tab is shown
+    if (!worldTab.railTimer) worldTab.railTimer = setInterval(() => {
+      if (tab !== 'worldarchive' || !root) { clearInterval(worldTab.railTimer); worldTab.railTimer = null; return; }
+      const el = root.querySelector('#inspector');
+      const html = inspector();
+      if (el && el.innerHTML !== html) el.innerHTML = html;
+    }, 1500);
+  }
+
   function openLibrary() {
     if (open || disposed) return;
     open = true;
+    if (worldTab.available) { worldTab.linkRoom = ''; void checkWorldTab(); }
     const current = activeChatId();
     if (current && current !== room) {
       room = current;
@@ -3454,6 +3706,7 @@
             <button id="close" class="close" aria-label="기억 서재 닫기" title="닫기">${icon('close')}</button></header>
           <div id="status" role="status"></div><div id="error" hidden></div>
           <main id="content"></main>
+          <div id="worldMount" class="world-mount" hidden></div>
         </div>
         <aside class="inspector" id="inspector"></aside>
         <div class="resize-edge resize-r" id="resizeRight" aria-hidden="true"></div><div class="resize-edge resize-b" id="resizeBottom" aria-hidden="true"></div><div class="resize-grip" id="resizeCorner" title="끌어서 크기 바꾸기" aria-hidden="true"></div>
@@ -3464,6 +3717,9 @@
     launcher?.setAttribute('data-theme', theme);
     installSelectionButton();
     setupPanelMove();
+    // 세계관 설정집 연동 v2: whether the 「세계관」 tab is there is known from the start, so World Archive's own
+    // floating button hides even before this screen is first opened. The one request when the page loads.
+    void checkWorldTab();
 
     // Shadow DOM retargets input events to our DIV at the page boundary. Keep
     // host shortcuts from treating typing (notably '?') as a page command.
@@ -3602,6 +3858,21 @@
           localStorage.setItem('memory-module-font', font);
         } catch {}
         return render();
+      }
+      if (e.target.id === 'setRoomMode') {
+        const mode = e.target.value === 'simulator' ? 'simulator' : 'character';
+        void act(() => api('POST', `/chats/${encodeURIComponent(room)}/mode`, { mode }), mode === 'simulator' ? '세계 시뮬레이터로 바꿨습니다. 다음 정리부터 적용됩니다.' : '캐릭터 RP로 바꿨습니다. 다음 정리부터 적용됩니다.');
+      }
+      if (e.target.id === 'setDatesFromText') {
+        const on = e.target.checked;
+        void act(async () => {
+          const r = await api('POST', `/chats/${encodeURIComponent(room)}/dates`, { fromText: on });
+          notice = `${on ? '메시지 글에서도 날짜를 읽습니다.' : '메시지 글의 날짜는 읽지 않고 트래커와 직접 정한 날짜만 씁니다.'}${r.redated ? ` 날짜가 바뀐 장면 ${r.redated}개를 고쳤습니다.` : ''}`;
+        });
+      }
+      if (e.target.id === 'setWorldLink') {
+        const on = e.target.checked;
+        void act(() => api('POST', `/chats/${encodeURIComponent(room)}/world-link`, { on }), on ? '설정집 연동을 켰습니다. 다음 정리부터 적용됩니다.' : '설정집 연동을 껐습니다. 다음 정리부터 적용됩니다.');
       }
       if (e.target.id === 'setSpeakerNames') {
         const on = e.target.checked;
@@ -3832,6 +4103,7 @@
   }
 
   const EXTRA_CSS = `
+.world-mount{display:block;height:calc(100% - 8px);min-height:560px;overflow:hidden}.world-mount[hidden]{display:none!important}#content[hidden]{display:none!important}
     .memory-search{margin-bottom:18px}.memory-search input{flex:1;min-width:120px}.memory-search .buttons{flex-wrap:wrap}
     #launch{position:fixed;right:18px;bottom:122px;width:64px;height:64px;padding:0;border:0;border-radius:0;place-items:center;color:inherit;
       background:transparent!important;box-shadow:none!important;filter:drop-shadow(0 3px 5px #00000040);transition:transform .18s,filter .18s}

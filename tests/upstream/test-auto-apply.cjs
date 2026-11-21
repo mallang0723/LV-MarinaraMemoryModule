@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // 제안 자동 적용 (autoApply, on by default): tracker cycle starts and the suggestions learned from the user's edits are applied
 // at once, can be taken back exactly, are never applied again after an undo, and never touch the "같은 사람일 수 있음" merges

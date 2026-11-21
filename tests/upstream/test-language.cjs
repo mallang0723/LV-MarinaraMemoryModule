@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-language.cjs
 // Memory in another language: the chat's language, line-by-line translation of what goes in, quoted lines kept,
 // Korean for the library, English dates.

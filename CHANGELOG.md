@@ -1,5 +1,45 @@
 # 변경 내역
 
+## 1.5.0-lv.1
+
+원작 기억 서재 **0.35.2 이후 34커밋(0.35.3 ~ 0.38.3, `32f72b9`)** 을 통이식으로 반영했습니다. 원작 파일(코어 23개·`service.cjs`·화면 원본 3개·세계관 칸 화면 1개)은 **바이트 그대로**이고 고정 SHA-256을 새로 잡았습니다(`npm run verify:original`, `UPSTREAM_MEMORY`로 원작 체크아웃 비교). 이식판 전용 기능(토큰 계량·하단 블록 빼고 읽기·참고용 본문 내주기·사용자별 격리·6초 주입 예산·메시지 제한 기반 기억 창 등)은 그대로 얹혀 있습니다.
+
+**새로 들어온 원작 기능**: 세계 시뮬레이터 모드(방마다), 반려동물 수첩(방마다), 이름 자동 합치기(0.35.4), 영어 기억 한국어 검색·번역 단어장 표기(0.35.3), 작중 날짜 직접 바로잡기·「메시지 글에서도 날짜 읽기」 스위치·트래커 날짜 개선(0.38.x), 인물별 두 구역 카드(0.38.0), 새로 그려도 펼친 항목 유지(0.38.3), 지운 호칭 되살리기, 답이 장면 정리 뒤에서 멈추지 않게 하는 수정(0.37.2).
+
+**루미버스에서 동작하지 않거나 대신하는 것 (보고)**
+
+- **세계관 설정집 연동(0.37.0~0.38.0): 대역(꺼짐).** 「세계관」 칸·「설정집 연동」 스위치·처음부터 아는 사이·설정집 종·이름 쌍은 Marinara 전용 확장 *세계관 설정집*이 있어야 켜집니다. 루미버스에는 그 확장이 없어, 원작이 설정집이 없는 Marinara에서 하는 그대로 칸이 숨고 지시문이 연동 없을 때와 같습니다. 코드는 전부 들어 있습니다: `worldlink.cjs`, 서비스의 `globalThis.__marinaraWorldArchive?.api` 조회, `world-panel.orig.js`(원작이 `vendor/world-panel.js`로 빌드에 붙이는 화면, 바이트 고정)를 원작과 같은 래퍼로 화면에 붙임. 화면의 `/api/world-archive/*` 요청은 네트워크로 나가지 않고 기존 셈 대로 shim을 거쳐 백엔드가 404로 답합니다(앵커 패치 3개). 루미버스용 설정집이 `__marinaraWorldArchive.api`를 내주면 그대로 켜집니다.
+- **젬4(Gemma 4) 추론 low(0.38.2): 미적용 — 결정 대기.** 원작은 연결의 추론 설정이 없는 Gemma 4 연결에 추론 low를 붙여 보냅니다(`memoryCallOptions`의 `light`, 사이트가 거절하면 빼고 재호출). 이식판의 모델 호출 어댑터(`generate.quiet`)는 연결별 모델 옵션(`customParameters`·`reasoningEffort`)을 넘기지 않아(DeepSeek 생각 끄기도 1.4.0부터 같음) 호출은 정상이고 값만 가지 않습니다. 호스트(소스 확인)에는 요청별 `reasoning` 덮어쓰기가 있지만, 연결·프리셋에 사용자가 정한 추론 설정을 확장이 볼 수 없어 보내면 그 설정을 덮을 수 있고, 구버전 호스트(최소 1.2.5)에서의 동작은 미확인이라 임의로 연결하지 않았습니다.
+- 원작 설치 스크립트·`marinara-memory-runtime.cjs`·빌드 스크립트·`deliverable/`·스크린샷은 Marinara 전용이라 가져오지 않았습니다. `tests/test-library-folds.mjs`(happy-dom 필요, 원작 번들 `deliverable/extension.js`를 읽음)와 `tests/measure-simulator-tokens.cjs`(측정 스크립트)는 시험에 넣지 않았습니다.
+
+**원작이 같은 걸 새로 구현해 이식판 쪽을 접은 것**: 영어·중국어 기억을 한국어 번역으로도 찾는 기능(이식판 1.2.0-lv.2의 「검색의 한국어 번역」)을 원작 0.35.3이 새로 넣었습니다. 이식판의 `searchableText`·번역 우선 비교 패치(`searchableText` 범위 교체)를 빼고 원작 것을 그대로 씁니다. 원작에 없는 부분인 **이름 표기 확장 검색**(이름 표·호칭 사전 짝·번역 캐시로 같은 사람의 다른 표기까지 찾기, 검색 탭의 이름 표 읽기)만 이식판 전용으로 남겼습니다(`search variants`·`search loop` 패치). 같은 기록의 한국어 번역이 원문 뒤에 붙어 검색 발췌에 보이는 모양은 원작을 따릅니다.
+
+**앵커 패치**: 서비스 패치 중 `meter base kind`가 새 원작 줄(`...extra, ...(useLight ? light : {})`)에 맞지 않아 앵커를 고쳐 다시 걸었고, 새 「가벼운 추론 거절 시 재호출」(`return askModel(model, messages, { maxTokens })`)이 호출 종류 표시를 잃지 않도록 패치 1개(`meter light retry kind`)를 더했습니다. 화면 앵커는 기존 것이 모두 그대로 맞았고, 새로 세계관 칸의 직접 `fetch` 3곳(`world status/get/send fetch`)과 세계관 화면 붙이기(`world panel embed`) 패치를 더했습니다. 장면·회상 등 코어 패치(길이 상한·보존·재요청 연결)는 변경 없이 모두 맞습니다. 코어 새 모듈 3개(`simulator`·`petnotes`·`worldlink`)는 패치가 필요 없습니다.
+
+**원작 커밋별 PORT / SKIP** (`165d488` 이후 34커밋)
+
+| 원작 커밋 | 내용 | 판정 |
+|---|---|---|
+| a26b545 | 장면 끝 번호 너그럽게 읽기 | PORT (scenes.cjs) |
+| d4235a5 | 0.36.0 세계 시뮬레이터 모드 | PORT (simulator·ledger·scenes·service·화면). install.* 는 SKIP(Marinara 설치기) |
+| 3f4ce36, a3836e2, 2e3a2fd, 47e241c, dd2821e, 4b4da5b | 시뮬레이터 보정 | PORT |
+| a714edd | 0.35.3 영어 기억 한국어 검색·낱말 거르기·단어장 표기 | PORT. marinara-memory-runtime 버전 줄은 SKIP |
+| 425c738 | 0.35.4 이름 자동 합치기 | PORT |
+| 52e647a | 병합(시뮬레이터 ↔ 0.35.4) | PORT (결과 파일 기준) |
+| fe3eef8, 0931d21 | 0.36.1 반려동물 수첩 | PORT (petnotes·features·service). install.* SKIP |
+| b6cecd8, 3171fb8, a0867a2, 3245b84 | 세계관 설정집 연동 v2 서버쪽 | PORT, 루미버스에선 설정집이 없어 **대역(꺼짐)** |
+| 43f60f0, 68fa54b, e649574, fc4246f | 0.37.0~0.37.1 「세계관」 칸·스위치·vendor/world-panel.js | PORT (화면은 바이트 고정으로 붙임, 칸은 설정집이 없어 숨음 = **대역**). build.py·deliverable SKIP |
+| 1eb058d | 0.37.2 답 멈춤 고침 | PORT |
+| 8d29e7d | 0.38.0 인물별 두 구역·세계관 칸 v0.6.1 | PORT (화면). 스크린샷 SKIP |
+| e2777bf, a920d17, ac311d9 | 0.38.1 트래커 날짜 | PORT |
+| 8a310e0 | 0.38.2 작중 날짜 바로잡기 등 | PORT. 젬4 추론 low는 **미적용**(위) |
+| a29feb8 | 0.38.3 여덟 자리 숫자 | PORT |
+| 8f99b84, 22fff16 | 0.38.3 펼침 상태 유지 | PORT (화면). 전용 시험 `test-library-folds.mjs`는 SKIP(happy-dom) |
+| 32f72b9 | 0.38.3 지운 호칭 | PORT |
+| 4c7e778, 7edd097, 6404247 | 병합 커밋 | 내용은 위 커밋에 포함 |
+
+반영 31 / SKIP 0(파일 단위 SKIP만 위에 표기) / 병합 3. 시험: 원작 시험 9개 추가(`test-date-fixes`·`glossary-merge`·`glossary-names`·`pet-notebook`·`reply-wait`·`routine-skip`·`simulator-mode`·`tracker-days`·`world-link`)와 기존 원작 시험 갱신.
+
 ## 1.4.2-lv.3
 
 **토큰 계량**을 더했습니다(추가 기능, 프롬프트·메시지 구성은 그대로). 호스트의 프롬프트 토큰 표는 확장이 알린 블록을 「그 메시지 전체」로 세기 때문에, 프리셋의 {{memory_ledger}}가 큰 메시지 안에 있으면 「기억」이 수만 토큰으로 보입니다. 「주입 확인」 탭에 **토큰 계량** 카드를 넣어 실제 값을 보입니다.

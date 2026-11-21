@@ -7,7 +7,7 @@
 //  2. at 1280x800 and 390x844: the bottom room switch label is not clipped, and every checkbox/switch (이름 정리·설정 tabs too)
 //     has a >= 44px effective touch target (its label counts); no sideways overflow.
 // PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROMIUM_BIN=/usr/bin/chromium node scripts/ui-fix-qa.mjs   (exit 1 on failure)
-import { checkFeatureScreens, assertPopulatedTab } from '../qa/feature-checks.mjs';
+import { checkFeatureScreens, assertPopulatedTab, TAB_GROUP } from '../qa/feature-checks.mjs';
 import { createQaServer } from './qa-server.mjs';
 const pw = await import(process.env.PLAYWRIGHT_MODULE || 'playwright').catch(e => { console.error('Playwright not found (set PLAYWRIGHT_MODULE):', e.message); process.exit(2); });
 const ORIGIN = 'http://127.0.0.1';
@@ -118,6 +118,7 @@ for (const vp of [{ width: 1280, height: 800, touch: false }, { width: 390, heig
     for (const ui of ['dark', 'light']) {
         await themed(ui);
         for (const t of ['home', 'scenes', 'search', 'facts', 'ledger', 'life', 'names', 'world', 'inject', 'settings']) {
+            if (TAB_GROUP[t]) { await ev('const b = root.querySelector(arg); if (b) b.click();', `button[data-group-tab="${TAB_GROUP[t]}"]`); await page.waitForTimeout(200); }
             if (!(await ev('const b = root.querySelector(arg); if (!b) return false; b.click(); return true;', `button[data-tab="${t}"]`))) { failures.push(`${vp.width}px missing tab ${t}`); continue; }
             await page.waitForTimeout(500);
             await assertPopulatedTab(page, t);

@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // Correcting the Korean of an English memory note: the prompt sends the English, the Korean before and after, and the
 // names the other way round (Korean → Latin); the answer is read one line per note; the endpoint refuses bad input and

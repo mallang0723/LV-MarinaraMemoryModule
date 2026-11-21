@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-english-feelings.cjs
 // Memory written in English: two different feelings between the same two people stay apart, and the same feeling
 // written twice is still folded into one. (Invented names and story.)

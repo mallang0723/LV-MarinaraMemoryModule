@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // The memory text as the reply model reads it (invented names): fewer and shorter quotes, one numbering for scenes,
 // an English memory framed in English with people's Latin names, old cut values shown whole, passed deadlines marked.

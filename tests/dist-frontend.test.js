@@ -35,7 +35,7 @@ test('no crypto.subtle, navigator.clipboard, navigator.share, execCommand copy i
 
 test('no fetch to the network from the shipped screens except through the shim (no bare /api/ URL strings)', () => {
     // the originals' strings "api/..." paths are request paths for the shim; a literal fetch(`/api/` must not remain
-    assert.ok(!/\bfetch\(\s*[`"']\/api\//.test(src));
+    assert.ok(!/(?<!LV\.)\bfetch\(\s*[`"']\/api\//.test(src));   // `LV.fetch('/api/...')` is the shim (the 세계관 tab's status check, patch.mjs)
     assert.ok(!/window\.fetch\s*=/.test(src), 'the original window.fetch hook is gone');
 });
 

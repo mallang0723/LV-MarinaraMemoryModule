@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 const {test}=require('node:test'), assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 class Element {constructor(){this.dataset={};this.style={removeProperty(){}};this.listeners={};this.classList={toggle(){},add(){},remove(){}};this.hidden=false;this.offsetParent=null;} addEventListener(k,f){(this.listeners[k]||=[]).push(f);} setAttribute(){} remove(){} append(x){(this.children||=[]).push(x);} focus(){} click(){for(const f of this.listeners.click||[])f({target:this,preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}});this.onclick?.();}}

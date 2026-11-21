@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // 인물의 수첩: the voice comes from each character's Korean lines (Korean, bracketed Korean, or the saved translation of
 // an English-only line); notes are cleaned (story people only, never the user's own, Korean, with evidence), folded

@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-language-fit.cjs
 // Memory translated into a longer language still fits the memory limit, whole (nothing cut off at the end).
 'use strict';

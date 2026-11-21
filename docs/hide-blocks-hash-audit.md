@@ -30,3 +30,14 @@
 | service.cjs:638-650, 5447 | 분기 대조·화자 태그 복구 | `listMessages` 행 | 분기 대조는 role/characterId만. 5447은 Marinara 말풍선 전용(루미버스는 `updateMessageContent` 거절) | 조치 불요 |
 | engine.js `onMessage`/`refreshTail`/스냅샷 | 호스트 원문 보관 | 원문(dto) | 스냅샷은 항상 원문, 걸러기는 `listMessages` 때마다 | 옵션/태그를 바꾸면 다음 목록부터 바로 반영(캐시 없음) |
 | 인젝터(common/injector.js) | 프롬프트에 넣는 기억 | 장부 렌더 | 메시지 원문을 읽지 않음 | 계획서 3-5대로 변경 없음 |
+
+## 1.5.0-lv.1 재점검 (원작 0.38.3 `service.cjs`·코어 전수)
+
+0.35.2 이후 추가·변경된 줄에서 `hashText(`·`.h ===/!==`·`srcNorm`·`listMessages(`·`prepareMessages(`·`.content`·`rawContent`·`dateInText(`를 다시 검색했다(2026-11-21).
+
+| 위치 | 하는 일 | 읽는 값 | 옵션 켜짐 때 영향 | 판정 |
+|---|---|---|---|---|
+| 새 해시·지문·`prepareMessages` 호출처 | — | — | 없음(0.35.2 이후 새로 생긴 것 없음) | 조치 불요 |
+| service.cjs `glossaryNote(chatId, messages[at].content)` / `withSetup` (0.35.3) | 정리 지시문에 단어장 이름 붙이기 | 이번에 읽는 호출 입력(이미 걸러진 글) | 모델이 읽는 글과 같은 글에서 이름을 찾음 | 조치 불요 |
+| service.cjs `addTrackerClock`의 `L.dateInText(L.htmlToText(m.content), …)` (0.38.2, 작중 날짜 바로잡기·메시지 글 날짜 읽기) | 메시지 글의 날짜 줄로 작중 시계를 잇기 | **걸러진 content** | 상태창 같은 `wi-exclude` 블록 안의 날짜 줄은 못 읽음 | **열린 항목(기존과 같은 종류)**: ledger.cjs의 `dateInText(m.content)` 세 곳도 1.4.0부터 걸러진 글을 읽어 옛 점검표(1.4.2-lv.2)가 놓쳤다. 새 판이 만든 문제가 아니라 같은 소비처가 한 곳 늘었다. 옵션을 켠 방에서 날짜가 블록 안에만 있으면 시계가 그 날짜를 못 잇는다(옵션을 꺼 둔 방은 영향 없음). 고치려면 서비스 앵커로 원문을 시계 읽기에만 넘겨야 한다(소유자 결정 후) |
+| service.cjs `redateScenes` 연결 (0.38.1) | 잘못된 날짜 장면 바로잡기 | 메시지의 `clock`(위에서 정해진 값) | 위의 시계 결과를 따름 | 위와 같음 |

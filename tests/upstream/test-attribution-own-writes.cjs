@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-attribution-own-writes.cjs
 // The check's own writes (the rule step, lines it settles) are not edits by someone else: model answers for the
 // same scene are still saved. A real outside edit made during the check still stops the save. Invented names only.

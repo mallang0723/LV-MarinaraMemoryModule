@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-attribution-live-cases.cjs
 // Regression cases shaped after a live dialogue check, rebuilt with invented names and lines only, plus the
 // speed rules: fingerprint skip, one question per group, a second only for flagged lines, groups in parallel.

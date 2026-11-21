@@ -13,7 +13,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { checkFeatureScreens, assertPopulatedTab } from '../qa/feature-checks.mjs';
+import { checkFeatureScreens, assertPopulatedTab, TAB_GROUP } from '../qa/feature-checks.mjs';
 import { createQaServer } from './qa-server.mjs';
 
 const pw = await import(process.env.PLAYWRIGHT_MODULE || 'playwright').catch(e => { console.error('Playwright not found (set PLAYWRIGHT_MODULE):', e.message); process.exit(2); });
@@ -176,6 +176,7 @@ try {
                     const cur = await evalIn('memory', 'return root.host.getAttribute("data-theme")');
                     if (cur !== ui) await click('memory', '#themeToggle', 'theme toggle');
                     for (const t of ['home', 'scenes', 'search', 'facts', 'ledger', 'life', 'names', 'world', 'inject', 'settings']) {
+                        if (TAB_GROUP[t]) { await click('memory', `button[data-group-tab="${TAB_GROUP[t]}"]`, `group of ${t}`); await sleep(200); }
                         await click('memory', `button[data-tab="${t}"]`, `tab ${t}`);
                         await sleep(300);
                         await assertPopulatedTab(page, t);

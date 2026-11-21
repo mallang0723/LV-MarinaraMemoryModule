@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // node --test tests/test-view-speed.cjs
 // 0.12.3: the status and the room data no longer wait on the connection look-up (connection list + key, about a

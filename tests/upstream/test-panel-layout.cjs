@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // Source checks for the library panel's layout, moving and resizing (no browser here; the geometry math runs for real).
 const { test } = require('node:test');

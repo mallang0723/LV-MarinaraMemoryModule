@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-attribution-mode.cjs
 // 대사 확인 방식 (off | rules | default | thorough): setting resolution and persistence, each mode's model calls,
 // the rules in "rules" mode, nothing in "off", upgrading later, and the screen. Invented names and lines only.

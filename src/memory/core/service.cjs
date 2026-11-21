@@ -24,6 +24,9 @@ const Ks = require('./keepsakes.cjs');
 const Nb = require('./notebook.cjs');
 const Tk = require('./trackers.cjs');
 const Rp = require('./reasons.cjs');
+const Sim = require('./simulator.cjs');
+const Pets = require('./petnotes.cjs');
+const W = require('./worldlink.cjs');
 
 /**
  * Marinara's own data folder, found the way Marinara finds it: DATA_DIR (relative to the server package) if set,
@@ -1202,6 +1205,164 @@ function setSpeakerTags(chatId, on) {
 }
 
 function speakerNamesOn(chatId) { return settings().chats?.[chatId]?.speakerNames === true; }
+
+/*
+ * 기억 관리 모드 (방마다): 'character' (캐릭터 RP, the default — what the module always did) or 'simulator'
+ * (세계 시뮬레이터: the card is the narrator, the NPCs it voices are the people). Changing it deletes nothing.
+ */
+function roomMode(chatId) {
+  return Sim.mode(settings().chats?.[chatId]?.mode);
+}
+function setRoomMode(chatId, mode) {
+  const next = settings();
+  const room = { ...(next.chats?.[chatId] || {}) };
+  if (mode === 'simulator') room.mode = 'simulator';
+  else delete room.mode;
+  next.chats = { ...next.chats, [chatId]: room };
+  saveSettings(next);
+}
+
+/**
+ * 작중 날짜 바로잡기 (방마다): the story dates the user set by hand, each from a message on ({ id, number, date,
+ * time }), and whether dates written in the messages' text are read at all (off: the tracker and hand fixes only,
+ * for a room whose status lines have numbers that read as dates).
+ */
+function dateFixes(chatId) {
+  const list = settings().chats?.[chatId]?.dateFixes;
+  return Array.isArray(list) ? list.filter((f) => f && typeof f.id === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.date)) : [];
+}
+function datesFromText(chatId) {
+  return settings().chats?.[chatId]?.datesFromText !== false;
+}
+function setRoomDates(chatId, { fixes, fromText } = {}) {
+  const next = settings();
+  const room = { ...(next.chats?.[chatId] || {}) };
+  if (fixes !== undefined) {
+    if (fixes.length) room.dateFixes = fixes;
+    else delete room.dateFixes;
+  }
+  if (fromText !== undefined) {
+    if (fromText === false) room.datesFromText = false;
+    else delete room.datesFromText;
+  }
+  next.chats = { ...next.chats, [chatId]: room };
+  saveSettings(next);
+}
+
+/**
+ * World Archive (세계관 설정집) linked to this room with 연동 v2 (계약 수준 2): its api, or null. Read only — the
+ * memory module never writes to it.
+ */
+function worldLinked(chatId) {
+  try {
+    const api = globalThis.__marinaraWorldArchive?.api;
+    if (!api || !(Number(api.contract) >= 2) || typeof api.roomRelations !== 'function') return null;
+    return api.roomEntities(chatId)?.worldId ? api : null;
+  } catch {
+    return null;
+  }
+}
+/** The room's 「설정집 연동」 switch (on unless turned off; only shown for a room linked to a world). */
+const worldLinkOn = (chatId) => settings().chats?.[chatId]?.worldLink !== 'off';
+/** World Archive's api for this room when it is linked and the room's switch is on; null otherwise (then: as without it). */
+function worldLink(chatId) {
+  return worldLinkOn(chatId) ? worldLinked(chatId) : null;
+}
+function setWorldLink(chatId, on) {
+  const next = settings();
+  const room = { ...(next.chats?.[chatId] || {}) };
+  if (on) delete room.worldLink; else room.worldLink = 'off';
+  next.chats = { ...next.chats, [chatId]: room };
+  saveSettings(next);
+  worldRelCache.delete(chatId);
+}
+/** The room's relations from World Archive (who knows whom from the start), kept a minute. [] when not linked. */
+const worldRelCache = new Map();
+function worldRelations(chatId) {
+  const hit = worldRelCache.get(chatId);
+  if (hit && Date.now() - hit.at < 60_000) return hit.list;
+  let list = [];
+  try {
+    const api = worldLink(chatId);
+    const rels = api?.roomRelations(chatId)?.relations || [];
+    // Each end with World Archive's other names, so a name it spells its own way still finds the memory's person.
+    const byId = new Map((rels.length ? api.roomEntities(chatId)?.entities || [] : []).map((e) => [e.entityId, e.aliases || []]));
+    list = rels.map((x) => ({ ...x, fromAliases: byId.get(x.from) || [], toAliases: byId.get(x.to) || [] }));
+  } catch {}
+  worldRelCache.set(chatId, { at: Date.now(), list });
+  return list;
+}
+/** canonical name → 종 for World Archive's people that are not people; null when the room is not linked or its world has no 종 yet. */
+function worldSpecies(chatId) {
+  const api = worldLink(chatId);
+  if (!api) return null;
+  // A world read before 종 existed has none at all: then the animals are asked about, as without World Archive.
+  try { const map = W.speciesMap(api.roomEntities(chatId)?.entities); return map.size ? map : null; } catch { return null; }
+}
+/** The scene call's options: the room's settings, and with World Archive linked, its relations. */
+function sceneOptions(chatId) {
+  const prefs = organizeFor(chatId);
+  const rels = worldRelations(chatId);
+  return rels.length ? { ...prefs, worldRelations: rels } : prefs;
+}
+
+/** People World Archive (세계관 설정집) knows for this room: [{ name, aliases }] — read only, kept a minute. */
+const waPeopleCache = new Map();
+function worldArchivePeople(chatId) {
+  const hit = waPeopleCache.get(chatId);
+  if (hit && Date.now() - hit.at < 60_000) return hit.people;
+  let people = [];
+  try {
+    const api = globalThis.__marinaraWorldArchive?.api;
+    const got = typeof api?.roomEntities === 'function' ? api.roomEntities(chatId) : null;
+    people = (Array.isArray(got?.entities) ? got.entities : [])
+      .filter((e) => e?.type === 'person' && typeof e.name === 'string' && e.name.trim() && !Sim.isDescribedName(e.name))
+      .map((e) => ({ name: e.name.trim(), aliases: (Array.isArray(e.aliases) ? e.aliases : []).filter((a) => typeof a === 'string' && a.trim()) }));
+  } catch {}
+  waPeopleCache.set(chatId, { at: Date.now(), people });
+  return people;
+}
+
+/**
+ * The room's people for the memory's calls. Character mode: the chat's characters (as always). Simulator: the
+ * characters are the narrators; the people are the ones the scenes named before (kept in the store) and World
+ * Archive's people, without the narrators. Returns { cast, narrators, aliases }.
+ */
+async function roomPeople(chatId, store) {
+  const cards = await chatCast(chatId);
+  if (roomMode(chatId) !== 'simulator') return { cast: cards, narrators: null, aliases: null };
+  const aliases = {};
+  const cast = [];
+  const add = (name, other = []) => {
+    // Under the name the room's name table keeps them by (one person, one entry), and only a card of the list is a card.
+    name = A.canonical(name);
+    if (!name || Sim.inList(name, cards) || cast.length >= Sim.ROOM_CAST_MAX) return;
+    const have = cast.find((c) => A.canonical(c) === name);
+    if (!have) cast.push(name);
+    const key = have || name;
+    if (other.length) aliases[key] = [...new Set([...(aliases[key] || []), ...other])].slice(0, 20);
+  };
+  // The people the scenes named before: the cast while the room was a simulator, kept as simCast while it is not.
+  const before = store?.mode === 'simulator' ? store.cast : store?.simCast;
+  for (const name of Array.isArray(before) ? before : []) add(name);
+  for (const p of worldArchivePeople(chatId)) add(p.name, p.aliases);
+  return { cast, narrators: cards, aliases };
+}
+
+/** Puts the room's mode and people on a scene store or a ledger. Character mode leaves no new keys behind. */
+function stampMode(target, people) {
+  if (people.narrators) {
+    target.mode = 'simulator';
+    target.narrators = people.narrators;
+    target.castAliases = people.aliases;
+  } else {
+    // Back to character mode: the people the simulator found are kept (simCast), so turning it on again loses nothing.
+    if (target.mode === 'simulator' && Array.isArray(target.cast)) target.simCast = target.cast.slice();
+    delete target.mode;
+    delete target.narrators;
+    delete target.castAliases;
+  }
+}
 /** The people the room chose for 최근 생활 (none chosen: everyone with a record). */
 function routinePeople(chatId) {
   const list = settings().chats?.[chatId]?.routinePeople;
@@ -1235,11 +1396,26 @@ function setupNote(chatId) {
   }
   return `## 이 방의 배경 설정 (사용자가 처음부터 정해 둔 사실. 인물·관계·비밀·말투를 이해하는 데만 쓰고, 이것만 보고 새 항목·사실·인용을 만들지 마)\n${text}`;
 }
-/** The call's first user message with 배경 설정 in front (the same start every time, so it can be cached). */
-function withSetup(note, messages) {
-  if (!note) return messages;
+/**
+ * "## 이름 표기": the glossary's names and words found in a call's input, when the memory is written in Korean, so the
+ * memory model writes them the user's way instead of its own (Marcello → 마르첼로, not 마르셀로). People of
+ * [등장인물] keep the list's form: the scene is filed under that person by it.
+ */
+const GLOSSARY_NOTE_MAX = 60;
+function glossaryNote(chatId, text) {
+  if (!chatId || writeLanguage(chatId) !== 'ko') return '';
+  let pairs = [];
+  try { pairs = roomGlossary(chatId).filter((p) => T.hasName(text, p.from)).slice(0, GLOSSARY_NOTE_MAX); } catch {}
+  if (!pairs.length) return '';
+  return `## 이름 표기 (사용자의 번역 단어장. 기억을 한국어로 쓸 때 아래 이름·낱말은 오른쪽 표기 그대로 써. 한글 발음을 새로 짓지 마. [등장인물]에 있는 인물은 그 목록의 표기를 따라)\n${pairs.map((p) => `${p.from} = ${p.to}`).join('\n')}`;
+}
+/** The call's first user message with 배경 설정 in front (the same start every time, so it can be cached), and the glossary's names after it. */
+function withSetup(note, messages, chatId = null) {
   const at = messages.findIndex((m) => m.role === 'user');
-  return at < 0 ? messages : messages.map((m, i) => (i === at ? { ...m, content: `${note}\n\n${m.content}` } : m));
+  if (at < 0) return messages;
+  const names = glossaryNote(chatId, messages[at].content);
+  if (!note && !names) return messages;
+  return messages.map((m, i) => (i === at ? { ...m, content: [note, names, m.content].filter(Boolean).join('\n\n') } : m));
 }
 function setSpeakerNames(chatId, on) {
   const next = settings();
@@ -1359,7 +1535,19 @@ async function chatLanguage(chatId) {
   return chatLangs.get(chatId) || record.lang;
 }
 
-const CLOCK_FIELD = /날짜|일자|date|day|시간|시각|time|작중|게임 ?내|in-?game/i;
+/**
+ * A tracker field that holds the story's date or time: "날짜", "작중 시간", "Date", "Time", "In-game day". Not one
+ * that only has such a word inside ("Birthday", "D-day", "함께한 시간", "남은 시간", "Days together"): those
+ * hold other dates and counts, and read as the story's day they sent it to a wrong one.
+ */
+const CLOCK_FIELD = {
+  test(name) {
+    const n = String(name || '').replace(/[\p{Extended_Pictographic}\uFE0F:：]/gu, '').trim();
+    if (!n || /생일|기념일|디데이|d-?day|birth|anniv|since|until|left|remain|남은|함께|플레이|play|경과|elapsed|count|together|\bage\b|나이|기간|duration/i.test(n)) return false;
+    if (/날짜|일자|작중|게임\s*내|in-?game|\bdate\b|calendar|달력/i.test(n)) return true;
+    return /^(?:현재\s*|지금\s*|current\s*|story\s*)?(?:시간|시각|시간대|time|time of day|day|clock|요일|weekday)$/i.test(n);
+  },
+};
 
 /** The story date and time a tracker snapshot shows: the world tracker's date/time, or a custom field named so. */
 function trackerClock(row, base) {
@@ -1375,8 +1563,13 @@ function trackerClock(row, base) {
   if (row.date || row.time) texts.push([row.date, row.time].filter(Boolean).join(' '));
   const world = parse(row.worldCustomFields);
   const custom = parse(row.playerStats)?.customTrackerFields;
+  // The tracker's date in its own words ("Day 3", "토요일", "2024-10-18"): its date field, else a custom date field.
+  let dateText = String(row.date || '').trim() || null;
   for (const f of [...(Array.isArray(world) ? world : []), ...(Array.isArray(custom) ? custom : [])]) {
-    if (f && CLOCK_FIELD.test(String(f.name || '')) && f.value) texts.push(String(f.value));
+    if (f && CLOCK_FIELD.test(String(f.name || '')) && f.value) {
+      texts.push(String(f.value));
+      if (!dateText && DATE_FIELD.test(String(f.name || ''))) dateText = String(f.value).trim() || null;
+    }
   }
   let date = null;
   let time = null;
@@ -1388,8 +1581,9 @@ function trackerClock(row, base) {
   let weather = String(row.weather || '').trim() || null;
   for (const f of Array.isArray(world) ? world : []) if (!weather && WEATHER_FIELD.test(String(f?.name || '')) && f.value) weather = String(f.value).trim();
   // raw: the tracker's own words, so a change in how they are read never looks like an edit.
-  return date || time || weather ? { date, time, weather: weather ? weather.slice(0, 30) : null, raw: [...texts, weather] } : null;
+  return date || time || weather || dateText ? { date, time, dateText: dateText ? dateText.slice(0, 40) : null, weather: weather ? weather.slice(0, 30) : null, raw: [...texts, weather] } : null;
 }
+const DATE_FIELD = /날짜|일자|date|day|작중|게임 ?내|in-?game/i;
 
 const WEATHER_FIELD = /날씨|하늘|weather|sky/i;
 
@@ -1440,23 +1634,80 @@ async function addTrackerClock(e, chatId, messages) {
   });
   let last = null;
   let weather = null;
+  // A tracker that counts story days ("Day 3", "3일차"): the count on a day whose date is known, to count from.
+  let counter = null;
+  // The tracker's words for the day the date carried on is for: when they change and cannot be read, that date is
+  // no longer the story's day (it used to be carried on forever, and every scene was filed under the first day).
+  let lastText = null;
+  // An earlier day the tracker shows, and how many times in a row.
+  let behind = null;
+  // The day the reading before 0.38.1 gave each message (it never went back and could not read "Day 3"): a scene
+  // written with that day, when the day is now another, is one to re-date (S.redateScenes).
+  let was = null;
   const at = (c) => (c?.date ? `${c.date}T${c.time || '00:00'}` : null);
+  const weekday = (iso) => new Date(`${iso}T00:00:00Z`).getUTCDay();
+  const fixes = new Map(dateFixes(chatId).map((f) => [f.id, f]));
+  const fromText = datesFromText(chatId);
   for (const [i, m] of messages.entries()) {
-    // A date line written in the message itself comes first, and is what the next messages carry on from.
-    const own = L.dateInText(L.htmlToText(m.content), last?.date || null);
+    // A date line written in the message itself comes first, and is what the next messages carry on from
+    // (unless the room reads dates from the tracker only). A date the user set by hand for a message wins over both.
+    const written = L.dateInText(L.htmlToText(m.content), last?.date || null);
+    const fix = fixes.get(m.id) || null;
+    const own = fix ? { date: fix.date, time: fix.time || written?.time || null } : fromText ? written : null;
+    if (fix || !fromText) m.clockOnly = true;
     const snap = snaps.get(m.id);
     const clock = trackerClock(snap, own?.date || last?.date || null);
+    const text = clock?.dateText || null;
+    const count = text ? L.dayCounter(text) : null;
+    if (written) was = written.date;
+    else if (clock?.date && !(was && clock.date < was)) was = clock.date;
+    let label = null;
     if (own) {
+      if (fix) behind = null;
       last = { date: own.date, time: own.time || null };
-    } else if (clock?.date || clock?.time) {
-      const next = { date: clock.date || last?.date || null, time: clock.time };
-      // A tracker that lags behind (still showing the night before after the story moved on) is not followed back.
-      if (!(at(last) && at(next) && clock.date && at(next) < at(last))) last = next;
+      if (count != null) counter = { n: count, date: own.date };
+      lastText = text;
+    } else if (clock?.date || clock?.time || text) {
+      let date = clock?.date || null;
+      if (date && count != null) counter = { n: count, date };
+      if (!date && text && last?.date && text !== lastText) {
+        if (count != null) {
+          // The first count seen is the day the story is on; later counts move from it.
+          counter ||= { n: lastText && L.dayCounter(lastText) != null ? L.dayCounter(lastText) : count, date: last.date };
+          date = L.addDays(counter.date, count - counter.n);
+        } else if (L.weekdayOf(text) != null) {
+          // "Saturday" after a known Friday: the next Saturday.
+          date = L.addDays(last.date, (L.weekdayOf(text) - weekday(last.date) + 7) % 7);
+        } else {
+          // Words that name no day we can count ("봄, 매의 날"): passed on as they are, not as the old date.
+          label = text;
+        }
+      }
+      if (label) {
+        m.clock = { date: null, time: clock?.time || null, label };
+      } else {
+        const next = { date: date || (text && text !== lastText && !last?.date ? null : last?.date || null), time: clock?.time || null };
+        // A tracker that lags behind (still showing the night before after the story moved on) is not followed
+        // back for a moment. But a step back of more than a day, or the same earlier day twice in a row, is the
+        // story going back or the tracker putting right a wrong start: followed (it used to never be, and the
+        // memory stayed on the wrong first day for good).
+        const back = at(last) && at(next) && date && at(next) < at(last);
+        const far = back && date < L.addDays(last.date, -1);
+        if (back && !far) behind = behind?.date === date ? { date, n: behind.n + 1 } : { date, n: 1 };
+        if (!back || far || behind?.n >= 2) {
+          last = next;
+          behind = null;
+          if (text) lastText = text;
+        }
+      }
     }
     // The weather holds for the day it was noted on: a new story day starts with no weather until one is noted.
     if (clock?.weather) weather = { text: clock.weather, date: last?.date || null };
     else if (weather?.date && last?.date && last.date !== weather.date) weather = null;
-    if (last) m.clock = { ...last };
+    if (last && !m.clock?.label) m.clock = { ...last, ...(fix ? { fixed: true, time: fix.time || last.time || clock?.time || null } : {}) };
+    if (was && m.clock && m.clock.date !== was) m.clock.was = was;
+    // No calendar day known: the tracker's own words for the day go with the time ("Day 3 14:00").
+    if (!own && text && !m.clock?.date && !m.clock?.label) m.clock = { ...(m.clock || {}), date: null, time: m.clock?.time ?? clock?.time ?? null, label: text };
     if (weather) m.weather = weather.text;
     // What the tracker said for this very message: a hand fix of its date, time or weather is a change to read again.
     if (snap && (clock?.date || clock?.time || clock?.weather)) m.trackerMark = clock.raw;
@@ -1542,9 +1793,21 @@ function memoryCallOptions(conn, baseUrl) {
   const host = String(baseUrl || '').replace(/^https?:\/\//, '').split('/')[0].toLowerCase();
   const deepseek = conn.provider === 'deepseek' || /(^|\.)deepseek\.com(:\d+)?$/.test(host) || (process.env.MEMORY_MODULE_TEST_DEEPSEEK_HOST && host === process.env.MEMORY_MODULE_TEST_DEEPSEEK_HOST);
   const own = JSON.stringify(conn.defaultParameters ?? '');
-  if (!deepseek || /thinking|reasoning/i.test(own)) return {};
-  return { customParameters: { thinking: { type: 'disabled' } } };
+  // The connection's own setting for thinking wins, for every model.
+  if (/thinking|reasoning/i.test(own)) return {};
+  if (deepseek) return { customParameters: { thinking: { type: 'disabled' } } };
+  // Gemma 4 thinks at length by default, and a memory answer then came back cut off or not at all: it is asked to
+  // think lightly ("low"). Said the way the site takes it; a site that refuses it is asked again without (askModel).
+  if (GEMMA4.test(String(conn.model || ''))) {
+    if (conn.provider === 'google' || /generativelanguage\.googleapis\.com$/.test(host)) return { light: { reasoningEffort: 'low', enableThinking: true } };
+    if (/(^|\.)openrouter\.ai$/.test(host)) return { light: { customParameters: { reasoning: { effort: 'low' } } } };
+    return { light: { customParameters: { reasoning_effort: 'low' } } };
+  }
+  return {};
 }
+const GEMMA4 = /gemma[-_ ]?4/i;
+// Connections whose site refused the light-thinking setting (asked again without it, and not sent it again).
+const lightRefused = new Set();
 
 /** The connection that translates memory: its own when one is set, else the memory connection. */
 function translateModel() {
@@ -1559,7 +1822,7 @@ const LANGUAGE_NOTE = {
   en: '\n\n[기록 언어] 네가 새로 쓰는 모든 글(제목·요약·사건·사실·이유·메모·생활 기록)은 영어로 써. 채팅이 한국어여도 마찬가지야. 인용(q)은 원문에서 그대로 복사하고(번역하지 마), 이름도 쓰인 그대로 둬. 인물의 수첩(notebook)의 when과 text는 이 설정 대신 [수첩 언어]를 따라.',
   // Korean chosen on purpose for a chat that is not Korean (a Chinese or English room): without this the memory model
   // follows the chat and mixes the two languages in one note.
-  'ko-fixed': '\n\n[기록 언어] 네가 새로 쓰는 모든 글(제목·요약·사건·사실·이유·메모·생활 기록)은 한국어로만 써. 채팅이 중국어나 영어여도 마찬가지야. 한 글 안에 중국어·영어 낱말을 섞지 마. 인용(q)은 원문에서 그대로 복사하고(번역하지 마), 사람 이름은 등장인물 목록에 적힌 표기를 그대로 써.',
+  'ko-fixed': '\n\n[기록 언어] 네가 새로 쓰는 모든 글(제목·요약·사건·사실·이유·메모·생활 기록)은 한국어로만 써. 채팅이 중국어나 영어여도 마찬가지야. 한 글 안에 중국어·영어 낱말을 섞지 마. 인용(q)은 원문에서 그대로 복사하고(번역하지 마), 사람 이름은 등장인물 목록에 적힌 표기를 그대로 써. 목록에 없는 이름·낱말은 [이름 표기]가 있으면 그 표기를 따라.',
   zh: '\n\n[기록 언어] 네가 새로 쓰는 모든 글(제목·요약·사건·사실·이유·메모·생활 기록)은 중국어(간체)로 써. 채팅이 한국어여도 마찬가지야. 인용(q)은 원문에서 그대로 복사하고(번역하지 마), 이름도 쓰인 그대로 둬. 인물의 수첩(notebook)의 when과 text는 이 설정 대신 [수첩 언어]를 따라.',
 };
 
@@ -1676,15 +1939,26 @@ function usageSummary() {
 async function askModel(model, messages, { maxTokens = 4096 } = {}) {
   messages = withLanguage(messages, model.lang);
   const signal = model.signal ? AbortSignal.any([AbortSignal.timeout(MODEL_TIMEOUT_MS), model.signal]) : AbortSignal.timeout(MODEL_TIMEOUT_MS);
-  const base = { model: model.model, maxTokens, temperature: 0.2, signal, ...(model.extra || {}) };
+  const { light, ...extra } = model.extra || {};
+  const lightKey = `${model.name || ''}\u0000${model.model || ''}`;
+  const useLight = light && !lightRefused.has(lightKey);
+  const base = { model: model.model, maxTokens, temperature: 0.2, signal, ...extra, ...(useLight ? light : {}) };
   let content;
   let reply;
   const inChars = messages.reduce((n, m) => n + String(m?.content ?? '').length, 0);
   try {
-    reply = await model.provider.chatComplete(messages, { ...base, responseFormat: { type: 'json_object' } });
+    try {
+      reply = await model.provider.chatComplete(messages, { ...base, responseFormat: { type: 'json_object' } });
+    } catch (error) {
+      if (!/response_format|json_object|responseFormat/i.test(String(error?.message))) throw error;
+      reply = await model.provider.chatComplete(messages, base);
+    }
   } catch (error) {
-    if (!/response_format|json_object|responseFormat/i.test(String(error?.message))) throw error;
-    reply = await model.provider.chatComplete(messages, base);
+    // The site did not take the light-thinking setting: asked again without it, and not sent it again.
+    if (!useLight || signal.aborted || !/reasoning|thinking|effort|unrecognized|unknown (?:field|param|arg)|extra (?:field|input|param)|not permitted/i.test(String(error?.message))) throw error;
+    lightRefused.add(lightKey);
+    log(`connection ${model.name || model.model}: light thinking refused (${String(error?.message || error).slice(0, 120)}), asking without it`);
+    return askModel(model, messages, { maxTokens });
   }
   content = reply?.content;
   noteUsage(inChars, String(content ?? '').length, reply?.usage || null);
@@ -1697,7 +1971,7 @@ async function askModel(model, messages, { maxTokens = 4096 } = {}) {
 /** Read one batch; an unreadable reply is retried once, then the batch is halved. */
 async function readBatch(model, ledger, batch, context, routine = true) {
   for (let attempt = 0; attempt < 2; attempt++) {
-    const reply = await askModel(model, withSetup(model.setup, L.buildPrompt(ledger, batch, context, { routine })));
+    const reply = await askModel(model, withSetup(model.setup, L.buildPrompt(ledger, batch, context, { routine }), model.chatId));
     const parsed = L.parseJsonObject(reply);
     if (parsed) return [{ batch, parsed }];
   }
@@ -1855,6 +2129,30 @@ async function tidyLedger(model, ledger, messages, { scenes = null } = {}) {
 }
 
 /**
+ * 반려동물 수첩 (추가 기능, 세계 시뮬레이터 방 · 인물의 수첩이 켜져 있을 때): after a batch's scenes are saved, one small
+ * call writes the notes of the named animals that acted in them. No animal in the batch, or the switch off: no call,
+ * and the scene call is as before. A failure is logged and never stops the scenes. Returns the calls made (0 or 1).
+ */
+async function petNotes(chatId, store, scenes, slice, model, job) {
+  if (store?.mode !== 'simulator' || !featureOn(chatId, 'petNotebook') || !featureOn(chatId, 'notebook')) return 0;
+  const species = worldSpecies(chatId);
+  const found = Pets.targets(store, scenes, slice, { species });
+  if (!found.length) return 0;
+  const set = notebookLanguageOf(chatId);
+  const lang = ['ko', 'en', 'zh'].includes(set) ? set : writeLanguage(chatId);
+  try {
+    const reply = await askModel(model, Pets.buildPrompt(store, found, slice, { lang }), { maxTokens: 1500 });
+    const parsed = L.parseJsonObject(reply);
+    const added = parsed ? Pets.applyReply(store, found, parsed, slice, { lang, species, stats: job ? (job.petStats ||= {}) : null }) : 0;
+    log(`chat ${chatId}: pet notebook ${found.flatMap((f) => f.names).join(', ')} — ${added} note(s)`);
+  } catch (error) {
+    if (job?.cancel) throw error;
+    log(`chat ${chatId}: pet notebook failed (${error?.message || error})`);
+  }
+  return 1;
+}
+
+/**
  * Fold messages that are leaving the window into scenes, one slice per call, until caught up.
  * Each slice is saved as soon as it is done, so a stopped run continues where it left off.
  */
@@ -1875,7 +2173,7 @@ async function foldScenes(chatId, store, messages, window, model, job, { minPend
       let lastParsed = null;
       let lastCode = null;
       for (let attempt = 0; attempt < 2 && !applied; attempt++) {
-        const reply = await askModel(model, withSetup(setupNote(chatId), S.buildScenePrompt(store, next.slice, next.required, lastError || null, organizeFor(chatId))), { maxTokens: sceneTokens(chatId) });
+        const reply = await askModel(model, withSetup(setupNote(chatId), S.buildScenePrompt(store, next.slice, next.required, lastError || null, sceneOptions(chatId)), chatId), { maxTokens: sceneTokens(chatId) });
         calls++;
         lastReply = String(reply || '');
         const { result: parsed, truncated } = S.parseScenesReply(reply);
@@ -1908,6 +2206,7 @@ async function foldScenes(chatId, store, messages, window, model, job, { minPend
     if (job?.cancel) throw Error('중단했습니다. 다시 시작하면 이어서 정리합니다.');
     if (!applied) throw Error(`${next.slice[0].number}번부터 장면 정리에 실패했습니다: ${lastError}`);
     S.commitScenes(store, applied);
+    calls += await petNotes(chatId, store, applied.scenes, next.slice, model, job);
     store.window = { size: window, firstInside: S.firstInsideWindow(messages, window) };
     saveScenes(chatId, store);
     log(`chat ${chatId}: ${applied.scenes.length} scene(s) through message ${applied.scenes.at(-1).end}, ${applied.facts.length} fact(s)`);
@@ -2062,7 +2361,10 @@ function processChat(chatId, { rebuild = false, reason = 'auto' } = {}) {
       let ledger = rebuild ? L.emptyLedger() : structuredClone(loadLedger(chatId) || L.emptyLedger());
       // Reading everything again with daily life off keeps what it recorded before.
       if (rebuild && !routine) ledger.routine = structuredClone(loadLedger(chatId)?.routine || []);
-      ledger.cast = await chatCast(chatId);
+      const people = await roomPeople(chatId, loadScenes(chatId));
+      stampMode(ledger, people);
+      delete ledger.simCast; // the scenes keep the simulator's people; the ledger reads them from there
+      ledger.cast = people.cast;
       ledger.personas = L.personaNames(messages);
       seedNames(chatId, [...ledger.cast, ...ledger.personas]);
       L.tidyKnowledge(ledger);
@@ -2134,7 +2436,7 @@ function processChat(chatId, { rebuild = false, reason = 'auto' } = {}) {
         job.state = 'done';
         return;
       }
-      const model = { ...(await memoryModel()), signal: job.abort.signal, lang: await promptLanguageOf(chatId), setup: setupNote(chatId) };
+      const model = { ...(await memoryModel()), signal: job.abort.signal, lang: await promptLanguageOf(chatId), setup: setupNote(chatId), chatId };
       for (const batch of batches) {
         if (job.cancel) throw Error('중단했습니다. 다시 시작하면 이어서 정리합니다.');
         const at = messages.indexOf(batch[0]);
@@ -2180,6 +2482,7 @@ function processChat(chatId, { rebuild = false, reason = 'auto' } = {}) {
       job.state = 'done';
       log(`chat ${chatId}: ledger up to date (${reason}, ${job.total} call(s))`);
       translateDisplayLater(chatId);
+      autoMergeLater(chatId);
     } catch (error) {
       job.state = job.cancel ? 'idle' : 'error';
       job.error = job.cancel ? null : error?.message || String(error);
@@ -2464,7 +2767,7 @@ function rebuildNotebook(chatId, { all = false } = {}) {
         const live = part.map((g) => ({ scene: store.scenes.find((sc) => sc.id === g.id), messages: g.messages })).filter((g) => g.scene);
         const sceneFacts = {};
         for (const f of S.liveFacts(store)) if (f.sceneId && live.some((g) => g.scene.id === f.sceneId)) (sceneFacts[f.sceneId] ||= []).push(f.text);
-        const parsed = L.parseJsonObject(await askModel(model, withSetup(setupNote(chatId), Nb.buildRebuildPrompt(live, { cast, personas, voice: Nb.voiceBlock(samples, Nb.priorNotes(store, speakers, undefined, { before: live[0]?.scene.id }), { langs: Nb.langsFor(samples, speakers, notebookLanguageOf(chatId)) }), facts: sceneFacts })), { maxTokens: 4000 }));
+        const parsed = L.parseJsonObject(await askModel(model, withSetup(setupNote(chatId), Nb.buildRebuildPrompt(live, { cast, personas, voice: Nb.voiceBlock(samples, Nb.priorNotes(store, speakers, undefined, { before: live[0]?.scene.id }), { langs: Nb.langsFor(samples, speakers, notebookLanguageOf(chatId)) }), facts: sceneFacts }), chatId), { maxTokens: 4000 }));
         job.calls++;
         return { answers: Array.isArray(parsed?.scenes) ? parsed.scenes : [], samples, personas, speakers };
       };
@@ -2554,7 +2857,7 @@ async function fillLines(chatId, store, model, job = null) {
     const list = S.lineFillTargets(store).slice(0, S.LINE_FILL_BATCH);
     if (!list.length || job?.cancel) break;
     if (job) job.stage = `줄기 채우기 (${list[0].id}부터)`;
-    const parsed = L.parseJsonObject(await askModel(model, withSetup(note, S.buildLineFillPrompt(store, list, { lang: writeLanguage(chatId) })), { maxTokens: 4000 }));
+    const parsed = L.parseJsonObject(await askModel(model, withSetup(note, S.buildLineFillPrompt(store, list, { lang: writeLanguage(chatId) }), chatId), { maxTokens: 4000 }));
     calls++;
     const filled = S.applyLineFill(store, parsed, list);
     saveScenes(chatId, store);
@@ -2597,19 +2900,28 @@ function processScenes(chatId, { rebuild = false, reason = 'auto' } = {}) {
         if (S.markOocScenes(store, messages)) saveScenes(chatId, store);
         // Quotes an older split left as pieces of a line are made whole again (no model call).
         const fragments = S.repairFragmentQuotes(store, messages);
+        // Scenes filed under a story day their messages no longer show are re-dated (no model call).
+        const redated = S.redateScenes(store, messages);
+        if (redated) {
+          log(`chat ${chatId}: ${redated} scene(s) re-dated to the days their messages show`);
+          recalls.delete(chatId);
+        }
         // Saved lines read again under the room's speech marks: their language, and bracketed lines as speech.
         const voiced = S.applySpeechMarks(store, messages);
         if (voiced) recalls.delete(chatId);
         const translated = S.attachTranslations(store, messages) + S.tidyKnowledge(store);
         const personas = L.personaNames(messages);
-        const cast = await chatCast(chatId);
-        const personasChanged = JSON.stringify(personas) !== JSON.stringify(store.personas || []) || JSON.stringify(cast) !== JSON.stringify(store.cast || []);
+        const people = await roomPeople(chatId, store);
+        const cast = people.cast;
+        const modeBefore = JSON.stringify([store.mode, store.narrators, store.castAliases]);
+        stampMode(store, people);
+        const personasChanged = JSON.stringify(personas) !== JSON.stringify(store.personas || []) || JSON.stringify(cast) !== JSON.stringify(store.cast || []) || modeBefore !== JSON.stringify([store.mode, store.narrators, store.castAliases]);
         if (personasChanged) {
           store.personas = personas;
           store.cast = cast;
         }
         seedNames(chatId, [...cast, ...personas]);
-        if (translated || personasChanged || fragments.repaired || voiced) {
+        if (translated || personasChanged || fragments.repaired || voiced || redated) {
           saveScenes(chatId, store);
           if (translated) log(`chat ${chatId}: added the translation to ${translated} saved line(s)`);
           if (fragments.repaired) {
@@ -2659,6 +2971,7 @@ function processScenes(chatId, { rebuild = false, reason = 'auto' } = {}) {
       } while (job.again && !job.cancel);
       job.state = 'done';
       translateDisplayLater(chatId);
+      autoMergeLater(chatId);
     } catch (error) {
       job.state = job.cancel ? 'idle' : 'error';
       job.error = job.cancel ? null : error?.message || String(error);
@@ -2932,7 +3245,8 @@ const replyLedgers = new Map();
 function ledgerForReply(chatId) {
   const held = replyLedgers.get(chatId);
   if (held) {
-    if (jobs.get(chatId)?.state === 'running') return held.ledger;
+    // 0.37.2: or while the check before a reply that could not wait is still in the room's queue
+    if (jobs.get(chatId)?.state === 'running' || held.queued) return held.ledger;
     replyLedgers.delete(chatId);
   }
   const stored = loadLedger(chatId);
@@ -3062,6 +3376,65 @@ function roomKoreanNames(chatId) {
 }
 
 /**
+ * Names of one person stored apart in two scripts ("Daniel" in the English memory, "다니엘" from the card) that the
+ * user's glossary pairs are merged on their own: the name kept is the one in the language the memory is written in.
+ * Each merge is recorded (이름 정리 → 자동으로 합친 이름) and can be taken back alone. Never while a job writes the
+ * room: the next run's end tries again. Returns how many merges were made.
+ */
+const AUTO_MERGE_MAX = 20;
+const roomRunning = (chatId) => [jobs, sceneJobs, trials, notebookJobs].some((m) => m.get(chatId)?.state === 'running');
+function autoMergeByGlossary(chatId) {
+  // 0.37.2: a job writing the room — nothing now, the next run's end tries again. Looked at before taking the room's
+  // queue: holding it while the scene queue is busy would keep the check before a reply waiting (01:18 · 5 minutes).
+  if (roomRunning(chatId)) return Promise.resolve(0);
+  return enqueue(chatId, () => enqueue(`scenes:${chatId}`, async () => {
+    if (roomRunning(chatId)) return 0;
+    // The glossary's pairs, then World Archive's names (연동 v2) that the glossary does not have.
+    let worldNames = [];
+    try { worldNames = worldLink(chatId)?.names?.(chatId)?.names || []; } catch {}
+    const pairs = W.namePairs(roomGlossary(chatId), worldNames);
+    if (!pairs.length) return 0;
+    const store = structuredClone(loadScenes(chatId) || S.emptyStore());
+    const ledger = structuredClone(loadLedger(chatId) || L.emptyLedger());
+    const table = structuredClone(loadNames(chatId));
+    const base = writeLanguage(chatId) === 'ko' ? 'ko' : 'foreign';
+    const latinForms = (canon) => [canon, ...(table.people?.[canon]?.aliases || [])].filter((n) => /[A-Za-z]/.test(n) && !/[가-힣]/.test(n)).sort((a, b) => b.length - a.length);
+    const koreanOf = (x) => {
+      const names = T.koreanNames(pairs, table);
+      const canon = A.canonOf(x, table);
+      for (const form of [x, ...(canon ? latinForms(canon) : [])]) {
+        const hit = names.find((n) => n.from.toLowerCase() === String(form).toLowerCase());
+        if (hit) return hit.to;
+      }
+      return null;
+    };
+    const latinOf = (x) => pairs.find((p) => p.to === x)?.from || latinForms(A.canonOf(x, table) || x)[0] || T.koreanNames(pairs, table).find((n) => n.to === x)?.from || null;
+    const made = [];
+    const skip = new Set();
+    for (let i = 0; i < AUTO_MERGE_MAX; i++) {
+      const group = A.using(table, () => N.glossaryMerges(store, ledger, table, pairs, { base, koreanOf, latinOf, skip }))[0];
+      if (!group) break;
+      try {
+        const planned = A.using(table, () => N.planMany(store, ledger, table, group.items));
+        made.push(N.applyAutoMerge(store, ledger, table, planned, { why: `${group.pair.from} = ${group.pair.to}` }));
+      } catch (error) {
+        skip.add(group.key);
+        log(`chat ${chatId}: glossary merge ${group.items.map((x) => x.source).join(', ')} → ${group.target} skipped (${error?.message || error})`);
+      }
+    }
+    if (!made.length) return 0;
+    if (made.some((r) => r.changes.some((c) => c.doc === 'scenes'))) saveScenes(chatId, store);
+    if (made.some((r) => r.changes.some((c) => c.doc === 'ledger'))) saveLedger(chatId, ledger);
+    saveNames(chatId, table);
+    recalls.delete(chatId);
+    enqueue(`scenes:${chatId}`, () => indexScenes(chatId, loadScenes(chatId))).catch((error) => log(`chat ${chatId}: re-index after merge failed (${error?.message || error})`));
+    for (const r of made) log(`chat ${chatId}: merged ${r.source} → ${r.target} by the glossary (${r.changes.length} change(s))`);
+    return made.length;
+  }));
+}
+const autoMergeLater = (chatId) => { autoMergeByGlossary(chatId).catch((error) => log(`chat ${chatId}: glossary merge failed (${error?.message || error})`)); };
+
+/**
  * The glossary pairs become other names of the people they name ("Daniel = 다니엘" → Daniel is 다니엘 크로우),
  * so a Latin name the memory model wrote lands on the same person. Only a Korean side that is a person's name, display
  * form, alias or the first word of their name counts; an alias that already belongs to someone else stays there.
@@ -3076,6 +3449,24 @@ function glossaryAliases(table, pairs) {
     if (A.addPerson(table, hit[0][0], [from])) added.push({ from, to: hit[0][0] });
   }
   return added;
+}
+
+/**
+ * Korean lines whose names are not written the way the glossary and name table write them now (translated before a
+ * name was added or changed, or the model wrote a name its own way): translated once more. A line already translated
+ * again with the same names is left as it is, so a model that keeps writing it its way does not loop.
+ */
+function staleNames(chatId, names = roomKoreanNames(chatId)) {
+  if (!names.length) return () => false;
+  const data = loadTranslations(chatId);
+  return (text) => {
+    const key = T.key('ko', text);
+    const done = data.items?.[key];
+    if (done == null) return false;
+    const sig = T.namesSig(text, names);
+    if (!sig || data.namesChecked?.[key] === sig) return false;
+    return T.namesMissed(text, done, names).length > 0;
+  };
 }
 
 function translationLookup(chatId, target) {
@@ -3214,10 +3605,11 @@ function translateMissing(chatId, target, texts, { max = TRANSLATE_MAX_PER_RUN }
   const run = (async () => {
     const lookup = translationLookup(chatId, target);
     const stored = loadTranslations(chatId);
-    const todo = [...new Set(texts)].filter((t) => t && lookup(t) == null && !translationGaveUp(stored, T.key(target, t))).slice(0, max);
+    const names = target === 'ko' ? roomKoreanNames(chatId) : [];
+    const stale = target === 'ko' ? staleNames(chatId, names) : () => false;
+    const todo = [...new Set(texts)].filter((t) => t && (lookup(t) == null || stale(t)) && !translationGaveUp(stored, T.key(target, t))).slice(0, max);
     if (!todo.length) return 0;
     const model = await translateModel();
-    const names = target === 'ko' ? roomKoreanNames(chatId) : [];
     const glossary = target === 'ko' ? [] : roomGlossary(chatId);
     // Lines that quote what someone said get that line's own Korean beside them.
     if (target === 'ko') await sourceKoFor(chatId);
@@ -3243,6 +3635,9 @@ function translateMissing(chatId, target, texts, { max = TRANSLATE_MAX_PER_RUN }
         if (out[i]) {
           data.items[T.key(target, src)] = out[i];
           if (data.failed) delete data.failed[T.key(target, src)];
+          // Translated with today's names: not looked at again for its names until the glossary or name table changes.
+          const sig = target === 'ko' ? T.namesSig(src, names) : '';
+          if (sig) (data.namesChecked ||= {})[T.key(target, src)] = sig;
           done++;
         }
       });
@@ -3367,7 +3762,8 @@ function translateDisplayLater(chatId) {
     if (settings().autoTranslate === false || !settings().connection) return false;
     const lookup = translationLookup(chatId, 'ko');
     const stored = loadTranslations(chatId);
-    const missing = displayTranslationTexts(chatId).filter((t) => lookup(t) == null && !translationGaveUp(stored, T.key('ko', t)));
+    const stale = staleNames(chatId);
+    const missing = displayTranslationTexts(chatId).filter((t) => (lookup(t) == null || stale(t)) && !translationGaveUp(stored, T.key('ko', t)));
     return missing.length ? startDisplayTranslation(chatId, missing) : false;
   } catch (error) {
     log(`chat ${chatId}: display translation not started (${error?.message || error})`);
@@ -4147,26 +4543,43 @@ async function routes(app) {
     // Quoted lines the chat already has Korean for (no model call, whether or not quotes are translated).
     const items = sourceQuoteItems(chatId);
     const missing = [];
+    // Shown as they are meanwhile; translated again because a name is not written the glossary's way.
+    const redo = [];
+    const stale = staleNames(chatId);
     for (const t of texts) {
       const done = lookup(t);
       if (done != null) items[t] = done;
       else missing.push(t);
+      if (done != null && stale(t)) redo.push(t);
     }
     // 자동 번역을 끄면 보여 줄 번역은 [지금 번역]을 누를 때만 만듭니다(답변에 넣을 번역은 그대로).
     const auto = settings().autoTranslate !== false;
     const stored = loadTranslations(chatId);
     const retryable = missing.filter((t) => !translationGaveUp(stored, T.key('ko', t)));
-    if (auto && retryable.length && settings().connection) startDisplayTranslation(chatId, retryable);
+    if (auto && (retryable.length || redo.length) && settings().connection) startDisplayTranslation(chatId, [...retryable, ...redo]);
     // Name fields (who, toward, who does not know) are names, not sentences: written in Korean from the name table and
     // the glossary, with no model call.
     const names = roomKoreanNames(chatId);
     const table = loadNames(chatId);
+    const glossaryKorean = new Map(roomGlossary(chatId).map((p) => [p.from.toLowerCase(), p.to]));
+    // A person's full name as the name list writes it with the glossary's words: from their longest Latin name.
+    const fullWithGlossary = (canon) => {
+      const latin = [canon, ...(table.people?.[canon]?.aliases || [])].filter((n) => /[A-Za-z]/.test(n) && !/[가-힣]/.test(n)).sort((a, b) => b.length - a.length);
+      for (const form of latin) { const hit = names.find((n) => n.from === form); if (hit) return hit.to; }
+      return null;
+    };
     for (const t of loadLedger(chatId)?.threads || []) {
       for (const field of [t.who, t.toward, ...(t.unaware || []), ...(t.guess || [])]) {
         for (const name of String(field || '').split(/\s*[·,、]\s*/)) {
           if (!name || items[name] || !/[A-Za-z\u3400-\u4dbf\u4e00-\u9fff]/.test(name) || /[가-힣]/.test(name)) continue;
+          // The person's full Korean name, unless it writes the name otherwise than the user's glossary does
+          // ("Daniel = 다니엘" but the card says 대니얼 크로우): then their full name with the glossary's words
+          // ("다니엘 크로우"), else the glossary's form alone.
+          const listed = glossaryKorean.get(name.toLowerCase());
           const canon = A.canonOf(name, table);
-          const korean = canon && /[가-힣]/.test(canon) ? canon : T.koreanizeNames(name, names, A.replaceName);
+          const full = canon && /[가-힣]/.test(canon) ? canon : null;
+          const fixed = full && listed && !full.includes(listed) ? fullWithGlossary(canon) : null;
+          const korean = full && (!listed || full.includes(listed)) ? full : (fixed && fixed.includes(listed) ? fixed : listed || T.koreanizeNames(name, names, A.replaceName));
           if (korean !== name) items[name] = korean;
         }
       }
@@ -4214,6 +4627,8 @@ async function routes(app) {
       const aliases = glossaryAliases(table, pairs);
       if (aliases.length) saveNames(chatId, table);
       if (pairs.length) log(`chat ${chatId}: glossary ${pairs.length} name(s) from ${source || 'the library'}${aliases.length ? `, ${aliases.length} new other name(s)` : ''}`);
+      // Runs after this (it waits for the room's queue): names stored apart that the new glossary pairs are merged.
+      autoMergeLater(chatId);
       return { count: pairs.length, changed: true, aliases };
     });
   }));
@@ -4378,6 +4793,9 @@ async function routes(app) {
       selectedCount: fs.existsSync(selectedFile(chatId)) ? loadSelected(chatId, { readonly: true }).items.length : 0,
       selectedStamp: fileStamp(selectedFile(chatId)),
       speakerNames: speakerNamesOn(chatId),
+      mode: roomMode(chatId),
+      dates: { today: storyToday(chatId, ledger), fixes: dateFixes(chatId), fromText: datesFromText(chatId) },
+      worldLink: { linked: Boolean(worldLinked(chatId)), on: worldLinkOn(chatId) },
       organize: settings().chats?.[chatId]?.organize || { npcCoverage: 'standard', quoteMode: 'dialogue', detailLevel: 'standard' },
       routine: ledger ? L.renderRoutine(ledger, storyNow.get(chatId) || ledger.storyTime || null, { only: routinePeople(chatId) }) : '',
       routineItems: (ledger?.routine || []).map((r) => ({ ...r, displayWhat: L.routineDisplayKind(r), key: L.routineKey(r) })),
@@ -4719,12 +5137,13 @@ async function routes(app) {
   const refuseBusy = (chatId, what = '이름을 바꿀') => {
     if (roomBusy(chatId)) throw Error(`지금 이 방의 기억을 정리하는 중이라 ${what} 수 없습니다. 정리가 끝난 뒤(또는 멈춘 뒤)에 다시 시도해 주세요.`);
   };
-  const withRoom = (chatId, fn, what) => enqueue(chatId, () => enqueue(`scenes:${chatId}`, async () => {
+  // 0.37.2: refused before taking the queues too, so a press during a job never holds the room's queue while it waits
+  const withRoom = (chatId, fn, what) => (roomBusy(chatId) ? Promise.reject(Error(`지금 이 방의 기억을 정리하는 중이라 ${what || '이름을 바꿀'} 수 없습니다. 정리가 끝난 뒤(또는 멈춘 뒤)에 다시 시도해 주세요.`)) : enqueue(chatId, () => enqueue(`scenes:${chatId}`, async () => {
     // A job that started while this waited has finished by now (it held the queue); one still marked running would
     // write over the change.
     refuseBusy(chatId, what);
     return fn();
-  }));
+  })));
 
   /* ---------- backup and restore (the whole room's memory as one file) ---------- */
   // Reading the room is always safe. Restoring replaces every memory file of the room, so it is refused while a job
@@ -4906,6 +5325,7 @@ async function routes(app) {
   };
   const nameOptions = (body) => ({ source: body?.source, target: body?.target, display: body?.display, text: body?.text !== false });
   const planView = (p) => ({ source: p.source, target: p.target, display: p.display, text: p.text, items: p.items || null, counts: p.counts, areas: p.areas, total: p.total, samples: p.samples, token: L.hashText(JSON.stringify(p.changes)) });
+  const autoMergedView = (table) => (table.autoMerged || []).slice().reverse().map((r) => ({ id: r.id, at: r.at, why: r.why, source: r.source, target: r.target, counts: r.counts, changes: r.changes.length }));
   const historyView = (table) => (table.history || []).map((h) => ({ id: h.id, kind: h.kind, at: h.at, source: h.source, target: h.target, display: h.display, text: h.text, counts: h.counts, changes: h.changes.length }));
   const saveRenamed = (chatId, store, ledger, table, changes) => {
     // Only the files the change touched: a room without a ledger does not get an empty one.
@@ -4959,7 +5379,8 @@ async function routes(app) {
         return Addr.toggleEntry(book, id, req.body.on);
       }
       if (action === 'split') return Addr.splitPair(book, id)[0];
-      throw Error('add, edit, delete, toggle, split 중 하나여야 합니다.');
+      if (action === 'unblock') return Addr.unblockEntry(book, String(req.body?.key || ''));
+      throw Error('add, edit, delete, toggle, split, unblock 중 하나여야 합니다.');
     });
     recalls.delete(chatId);
     return { entry, ...addressView(chatId) };
@@ -5261,6 +5682,7 @@ async function routes(app) {
         duplicates: N.duplicates(store, ledger, table),
         suggestions: N.suggestions(store, ledger, table),
         history: historyView(table),
+        autoMerged: autoMergedView(table),
         address: addressView(chatId),
         busy: roomBusy(chatId),
       };
@@ -5322,6 +5744,21 @@ async function routes(app) {
       return { ...out, history: historyView(table) };
     });
   }));
+  // One automatic (glossary) merge taken back on its own; the pair is not merged on its own again.
+  app.post('/chats/:id/names/auto-undo', guard(async (req) => {
+    const chatId = safeChatId(req.params.id);
+    const id = String(req.body?.id || '');
+    refuseBusy(chatId, '되돌릴');
+    return withRoom(chatId, async () => {
+      const { store, ledger, table: saved } = namesState(chatId);
+      const table = structuredClone(saved);
+      const changes = (saved.autoMerged || []).find((r) => r.id === id)?.changes || [];
+      const out = N.undoAutoMerge(store, ledger, table, id);
+      saveRenamed(chatId, store, ledger, table, changes);
+      log(`chat ${chatId}: undid glossary merge ${out.source} → ${out.target} (${out.restored} restored, ${out.kept} changed since and kept)`);
+      return { ...out, autoMerged: autoMergedView(table) };
+    }, '되돌릴');
+  }));
   app.post('/chats/:id/names/dismiss', guard(async (req) => {
     const chatId = safeChatId(req.params.id);
     const [source, target] = [A.tidy(req.body?.source), A.tidy(req.body?.target)];
@@ -5364,6 +5801,64 @@ async function routes(app) {
     setSpeakerTags(safeChatId(req.params.id), on);
     return { speakerTags: on };
   }));
+  // 작중 날짜 바로잡기: a date set by hand from a message on, taking one back, and reading dates from the text or not.
+  // The scenes written with the day the change put right are re-dated at once (no model call).
+  app.post('/chats/:id/dates', guard(async (req) => {
+    const chatId = safeChatId(req.params.id);
+    const body = req.body || {};
+    return enqueue(`scenes:${chatId}`, async () => {
+      if (sceneJobs.get(chatId)?.state === 'running') throw Error('지금 이 방의 장면을 정리하는 중입니다. 끝난 뒤에 다시 해 주세요.');
+      const before = await chatMessages(chatId);
+      let fixes = dateFixes(chatId);
+      if (body.action === 'add') {
+        const date = L.isoDateStrict(String(body.date || ''));
+        if (!date) throw Error('날짜를 2024-03-01처럼 적어 주세요(연도·월·일).');
+        const time = /^\d{1,2}:\d{2}$/.test(String(body.time || '').trim()) ? String(body.time).trim().padStart(5, '0') : null;
+        const wanted = Number(body.number);
+        const msg = Number.isFinite(wanted) && wanted > 0 ? before.find((m) => m.number === wanted) || before.filter((m) => m.number <= wanted).at(-1) : before.at(-1);
+        if (!msg) throw Error('그 번호의 메시지를 찾지 못했습니다.');
+        fixes = [...fixes.filter((f) => f.id !== msg.id), { id: msg.id, number: msg.number, date, time }].sort((a, b) => a.number - b.number);
+        setRoomDates(chatId, { fixes });
+      } else if (body.action === 'remove') {
+        setRoomDates(chatId, { fixes: fixes.filter((f) => f.id !== body.id) });
+      } else if (typeof body.fromText === 'boolean') {
+        setRoomDates(chatId, { fromText: body.fromText });
+      } else throw Error('바꿀 내용이 없습니다.');
+      const after = await chatMessages(chatId);
+      // The day each message had before this change: scenes written with it are the ones to re-date.
+      const old = new Map(before.map((m) => [m.id, m.clock?.date || null]));
+      for (const m of after) {
+        if (!m.clock) continue;
+        const o = old.get(m.id);
+        if (o && m.clock.date && o !== m.clock.date) m.clock.was = o;
+        else delete m.clock.was;
+      }
+      const store = loadScenes(chatId);
+      const redated = store ? S.redateScenes(store, after) : 0;
+      if (redated) saveScenes(chatId, store);
+      const day = L.storyDate(after);
+      if (day) storyDays.set(chatId, day);
+      else storyDays.delete(chatId);
+      recalls.delete(chatId);
+      log(`chat ${chatId}: story dates changed (${dateFixes(chatId).length} hand fix(es), text dates ${datesFromText(chatId) ? 'on' : 'off'}), ${redated} scene(s) re-dated`);
+      return { redated, dates: { today: storyToday(chatId, loadLedger(chatId)), fixes: dateFixes(chatId), fromText: datesFromText(chatId) } };
+    });
+  }));
+  app.post('/chats/:id/mode', guard(async (req) => {
+    const mode = req.body?.mode;
+    if (!Sim.MODES.includes(mode)) throw Object.assign(new Error("mode는 'character' 또는 'simulator'입니다."), { statusCode: 400 });
+    const chatId = safeChatId(req.params.id);
+    setRoomMode(chatId, mode);
+    return { mode: roomMode(chatId) };
+  }));
+  // 「설정집 연동」: off stops the 「처음부터 아는 사이」 lines, World Archive's name pairs and its 종 for this room
+  // (names merged before stay; they are taken back in 이름 정리 as before).
+  app.post('/chats/:id/world-link', guard(async (req) => {
+    const chatId = safeChatId(req.params.id);
+    setWorldLink(chatId, req.body?.on !== false);
+    recalls.delete(chatId);
+    return { worldLink: { linked: Boolean(worldLinked(chatId)), on: worldLinkOn(chatId) } };
+  }));
   app.post('/chats/:id/speaker-names', guard(async (req) => {
     const on = req.body?.on === true;
     setSpeakerNames(safeChatId(req.params.id), on);
@@ -5379,6 +5874,8 @@ async function routes(app) {
  * ledger (snapshots only, no model call), then pick the scenes to recall. The newest reply was never read,
  * so rerolling it needs nothing undone.
  */
+/** 0.37.2: how long the check before a reply waits for the room's queue; after that it goes on with a copy. */
+const REPLY_WAIT_MS = 3000;
 async function syncBeforeReply(chatId, body) {
   let view = await chatMessages(chatId);
   const replaced = typeof body?.regenerateMessageId === 'string' ? view.findIndex((m) => m.id === body.regenerateMessageId) : -1;
@@ -5390,7 +5887,7 @@ async function syncBeforeReply(chatId, body) {
     holdReplyLedger(chatId, view);
   } else {
     replyLedgers.delete(chatId);
-    await enqueue(chatId, async () => {
+    const check = enqueue(chatId, async () => {
       const stored = loadLedger(chatId);
       // A broken ledger file is left alone (and shown in the memory library); the reply goes on without it.
       if (!stored && brokenFiles.has(ledgerFile(chatId))) return;
@@ -5411,6 +5908,20 @@ async function syncBeforeReply(chatId, body) {
         log(`chat ${chatId}: undid message ${state.changedAt + 1} before the reply`);
       }
     });
+    // 0.37.2: something else holds the room's queue (a rename, a merge waiting for the scenes) — never more than
+    // REPLY_WAIT_MS: the reply gets the same check on a copy, and the queued check saves it when its turn comes.
+    let timer;
+    const late = await Promise.race([check.then(() => false, () => false), new Promise((resolve) => { timer = setTimeout(() => resolve(true), REPLY_WAIT_MS); })]);
+    clearTimeout(timer);
+    if (late) {
+      log(`chat ${chatId}: the room's queue is busy; the reply did not wait (${REPLY_WAIT_MS / 1000}s) and got the ledger checked on a copy`);
+      holdReplyLedger(chatId, view);
+      const held = replyLedgers.get(chatId);
+      if (held) {
+        held.queued = true;
+        check.then(() => { if (replyLedgers.get(chatId) === held) replyLedgers.delete(chatId); }, () => {});
+      }
+    }
   }
   // Which scenes the reply model can no longer see: the ones that start before its window.
   // The reply is generated after `view`, plus the new user turn when there is one.
@@ -5487,8 +5998,15 @@ function nameInstructions(chatId, names) {
   const parts = [];
   const rules = roomSetup(chatId).rules;
   if (rules) parts.push(`${SETUP_RULES_HEAD}\n${rules}`);
-  if (speakerNamesOn(chatId)) parts.push(SP.namePrefixInstructions(names));
+  if (speakerNamesOn(chatId)) parts.push(SP.namePrefixInstructions(roomMode(chatId) === 'simulator' ? simulatorExample(chatId) : names));
   return parts.filter(Boolean).join('\n\n');
+}
+
+/** A person of a simulator room for the name-label example (never the narrator). */
+function simulatorExample(chatId) {
+  const store = loadScenes(chatId);
+  const cast = Array.isArray(store?.cast) && store.mode === 'simulator' ? store.cast : [];
+  return cast.length ? [cast[0]] : ['Name'];
 }
 
 /** From Marinara's reply cleanup (synchronous): merged roleplay group replies in chats that color speakers. */
@@ -5503,7 +6021,8 @@ function fixSpeakers(text, o) {
     fixed = SP.dedupeDialogueNames(fixed, names);
     fixed = SP.prefixTaggedDialogue(fixed, names);
     if (o.isGroupChat) fixed = SP.restoreContextSpeakerTags(fixed, names, true);
-    if (!o.isGroupChat && names.length === 1) fixed = SP.prefixSingleCharacterDialogue(fixed, names[0]);
+    // A narrator card is no speaker: its standalone quotes are the NPCs' lines, never labelled with its name.
+    if (!o.isGroupChat && names.length === 1 && roomMode(o.chatId) !== 'simulator') fixed = SP.prefixSingleCharacterDialogue(fixed, names[0]);
     if (o.isGroupChat && o.usesIndividualGroupGeneration && o.targetCharId) {
       const target = (o.charInfo || []).find(c => c.id === o.targetCharId);
       if (target?.name) fixed = SP.prefixSingleCharacterDialogue(fixed, target.name);
@@ -5520,12 +6039,11 @@ const storyDays = new Map();
 
 /**
  * The story's "today", one value for everything that counts days (the memory text, the deadline list): the
- * latest date the chat itself shows (date lines, trackers) as of the last reply, else what the ledger has read.
+ * date the chat itself shows last (date lines, trackers) as of the last reply, else what the ledger has read.
  */
 function storyToday(chatId, ledger) {
-  const day = storyDays.get(chatId) || null;
-  const read = ledger?.storyDate || null;
-  return day && (!read || day >= read) ? day : read;
+  // The chat as it is now wins: a story that went back (or a tracker that put a wrong date right) is followed.
+  return storyDays.get(chatId) || ledger?.storyDate || null;
 }
 const storyNow = new Map();
 
@@ -5697,7 +6215,7 @@ function attach(app) {
   log('admin API ready at /api/memory-module');
 }
 
-module.exports = { fixSpeakers, speakerInstructions, nameInstructions, attach, renderLedger, processChat, chatMessages, DATA_DIR, _test: { loadAddress, saveAddress, refreshAddress, presentPeople, Addr, loadState, saveState, loadPlaces, savePlaces, loadKeepsakes, saveKeepsakes, loadNotebook, saveNotebook, Nb, loadTrackers, saveTrackers, Tk, loadConflicts, saveConflicts, refreshConflicts, refreshWorld, Cf, Ks, organizeFor, sceneTokens, lastScenePeople, St, Pl, listRooms, purgeChatMemory, purgeIfGone, deleteOnSend, deletePrepare, listOrphans, deleteOrphans, goneChats, loadNames, saveNames, enqueue, foldScenes, reviewAttributions, loadAttributionLog, sceneJobs, selectedForView, loadSelected, recalls, windows, loadRecallPrefs, saveRecallPrefs, recallReport, recallCandidates, setSelectedQuery: (id, query) => turnQuery.set(id, query), condense, branchMemory, branchOnSend, inheritBranch, setEngine: (e) => { enginePromise = Promise.resolve(e); }, saveLedger, loadLedger, saveSettings, settings, readJson, writeJson, loadScenes, saveScenes, checkFiles, recallFingerprint, health, trackerClock, addTrackerClock, storyToday, storyDays, translationLookup, translateDisplayLater, fixNoteLanguages, tidySteps, tidyLedger, noteUsage, usageSummary, planAnswersOn, notebookLanguageOf, notebookLanguageSetting, rebuildNotebook, notebookJobStatus, notebookRunning: (id) => notebookJobs.get(id)?.state === 'running', loadTranslations, saveTranslations, translationRun: (id, texts) => translateMissing(id, "ko", texts), flushTranslations, clearTranslationFailures, translationGaveUp, chatLangs, langRecords, loadLang, noteLanguage, LANG_REFRESH_EVERY, memoryLanguage, injectionLines, displayTranslationTexts, withLanguage, renderMemorySource, syncBeforeReply, routinePeople, noteSourceKo, sourceKo, sourceQuoteItems, quoteHints, roomSetup, setupNote, withSetup, nameInstructions, jobs, writeLanguage, roomWriteLanguage, promptLanguage, memoryCallOptions, routineSetting, routineEnabled, attributionSetting, featureOn, featureSetting, F, B, clearRoomCaches, RESTORE_UNDO_DIR, connectionWithKey, memoryModel, startTrial, trials } };
+module.exports = { fixSpeakers, speakerInstructions, nameInstructions, attach, renderLedger, processChat, chatMessages, DATA_DIR, _test: { loadAddress, saveAddress, refreshAddress, presentPeople, Addr, loadState, saveState, loadPlaces, savePlaces, loadKeepsakes, saveKeepsakes, loadNotebook, saveNotebook, Nb, loadTrackers, saveTrackers, Tk, loadConflicts, saveConflicts, refreshConflicts, refreshWorld, Cf, Ks, organizeFor, sceneTokens, lastScenePeople, St, Pl, listRooms, purgeChatMemory, purgeIfGone, deleteOnSend, deletePrepare, listOrphans, deleteOrphans, goneChats, loadNames, saveNames, enqueue, foldScenes, reviewAttributions, loadAttributionLog, sceneJobs, selectedForView, loadSelected, recalls, windows, loadRecallPrefs, saveRecallPrefs, recallReport, recallCandidates, setSelectedQuery: (id, query) => turnQuery.set(id, query), condense, branchMemory, branchOnSend, inheritBranch, setEngine: (e) => { enginePromise = Promise.resolve(e); }, saveLedger, loadLedger, saveSettings, settings, readJson, writeJson, loadScenes, saveScenes, checkFiles, recallFingerprint, health, trackerClock, addTrackerClock, storyToday, storyDays, translationLookup, staleNames, autoMergeByGlossary, translateDisplayLater, fixNoteLanguages, tidySteps, tidyLedger, noteUsage, usageSummary, planAnswersOn, notebookLanguageOf, notebookLanguageSetting, rebuildNotebook, notebookJobStatus, notebookRunning: (id) => notebookJobs.get(id)?.state === 'running', loadTranslations, saveTranslations, translationRun: (id, texts) => translateMissing(id, "ko", texts), flushTranslations, clearTranslationFailures, translationGaveUp, chatLangs, langRecords, loadLang, noteLanguage, LANG_REFRESH_EVERY, memoryLanguage, injectionLines, displayTranslationTexts, withLanguage, renderMemorySource, syncBeforeReply, routinePeople, noteSourceKo, sourceKo, sourceQuoteItems, quoteHints, roomSetup, setupNote, withSetup, nameInstructions, jobs, writeLanguage, roomWriteLanguage, promptLanguage, memoryCallOptions, lightRefused, routineSetting, routineEnabled, attributionSetting, featureOn, featureSetting, F, B, clearRoomCaches, RESTORE_UNDO_DIR, connectionWithKey, memoryModel, startTrial, trials, roomMode, setRoomMode, roomPeople, stampMode, worldArchivePeople, waPeopleCache, simulatorExample, petNotes, askModel, worldLink, worldLinked, worldLinkOn, setWorldLink, worldRelations, worldRelCache, worldSpecies, sceneOptions } };
 
 
 

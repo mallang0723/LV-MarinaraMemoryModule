@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // Per-room UI state (picks, armed clicks, undo log) must not follow the person into another room; the glossary sync must
 // not send an empty glossary for an unreadable config; bulk close logs what it closed; tracker undo needs two clicks.

@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // A status window whose time is not on the date line: daily life still gets the in-story time.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');

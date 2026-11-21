@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // The glossary endpoint: pairs saved with the room's translations, names in it become other names of the people
 // they name, and the Korean notes show names (and name fields) in Korean. (Invented names.)

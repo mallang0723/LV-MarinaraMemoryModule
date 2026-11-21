@@ -37,6 +37,8 @@ export async function createQaEnv({ messages = 44 } = {}) {
     };
     start({ ...f.api, log: { info() {} } }, { tunables: { SCENE_MIN_PENDING: 1 }, store: { debounceMs: 0 }, afterReplyMs: 20 });
     const U = 'qa-user';
+    // The orphan room's file is stored before the user's tree is first listed (1.4+ lists storage once per user), or it never shows up.
+    f.files.set(`${U}:memory/chats/deleted-qa.json`, JSON.stringify({ version: 1, threads: [] }));
     const call = async (m, p, b) => { const r = await f.rpc(m, p, b, U); if (!r.ok) throw Error(`QA seed ${m} ${p}: ${r.error}`); return r; };
     await call('POST', 'ext/settings', { window: 8 });
     await call('POST', 'memory-module/settings', { connection: 'conn-a' });
@@ -65,7 +67,6 @@ export async function createQaEnv({ messages = 44 } = {}) {
     await call('POST', 'memory-module/chats/chat-a/trackers', { action: 'add', item: { type: 'count', label: '만난 지', clock: 'real', scope: 'room', count: { start: '2026-11-01' } } });
     if (facts.length) await call('POST', 'memory-module/chats/chat-a/recall-prefs', { id: facts[0].id, action: 'pin' });
     await call('POST', 'memory-module/chats/chat-a/selected-memory', { parts: [{ sourceId: 'qa-selected-message', text: '하루가 서아에게 편지를 건넸다.' }] });
-    f.files.set(`${U}:memory/chats/deleted-qa.json`, JSON.stringify({ version: 1, threads: [] }));
     outbox.length = 0;
     return {
         f,

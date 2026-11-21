@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // 인물 현재 상태 (characterState) and 장소 기억 (places): the scene prompt and its parsing, the cards and places
 // worked out from saved scenes, user locks, the injected lines, the presence filter, the routes, backup, room delete

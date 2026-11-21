@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // Runs the shipped extension against the real translation routes with a small in-process DOM double.
 // This checks behavior and rendered text, not browser layout or touch hit testing.

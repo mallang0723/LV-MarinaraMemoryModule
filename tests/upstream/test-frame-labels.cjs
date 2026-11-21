@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // The memory's own instruction lines carry the section names in quotes and the labels they explain ("… 줄임");
 // in an English memory both follow the memory's language. (Invented text.)

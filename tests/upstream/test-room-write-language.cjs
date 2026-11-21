@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // A room's own memory language: it overrides the all-rooms setting, "follow" stores nothing, bad values are refused,
 // other room settings stay, and the library offers the choice. (Invented rooms.)

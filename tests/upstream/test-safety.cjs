@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-safety.cjs
 // Who knows a fact after hand edits, recall freshness after scene edits, broken memory files left untouched.
 'use strict';

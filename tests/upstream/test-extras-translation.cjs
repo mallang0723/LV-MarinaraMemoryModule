@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // Korean for the optional records (인물 상태·장소·소중한 물건·트래커), open items first in the translation order, and the
 // background translation after a memory run that only runs with 자동 번역 on. (Invented names.)

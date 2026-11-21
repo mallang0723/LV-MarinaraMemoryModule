@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-recall-bilingual.cjs
 // Memory written in English, messages written in Korean or translated into English: the rare-word search finds the
 // scene either way. (Invented names and story.)

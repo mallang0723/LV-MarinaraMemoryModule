@@ -20,6 +20,9 @@ const table = {
   './keepsakes.cjs': require('../memory/core/keepsakes.generated.cjs'),
   './notebook.cjs': require('../memory/core/notebook.cjs'),
   './trackers.cjs': require('../memory/core/trackers.generated.cjs'),
+  './simulator.cjs': require('../memory/core/simulator.cjs'),
+  './petnotes.cjs': require('../memory/core/petnotes.cjs'),
+  './worldlink.cjs': require('../memory/core/worldlink.cjs'),
   './reasons.cjs': require('../memory/core/reasons.generated.cjs'),
 };
 module.exports = table;

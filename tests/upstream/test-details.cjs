@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-details.cjs
 // Details kept whole, lines from the right scene, a question and its answer together, names, HTML messages.
 'use strict';

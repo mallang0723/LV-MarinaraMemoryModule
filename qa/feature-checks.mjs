@@ -19,6 +19,8 @@ const rpc = (page, method, path, body) => page.evaluate(async ({ method, path, b
     if (!result?.ok) throw Error(result?.error || 'QA missing RPC reply');
     return result.data;
 }, { method, path, body });
+// 0.31+: seven tabs, each holding screens as sub-tabs. A sub-tab's button exists only while its group is open.
+export const TAB_GROUP = { timeline: 'story', lines: 'story', scenes: 'story', setup: 'story', person: 'people', facts: 'people', notebook: 'people', world: 'people', names: 'people', ledger: 'todo', promises: 'todo', life: 'todo' };
 export async function assertPopulatedTab(page, tab) {
     const selectors = { home: '[data-act="deleteSelectedMemory"]', scenes: '.file-index', facts: '.fact-row', world: '[data-tracker]', inject: '.reason-row', settings: '#restoreFile' };
     if (selectors[tab]) await panel(page).locator(selectors[tab]).first().waitFor({ state: 'attached', timeout: 8000 });
@@ -27,7 +29,7 @@ export async function assertPopulatedTab(page, tab) {
 }
 export async function checkFeatureScreens(page, measure) {
     const root = panel(page);
-    const tab = async name => { await root.locator(`button[data-tab="${name}"]`).first().click(); await assertPopulatedTab(page, name); };
+    const tab = async name => { if (TAB_GROUP[name]) await root.locator(`button[data-group-tab="${TAB_GROUP[name]}"]`).first().click(); await root.locator(`button[data-tab="${name}"]`).first().click(); await assertPopulatedTab(page, name); };
     const click = async selector => { await root.locator(selector).first().click(); };
     await tab('ledger');
     await root.locator('.event-row > summary').first().hover();

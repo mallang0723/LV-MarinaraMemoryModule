@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-memory-expression.cjs
 // Prompt wiring and stored-memory preservation; not a real-model repetition benchmark.
 'use strict';

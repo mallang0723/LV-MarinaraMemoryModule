@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-translate-names.cjs
 // Korean notes for memory written in English: names written in Korean from the room's glossary and name table, the
 // particle after each fitted, and the prompt asking for one sentence ending. (Invented names.)

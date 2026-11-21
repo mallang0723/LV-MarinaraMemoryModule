@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // 배경 설정 · 진행 규칙: saved per room, 배경 설정 opens the memory as written, 진행 규칙 goes with the reply's
 // instructions, and the memory's own calls read 배경 설정. (Invented names.)

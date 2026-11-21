@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // node --test tests/test-room-parts.cjs
 // 0.12.2: the room data (GET /chats/:id) no longer carries the big parts (open items with their evidence, the dialogue

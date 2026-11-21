@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // 호칭 사전: a foreign nickname and its Korean translation as one entry "원어(번역)". Invented names only.
 const { test, after } = require('node:test');

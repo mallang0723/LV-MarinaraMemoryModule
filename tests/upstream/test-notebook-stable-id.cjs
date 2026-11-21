@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // A notebook note keeps its id when its text is rewritten (language fix), so the user's edit, star and deletion still
 // find it; notes the user touched are not rewritten. (Invented names.)

@@ -5,6 +5,8 @@
 // Pure logic only; the engine side lives in service.cjs.
 
 const L = require('./ledger.cjs');
+const Sim = require('./simulator.cjs');
+const W = require('./worldlink.cjs');
 const A = require('./aliases.cjs');
 const St = require('./state.cjs');
 const Pl = require('./places.cjs');
@@ -77,6 +79,7 @@ const SCENE_PROMPT = `너는 장기 롤플레이의 기억 관리자야. 지나�
 장면 나누기:
 - 작중 시간이 크게 건너뛰거나, 장소가 바뀌거나, 상황의 흐름이 바뀌는 곳에서 나눠. 한 장면은 보통 메시지 2~8개. 긴 흐름은 화제가 바뀌는 곳에서 더 잘게 나눠(장면 하나에 사건은 최대 8개라서, 너무 길면 세부가 빠져).
 - 장면은 첫 메시지부터 빈틈없이 이어져. 각 장면은 끝 메시지 번호(end)만 적으면 돼.
+- end는 그 장면 마지막 메시지의 [번호]를 숫자 하나로 적어(예: [58] 메시지에서 끝나면 "end":58). 장면 번호(S…), 문장 번호(58.3), "55~58" 같은 범위, 1부터 센 순서가 아니야. 아래 출력 형식의 숫자는 예시일 뿐이니 베끼지 마.
 - 사용자 메시지와 그에 대한 캐릭터의 답은 같은 장면에 둬. 장면을 사용자 메시지에서 끝내지 마(질문만 있고 답이 다음 장면으로 넘어가면 안 돼).
 - 마지막 장면은 반드시 [필수 끝 번호] 이상에서 끝나야 해. 그 뒤 메시지는 장면이 거기서 자연스럽게 끝날 때만 포함해.
 
@@ -399,9 +402,12 @@ function absentFrom(scene, cast) {
 function buildScenePrompt(store, slice, required, problem = null, preferences = {}) {
   const parts = [];
   const known = liveFacts(store).slice(-80);
-  const cast = castOf(store);
+  const sim = store.mode === 'simulator';
+  const cast = sim ? Sim.batchCast(castOf(store), slice, store.castAliases) : castOf(store);
   const group = cast.length >= 2;
-  const unawareNote = (f) => (group ? [f.unaware?.length ? ` (모름: ${f.unaware.join('·')})` : '', f.guess?.length ? ` (짐작만: ${f.guess.join('·')})` : ''].join('') : '');
+  // 세계 시뮬레이터: who does not know a fact is everyone else in the room (dozens); the prompt shows only this batch's people.
+  const here = (list) => (sim ? (list || []).filter((n) => cast.includes(n)) : list);
+  const unawareNote = (f) => (group ? [here(f.unaware)?.length ? ` (모름: ${here(f.unaware).join('·')})` : '', here(f.guess)?.length ? ` (짐작만: ${here(f.guess).join('·')})` : ''].join('') : '');
   parts.push('## 이미 아는 사실', known.length ? known.map((f) => `- ${f.id} ${f.about ? `${f.about}: ` : ''}${f.text}${unawareNote(f)}`).join('\n') : '(없음)');
   // Earlier scenes by number: a later reveal can point back at one, and who missed it is shown in a group story.
   const list = store.scenes.slice(-PRESENCE_SCENES);
@@ -424,11 +430,15 @@ function buildScenePrompt(store, slice, required, problem = null, preferences = 
   }
   const personas = L.personaNames(slice);
   const head = [];
+  if (sim && Sim.narratorLine(store.narrators)) head.push(Sim.narratorLine(store.narrators));
   if (cast.length) head.push(`[등장인물] ${cast.join(', ')}`);
   if (personas.length) head.push(`[사용자 캐릭터] ${personas.join(', ')}`);
+  // 세계관 설정집 연동 v2: who knows whom from the start, for this batch's people only (a room not linked: nothing).
+  const relLines = preferences.worldRelations?.length ? W.relationLines(preferences.worldRelations, slice, [...cast, ...personas]) : [];
+  if (relLines.length) head.push('[설정집 관계 — 처음부터 아는 사이]', ...relLines);
   if (head.length) parts.unshift(...head, '');
   if (problem) parts.push('', `## 지난번 답의 문제 (이번엔 고쳐 줘)`, problem);
-  parts.push('', `## 메시지 (${slice[0].number}번부터)`, `[필수 끝 번호] ${required}`);
+  parts.push('', `## 메시지 (${slice[0].number}번부터)`, `[필수 끝 번호] ${required}`, `[이번 메시지 번호] ${slice[0].number}~${slice.at(-1).number} (end는 이 안의 숫자)`);
   for (const message of slice) {
     // Talk outside the story: in the scene by its number (scenes stay continuous), but nothing in it is the story.
     if (message.ooc) { parts.push(`[${message.number}] ${message.speaker}: (OOC — 이야기 밖 대화라 생략. 장면 내용·사실·인용·수첩에 쓰지 마)`); continue; }
@@ -446,6 +456,8 @@ function buildScenePrompt(store, slice, required, problem = null, preferences = 
   if (preferences.quoteMode === 'both') guidance.push(`사건의 대사와 중요한 서술을 모두 인용해. 각 사건에서 중요한 대사와 행동·표정·접촉·상황 변화의 서술을 각각 원문 문장 번호로 인용해. 대사가 있는 사건도 관련 서술이 있으면 최소 한 문장을 별도 quotes 항목으로 넣어. 원문에 없으면 만들지 마. 사건마다 최대 ${quoteLimit('both')}개. 질문과 답변은 함께 보존하고 서술의 by와 to는 null로 둬. 이름·철자 공개 뒤의 질문과 반응처럼 새 전개가 있으면 별도 사건을 만들어 그 대사를 직접 연결해.`);
   // Optional records (인물 상태, 장소): added only while the room's switch is on, so a room without them gets the same prompt as before.
   const extras = [LINES_PROMPT];
+  if (sim) extras.push(Sim.NARRATOR_PROMPT);
+  if (relLines.length) extras.push(W.RELATION_RULE);
   if (preferences.characterState) extras.push(St.PROMPT);
   if (preferences.places) extras.push(Pl.PROMPT);
   if (preferences.keepsakes) extras.push(Ks.PROMPT);
@@ -763,11 +775,48 @@ function sameFact(a, b) {
 }
 
 /** Where a scene ends, as an index into the slice (an end between messages snaps to the one before it). */
-function endIndex(item, slice, byNumber) {
-  const at = byNumber.get(Number(item?.end));
+/**
+ * The message number a scene ends at, as the model wrote it: 58, "58", "58번", "[58]", "55~58" (the last), "58.3" (its message),
+ * a list of numbers (the last), or the same under a near key ("end_message", "last", "range"…). A scene, chapter or fact id
+ * ("S23") is not a message number. NaN when there is none.
+ */
+const END_KEYS = ['end', 'endMessage', 'end_message', 'endNumber', 'end_number', 'endMsg', 'last', 'lastMessage', 'last_message', 'to_message', 'range', 'messages'];
+function endNumberOf(item) {
+  const pick = (v) => {
+    if (typeof v === 'number') return Number.isFinite(v) ? Math.floor(v) : NaN;
+    if (Array.isArray(v)) return v.length ? pick(v.at(-1)) : NaN;
+    if (typeof v !== 'string') return NaN;
+    const text = v.trim();
+    if (/^[SCF]\s*-?\s*\d/i.test(text)) return NaN;
+    const numbers = text.match(/\d+(?:\.\d+)?/g);
+    return numbers ? Math.floor(Number(numbers.at(-1))) : NaN;
+  };
+  for (const key of END_KEYS) {
+    const n = pick(item?.[key]);
+    if (Number.isFinite(n)) return n;
+  }
+  return NaN;
+}
+
+/**
+ * Where in the slice a scene ends, or undefined when its end cannot be read. `relative`: the model counted the messages
+ * of this slice from 1 instead of using their numbers.
+ */
+function endIndex(item, slice, byNumber, relative = false) {
+  const end = endNumberOf(item);
+  if (!Number.isFinite(end)) return undefined;
+  if (relative) return Math.min(slice.length, Math.max(1, end)) - 1;
+  const at = byNumber.get(end);
   if (at !== undefined) return at;
-  const below = slice.filter((m) => m.number <= Number(item?.end)).at(-1);
+  const below = slice.filter((m) => m.number <= end).at(-1);
   return below ? byNumber.get(below.number) : undefined;
+}
+
+/** Every end the model wrote is a count inside this slice (1, 2, …) and none is one of its message numbers. */
+function countedFromOne(raw, slice) {
+  const ends = raw.map(endNumberOf).filter(Number.isFinite);
+  if (!ends.length || slice[0].number <= slice.length) return false;
+  return ends.every((n) => n >= 1 && n <= slice.length);
 }
 
 /**
@@ -807,11 +856,19 @@ function eventPresence(raw, cast, personas) {
   return [...new Set([...castNames(list, cast), ...list.filter((n) => personas.includes(n) || !castNames([n], cast).length)])];
 }
 
-function joinAnswers(raw, slice, byNumber) {
+function joinAnswers(raw, slice, byNumber, requiredAt = slice.length - 1) {
   const out = [];
-  for (const item of raw) {
-    let endAt = endIndex(item, slice, byNumber);
-    if (endAt === undefined) continue;
+  const relative = countedFromOne(raw, slice);
+  const ends = raw.map((item) => endIndex(item, slice, byNumber, relative));
+  for (let i = 0; i < raw.length; i++) {
+    const item = raw[i];
+    let endAt = ends[i];
+    // An end that cannot be read (missing, "S23", a number before this slice): the scene is not thrown away.
+    // It runs on to the next scene's end and is joined with it, or (the last one) closes at the required message.
+    if (endAt === undefined) {
+      const next = ends.slice(i + 1).find((e) => e !== undefined);
+      endAt = next !== undefined ? next : Math.max(requiredAt, out.at(-1)?._endAt ?? -1);
+    }
     const prev = out.at(-1);
     if (prev && endAt <= prev._endAt) {
       for (const key of ['events', 'facts', 'learned', 'later', 'recollections']) {
@@ -1030,7 +1087,23 @@ function sceneNotesOf(raw, scenePlace) {
  * Turn a model result into scenes for this slice. Scenes follow each other with no gap, from the slice start,
  * and the last one must reach `required`. Returns { scenes, facts, covered } or { error }.
  */
-function applyScenes(store, result, slice, required, now = new Date().toISOString(), { partial = false, quoteMode = 'dialogue', verifyAttribution = false, strictCoverage = false, characterState = false, places = false, keepsakes = false, dateHints = false, notebook = false, notebookStats = null, notebookLang = 'character' } = {}) {
+function applyScenes(store, result, slice, required, now, options) {
+  if (store.mode !== 'simulator') return applySceneReply(store, result, slice, required, now, options);
+  // Each newcomer under the name the room's name table keeps them by ("Minerva McGonagall" linked to 미네르바 맥고나걸
+  // by the glossary joins as 미네르바 맥고나걸), so the reply's two forms of them count as one person.
+  const newcomers = Sim.canonCast(Sim.newPeople(store, Array.isArray(result?.scenes) ? result.scenes : [], slice)).filter((n) => !(store.cast || []).some((c) => A.canonical(c) === n));
+  if (!newcomers.length) return applySceneReply(store, result, slice, required, now, options);
+  const before = store.cast;
+  store.cast = [...(before || []), ...newcomers];
+  try {
+    const out = applySceneReply(store, result, slice, required, now, options);
+    return out.error ? out : { ...out, people: newcomers };
+  } finally {
+    store.cast = before;
+  }
+}
+
+function applySceneReply(store, result, slice, required, now = new Date().toISOString(), { partial = false, quoteMode = 'dialogue', verifyAttribution = false, strictCoverage = false, characterState = false, places = false, keepsakes = false, dateHints = false, notebook = false, notebookStats = null, notebookLang = 'character' } = {}) {
   const raw = Array.isArray(result?.scenes) ? result.scenes : null;
   if (!raw || !raw.length) return { error: '장면이 비어 있습니다' };
   // OOC talk is never a quote, a fact's evidence or a note's evidence.
@@ -1048,7 +1121,8 @@ function applyScenes(store, result, slice, required, now = new Date().toISOStrin
   // Lines the model put under the wrong scene: moved to the scene they belong to once all scenes are made.
   const stray = [];
   let startAt = 0;
-  for (const item of joinAnswers(raw, slice, byNumber)) {
+  const requiredAt = byNumber.get(required) ?? slice.length - 1;
+  for (const item of joinAnswers(raw, slice, byNumber, requiredAt)) {
     const endAt = item._endAt;
     if (endAt === undefined || endAt < startAt) continue;
     const messages = slice.slice(startAt, endAt + 1);
@@ -1172,7 +1246,7 @@ function applyScenes(store, result, slice, required, now = new Date().toISOStrin
     }
     startAt = endAt + 1;
   }
-  if (!made.length) return { error: '쓸 수 있는 장면이 없습니다' };
+  if (!made.length) return { error: `쓸 수 있는 장면이 없습니다. 장면마다 end에 이번 메시지 번호(${slice[0].number}~${slice.at(-1).number}) 중 그 장면의 마지막 번호를 숫자 하나로 적어 주세요. 마지막 장면은 ${required} 이상에서 끝나야 합니다.`, errorCode: 'no_scene' };
   const speakers = new Map(slice.map((m) => [m.number, m.speaker]));
   placeStray(made, stray, (n) => speakers.get(n), quoteMode);
   for (const scene of made) {
@@ -1309,6 +1383,109 @@ function attachTranslations(store, messages) {
         if (touched) changed++;
       }
     }
+  }
+  return changed;
+}
+
+/* ---------- story dates put right (no model call) ---------- */
+
+const WEEK_KO = '일월화수목금토';
+// A calendar date as the memory writes it: "24-03-01", "2024-03-01", "2024.03.01", "2024/3/1", "2024년 3월 1일",
+// "3월 1일", each with an optional weekday after it ("(금)", "금요일").
+const DATE_TOKEN = /(?<!\d)(?:(\d{4}|\d{2})([-./])(\d{1,2})\2(\d{1,2})|(?:(\d{4})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일(?!\s*[차째]))(?!\d)(\s*\(\s*[일월화수목금토]\s*\)|\s*[일월화수목금토]요일)?/g;
+
+/**
+ * `text` with its first written date set to `first` and its last to `last` (ISO days), each in the way it was
+ * written (year digits, separator, zero padding, weekday). A date already right is left as it is. Null when the
+ * text names no date.
+ */
+function redateText(text, first, last = first) {
+  const raw = String(text ?? '');
+  const hits = [...raw.matchAll(DATE_TOKEN)];
+  if (!hits.length || !first) return null;
+  let out = '';
+  let from = 0;
+  hits.forEach((m, k) => {
+    const want = k === 0 ? first : k === hits.length - 1 ? last : null;
+    out += raw.slice(from, m.index);
+    from = m.index + m[0].length;
+    const [y, mo, d] = want ? want.split('-') : [];
+    const week = want ? WEEK_KO[new Date(`${want}T00:00:00Z`).getUTCDay()] : null;
+    const weekText = m[8] ? m[8].replace(/[일월화수목금토](?=\s*\)|요일)/, week || '$&') : '';
+    if (!want) { out += m[0]; return; }
+    if (m[1]) {
+      const pad = (v, like) => (like.length === 2 ? String(v).padStart(2, '0') : String(Number(v)));
+      const year = m[1].length === 2 && /^20/.test(y) ? y.slice(2) : y;
+      const next = `${year}${m[2]}${pad(mo, m[3])}${m[2]}${pad(d, m[4])}`;
+      out += next === `${m[1]}${m[2]}${m[3]}${m[2]}${m[4]}` ? m[0] : `${next}${weekText}`;
+    } else {
+      const same = Number(m[6]) === Number(mo) && Number(m[7]) === Number(d) && (!m[5] || m[5] === y);
+      out += same ? m[0] : `${m[5] ? `${y}년 ` : ''}${Number(mo)}월 ${Number(d)}일${weekText}`;
+    }
+  });
+  return out + raw.slice(from);
+}
+
+/** The first day a text writes, as an ISO day (a year left out is taken from `base`), or null. */
+function writtenDay(text, base) {
+  const m = [...String(text ?? '').matchAll(DATE_TOKEN)][0];
+  if (!m) return null;
+  const year = m[1] ? (m[1].length === 2 ? String(L.fullYear(m[1], base)) : m[1]) : m[5] || String(base || '').slice(0, 4);
+  const [mo, d] = m[1] ? [m[3], m[4]] : [m[6], m[7]];
+  if (!/^\d{4}$/.test(year)) return null;
+  return `${year}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/**
+ * Scenes filed under a story day their messages no longer show (a tracker date that could not be read, or a
+ * tracker that put a wrong start right, made every later message carry the first day): their written days are
+ * set to what the messages show now, in the scene, its events, what was learned there, its facts, and the
+ * chapters and arcs it is in. Scenes edited by hand are left alone. Returns how many scenes changed.
+ */
+function redateScenes(store, messages) {
+  const byId = new Map((messages || []).map((m) => [m.id, m]));
+  const span = new Map();
+  let changed = 0;
+  for (const scene of store.scenes || []) {
+    const clocks = (scene.messages || []).map((x) => byId.get(x.id)?.clock).filter((c) => c?.date);
+    if (!clocks.length) continue;
+    const first = clocks[0].date;
+    const last = clocks.at(-1).date;
+    span.set(scene.id, { first, last });
+    if (scene.edited || scene.ooc) continue;
+    // Only a scene written with the day the old reading wrongly carried: a day the model chose on its own (a
+    // flashback, a date said in the story) is left as it is.
+    const wrong = new Set(clocks.map((c) => c.was).filter(Boolean));
+    const written = writtenDay(scene.time, first);
+    if (!written || !wrong.has(written)) continue;
+    const fix = (v) => {
+      const next = v ? redateText(v, first, last) : null;
+      return next && next !== v ? next : null;
+    };
+    const time = fix(scene.time);
+    if (!time) continue;
+    const old = scene.time;
+    scene.time = time;
+    for (const e of scene.events || []) { const t = fix(e.time); if (t) e.time = t; }
+    for (const list of [scene.learned, scene.later]) for (const x of list || []) if (x?.when === old) x.when = time;
+    for (const f of store.facts || []) if (f.sceneId === scene.id && f.when === old) f.when = time;
+    changed++;
+  }
+  if (!changed) return 0;
+  const spanOf = (ids) => {
+    const known = ids.map((id) => span.get(id)).filter(Boolean);
+    return known.length ? { first: known[0].first, last: known.at(-1).last } : null;
+  };
+  for (const c of store.chapters || []) {
+    const sp = spanOf(c.scenes || []);
+    const t = sp && c.time ? redateText(c.time, sp.first, sp.last) : null;
+    if (t && t !== c.time) c.time = t;
+  }
+  const chapterScenes = new Map((store.chapters || []).map((c) => [c.id, c.scenes || []]));
+  for (const a of store.arcs || []) {
+    const sp = spanOf((a.chapters || []).flatMap((id) => chapterScenes.get(id) || []));
+    const t = sp && a.time ? redateText(a.time, sp.first, sp.last) : null;
+    if (t && t !== a.time) a.time = t;
   }
   return changed;
 }
@@ -1658,6 +1835,8 @@ const NOT_A_TERM_IT = new Set(('ricevuto ricevuta inteso intesi perfetto benissi
 const NOT_A_TERM_KO = new Set(['응', '으응', '으음', '어', '어어', '아', '아아', '네', '예', '그래', '알았어', '알겠어', '알겠습니다', '알았다', '들었지', '들었어', '봐', '봐봐', '자', '저기', '있잖아', '근데', '그러니까', '아니', '뭐', '왜', '진짜', '정말', '좋아', '됐어', '됐다', '맞아', '맞지', '글쎄', '그럼', '그러게', '그렇지', '그렇구나', '아하', '어휴', '에이', '이런', '저런', '그런', '아무래도', '사실', '솔직히', '씨발', '시발', '씨팔', '젠장', '제길', '빌어먹을', '일어나', '일어나요', '멍청', '아마', '혹시', '제발', '빨리', '얼른', '어서', '당장', '이제', '이미', '아직', '여기', '거기', '저쪽', '오늘', '내일', '어제', '나중에', '잠깐', '잠시', '가만', '가만히', '조용', '조용히', '다시', '또', '벌써', '역시', '결국', '일단', '그냥', '자꾸', '계속', '항상', '절대', '분명', '확실히', '물론', '당연', '당연히', '설마', '아이고', '어머나', '세상에', '맙소사', '헐', '앗', '엇', '음', '흠', '응응', '아냐', '아니야', '아니에요', '그만', '들어', '들어봐', '말해', '말해봐', '가자', '가', '와', '오', '이봐', '여봐', '안녕', '고마워', '미안', '미안해', '죄송', '감사']);
 const KO_SOUNDS = /^(?:으+[응음]|어+|아+|음+|응+|흠+|하+|헤+|오+|우+|에+)$/;
 // 지 only on longer words: 수지, 은지 are names, 들었지 is a sentence.
+// Words that end a phrase about someone, never a call to them: "대니 차례", "하루 생일", "네 몫", "내 탓".
+const KO_NOT_CALL = /^(?:차례|순서|순번|생일|몫|탓|덕|덕분|잘못|책임|때문|거|것|건|게|일|말|얘기|이야기|소리|생각|편|쪽|방|집|자리|이름|번|짓|꼴|뜻|맘|마음|문제|사정|일정|계획|숙제|담당|당번|용|전용)$/;
 const KO_ENDING = /(?:어|요|네|다|까|잖아|거든|[가-힣]{2}지)$/;
 // Terms of endearment: real forms of address even though they are ordinary words.
 const ENDEARMENTS = new Set(['tesoro', 'amore', 'cara', 'caro', 'honey', 'darling', 'babe', 'baby', 'sweetheart', 'sweetie', 'love', 'dear', 'bella', 'bello', 'piccola', 'piccolo', 'cucciolo', 'cucciola', 'stella', 'angelo', 'bimba', 'bimbo', 'gioia', 'cuore', 'principessa', 'principe', 'gattina', 'gattino', 'princess', 'prince', 'kitten', 'kitty', '공주', '자기', '애기', '여보', '왕자', '아가', '달링', '허니', '공주님', '왕자님']);
@@ -1706,7 +1885,11 @@ function plausibleTerm(term) {
   const words = t.split(/\s+/);
   const body = words.filter((w) => !TITLE_WORD.test(w.replace(/[.,]$/, '')));
   if (!body.length) return false;
-  if (hasHangul(t)) return body.every((w) => !isStopword(w) && !KO_SOUNDS.test(w) && !KO_ENDING.test(w));
+  if (hasHangul(t)) {
+    // "대니 차례!", "하루 생일이야" set off like a call: a name and a word that never ends a call ("…'s turn").
+    if (body.length > 1 && KO_NOT_CALL.test(body.at(-1))) return false;
+    return body.every((w) => !isStopword(w) && !KO_SOUNDS.test(w) && !KO_ENDING.test(w));
+  }
   if (words.length > 3) return false;
   return body.every((w) => /^\p{L}[\p{L}\p{N}'’-]+$/u.test(w) && !isStopword(w) && !COMMON_EN.has(normWord(w)) && !COMMON_IT.has(normWord(w)));
 }
@@ -2948,12 +3131,25 @@ function applyLearned(store, learned) {
 }
 
 function commitScenes(store, applied) {
+  // 세계 시뮬레이터: a person listed both as knowing and, in their other script, as not knowing knows it (the two forms
+  // become one name just below).
+  if (store.mode === 'simulator') {
+    for (const f of applied.facts || []) {
+      if (!Array.isArray(f.unaware) || !Array.isArray(f.knownBy)) continue;
+      f.unaware = f.unaware.filter((u) => !f.knownBy.some((k) => k !== u && A.canonical(k) === A.canonical(u)));
+    }
+  }
   // People renamed by hand keep the name the user chose in what the model writes next.
   A.rewriteDeep(applied.scenes);
   A.rewriteDeep(applied.facts);
   A.rewriteDeep(applied.later);
   A.rewriteDeep(applied.learned);
   store.scenes.push(...applied.scenes);
+  // 세계 시뮬레이터: the people this reply brought in join the room now (not when a reply is only tried).
+  for (const raw of applied.people || []) {
+    const name = A.canonical(raw);
+    if (Array.isArray(store.cast) && !store.cast.some((c) => A.canonical(c) === name) && store.cast.length < Sim.ROOM_CAST_MAX) store.cast.push(name);
+  }
   for (const f of applied.facts) {
     const old = f.replaces && store.facts.find((k) => k.id === f.replaces);
     if (old && !old.edited) old.replacedBy = f.id;
@@ -3932,6 +4128,8 @@ function renderScenes(store, firstInside, { maxChars = 9000, maxSummaries = 40, 
 }
 
 module.exports = {
+  redateText,
+  redateScenes,
   isStoryScene,
   markOocScenes,
   lastStoryScene,

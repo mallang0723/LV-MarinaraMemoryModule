@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-attribution-log.cjs
 // The dialogue check record survives later runs and a restart; model failures and hand edits keep stored values.
 // Invented names and lines only.

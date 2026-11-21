@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-attribution-said-nothing.cjs
 // English narration that says someone did NOT speak ("Viktor said nothing.") does not make them the speaker of the line
 // before it. Found by checking a room's memory against its messages; rebuilt with invented names and lines.

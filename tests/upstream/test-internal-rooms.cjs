@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-internal-rooms.cjs
 'use strict';
 // Marinara's own helper chats (Professor Mari's assistant) are not rooms: the module's room list leaves them out

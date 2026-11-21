@@ -1037,10 +1037,14 @@ function buildPrompt(ledger, batch, context = [], { routine = true } = {}) {
   const open = ledger.threads.filter((t) => t.status === 'open');
   const parts = [];
   const personas = personaNames([...context, ...batch]);
-  const cast = groupCast(ledger).filter((n) => !personas.includes(n));
+  // 세계 시뮬레이터 방: the narrator is no person; only the people these messages name (≤40, latest first).
+  const sim = ledger.mode === 'simulator';
+  const everyone = groupCast(ledger).filter((n) => !personas.includes(n));
+  const cast = sim ? require('./simulator.cjs').batchCast(everyone, [...context, ...batch], ledger.castAliases) : everyone;
+  if (sim && (ledger.narrators || []).length) parts.push(require('./simulator.cjs').narratorLine(ledger.narrators));
   if (cast.length >= 2) parts.push(`[등장인물] ${cast.join(', ')}`);
   if (personas.length) parts.push(`[사용자 캐릭터] ${personas.join(', ')}`);
-  if (personas.length || cast.length >= 2) parts.push('');
+  if (personas.length || cast.length >= 2 || (sim && (ledger.narrators || []).length)) parts.push('');
   parts.push('## 현재 장부 (열린 항목)', open.length ? open.map((t) => describeThread(t, ledger.storyDate)).join('\n') : '(비어 있음)');
   const recentlyClosed = ledger.threads
     .filter((t) => t.status === 'closed' && !t.mergedInto)
@@ -1394,17 +1398,37 @@ const ENGLISH_STOP = new Set(('a an the and or but nor of to in on at for from b
   // Words in almost any English sentence: shared, they say nothing about which scene is meant.
   + 'more most less while other others another such same own too much many few like well back way here there now '
   + 'time times thing things something nothing anything everything someone anyone everyone around through until since '
-  + 'because though although yet ever never always once already almost really quite enough first last next earlier later').split(' '));
+  + 'because though although yet ever never always once already almost really quite enough first last next earlier later '
+  // Every other preposition and joining word: shared by two lines, they matched a scene that had nothing to do with it.
+  + 'above across against along alongside amid amidst among amongst around aside atop behind below beneath beside besides between beyond '
+  + 'despite during except inside instead near nearer nearly outside past per since than toward towards upon via within throughout '
+  + 'unless whereas wherever whenever whatever whoever however therefore thus hence meanwhile otherwise else rather perhaps maybe '
+  // Pronouns and their forms, and the leftovers of contractions (don't → do, she'll → she).
+  + 'mine yours ours theirs myself yourself yourselves ourselves itself oneself whose whichever anybody somebody nobody everybody '
+  + 'somewhere anywhere nowhere everywhere somehow anyway anyways don doesn didn isn aren wasn weren hasn haven hadn won wouldn shouldn '
+  + 'couldn can cannot ain let\'s '
+  // Little talk and the verbs of saying, looking and being that fill every role-play line.
+  + 'yes yeah yep nope okay ok oh ah uh um hmm hey hi hello please thanks thank sorry well right sure fine '
+  + 'say says said saying tell tells told ask asks asked reply replied answer answered speak spoke spoken talk talked '
+  + 'go goes going gone went come comes coming came take takes took taken give gives gave given put puts keep keeps kept '
+  + 'look looks looked looking see sees saw seen seem seems seemed know knows knew known think thinks thought '
+  + 'want wants wanted need needs needed feel feels felt try tries tried turn turns turned become became begin began '
+  + 'there\'s here\'s that\'s what\'s it\'s').split(' '));
+// Contraction endings: "don't", "she'll", "I'm", "you've" keep only the word in front (then the stop list decides).
+const CONTRACTION = /(?:n't|'(?:s|re|ve|ll|d|m|t))$/;
 
 /** Content words of an English text, lowercased and with a plain ending (bites/bitten/biting → bit…), names left out. */
 function englishWords(text, names = []) {
   let rest = String(text || '');
   for (const name of names) if (name) rest = rest.split(name).join(' ');
   const out = new Set();
-  for (const w of rest.toLowerCase().match(/[a-z']+/g) || []) {
-    if (w.length < 3 || ENGLISH_STOP.has(w)) continue;
-    const stem = w.replace(/'s$/, '').replace(/(?:ing|ed|es|s)$/, '');
-    if (stem.length >= 3) out.add(stem);
+  // Curly and back quotes are apostrophes too ("don’t" is one word, not "don" and "t").
+  for (const raw of rest.toLowerCase().replace(/[’‘`ʼ]/g, "'").match(/[a-z']+/g) || []) {
+    const w = raw.replace(/^'+|'+$/g, '').replace(CONTRACTION, '');
+    if (w.length < 3 || w.includes("'") || ENGLISH_STOP.has(w)) continue;
+    const stem = w.replace(/(?:ing|ed|es|s)$/, '');
+    // "others" → "other", "things" → "thing": a plain form that is a little word is left out too.
+    if (stem.length >= 3 && !ENGLISH_STOP.has(stem)) out.add(stem);
   }
   return out;
 }
@@ -1687,14 +1711,38 @@ function hedged(text) {
 
 const WEEKDAYS = '일월화수목금토';
 
+/**
+ * A two-digit year as a full one: the century of the story's day (`base`) that puts it nearest that day, so in a
+ * story of 1766 "66-08-19" is 1766, not 2066. Without a known day, 20xx.
+ */
+function fullYear(two, base = null) {
+  const yy = Number(two);
+  const by = base ? Number(String(base).slice(0, 4)) : NaN;
+  if (!Number.isFinite(by)) return 2000 + yy;
+  const c = Math.floor(by / 100) * 100;
+  return [c - 100 + yy, c + yy, c + 100 + yy].sort((a, b) => Math.abs(a - by) - Math.abs(b - by))[0];
+}
+
+/** "24-10-18" for showing a day of 20xx; any other year is written in full ("1766-08-19"), so it reads back the same. */
+function shortDay(iso) {
+  return /^20\d{2}-/.test(String(iso || '')) ? String(iso).slice(2) : String(iso || '');
+}
+
 /** "24-10-18" / "2024-10-18" / "10-18" (year from `base`) → "2024-10-18", or null. */
 function isoDate(text, base = null) {
   const m = String(text || '').match(/(?:(\d{2}|\d{4})[-./])?(\d{1,2})[-./](\d{1,2})/);
   if (!m) return null;
-  const year = m[1] ? (m[1].length === 2 ? 2000 + Number(m[1]) : Number(m[1])) : base ? Number(base.slice(0, 4)) : null;
+  const year = m[1] ? (m[1].length === 2 ? fullYear(m[1], base) : Number(m[1])) : base ? Number(base.slice(0, 4)) : null;
   if (!year) return null;
   const d = new Date(Date.UTC(year, Number(m[2]) - 1, Number(m[3])));
+  if (year < 100) d.setUTCFullYear(year);
   return Number.isNaN(d.getTime()) || d.getUTCMonth() !== Number(m[2]) - 1 || d.getUTCDate() !== Number(m[3]) ? null : d.toISOString().slice(0, 10);
+}
+
+/** "2024-03-01", "1766.8.19", "2024/3/1" with a full year → "2024-03-01", or null (a date the user typed in). */
+function isoDateStrict(text) {
+  const m = String(text || '').trim().match(/^(\d{3,4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})\s*일?$/);
+  return m ? isoDate(`${m[1].padStart(4, '0')}-${m[2]}-${m[3]}`) : null;
 }
 
 function addDays(iso, days) {
@@ -1703,14 +1751,18 @@ function addDays(iso, days) {
   return d.toISOString().slice(0, 10);
 }
 
-/** The newest in-story date in a header like "§RP | 24-10-18 (금) | 11:15 | …§". */
+/**
+ * The story's day as of the last message that shows one (a header like "§RP | 24-10-18 (금) | 11:15 | …§", or the
+ * tracker's date). The last one, not the latest: a story that goes back in time, or a tracker that puts a wrong
+ * start right, is where the story is now.
+ */
 function storyDate(messages, base = null) {
   let latest = null;
   for (const m of messages || []) {
-    const own = dateInText(m.content, latest || base);
-    const found = !!own;
-    if (own && (!latest || own.date > latest)) latest = own.date;
-    if (!found && m.clock?.date && (!latest || m.clock.date > latest)) latest = m.clock.date;
+    // clockOnly: a date set by hand, or a room that reads dates from the tracker only (its clock already says).
+    const own = m.clockOnly ? null : dateInText(m.content, latest || base);
+    if (own) latest = own.date;
+    else if (m.clock?.date) latest = m.clock.date;
   }
   return latest;
 }
@@ -1733,6 +1785,12 @@ function dateLine(line, base = null) {
   // An English line with many words around the date is a sentence that mentions it, not a date line.
   if ((t.match(/\b[a-z]{2,}\b/g) || []).filter((w) => !/^(?:am|pm|at|of|the|on|and|in|st|nd|rd|th)$/.test(w)).length > 4) return null;
   const c = parseClock(t, base);
+  // Eight digits as the only sign of a day, under another label and with no time ("금화|20241018", "💰 금화 20241018"):
+  // an amount, however much it looks like a day. "📅 20241018", "날짜: 20241018" or "20241018 19:25" are days.
+  if (c?.date && !c.time && /(?<!\d)\d{8}(?!\d)/.test(t) && !WEEKDAY_WORD.test(t) && !/\d{4}\s*년|\d{2,4}[-./]\d{1,2}[-./]\d{1,2}/.test(t)) {
+    const rest = t.replace(/(?<!\d)\d{8}(?!\d)/, '').replace(/날짜|일자|작중|오늘|\bdate\b|\bday\b|\brp\b/gi, '');
+    if (/\p{L}/u.test(rest)) return null;
+  }
   return c?.date ? c : null;
 }
 
@@ -1756,6 +1814,12 @@ function dateInText(content, base = null) {
     if (at < 0) continue;
     const c = parseClock(fields[at], base);
     const time = c.time || fields.slice(at + 1, at + 3).map((f) => parseClock(f)).find((x) => x?.time && !x.date)?.time || null;
+    // "3/10" or "4.5" alone is a score as often as a day ("[서아|3/10|기분 좋음]", "[호감도|4.5]"): a day only with a
+    // year, a month word ("3월 10일", "Mar 10") or a time beside it.
+    if (/^\d{1,2}\s*[-./]\s*\d{1,2}$/.test(fields[at]) && !time) continue;
+    // Eight digits alone ("20241018") under a label that is not a date's ("[금화|20241018]") is an amount, however
+    // much it looks like a day: a day when it leads the bracket, follows a date label (RP, 날짜, 📅), or has a time.
+    if (/^\d{8}$/.test(fields[at]) && !time && at > 0 && !/^(?:rp|날짜|일자|작중|date|day|\p{Extended_Pictographic})/iu.test(fields[0])) continue;
     take({ date: c.date, time });
   }
   // A numeric date with its weekday in brackets is a header wherever it stands, even inline before a line of
@@ -1822,11 +1886,14 @@ function parseClock(text, base = null) {
   if (compact) date = isoDate(`${compact[1]}-${compact[2]}-${compact[3]}`);
   const ko = raw.match(/(?:(\d{2}|\d{4})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일(?!\s*차)/);
   if (!date && ko) date = isoDate(`${ko[1] ? `${ko[1]}-` : ''}${ko[2]}-${ko[3]}`, base);
+  const cjk = !date && raw.match(/(?:(\d{4})\s*年\s*)?(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+  if (cjk) date = isoDate(`${cjk[1] ? `${cjk[1]}-` : ''}${cjk[2]}-${cjk[3]}`, base);
   if (!date) {
     // English: "October 18, 2024", "Oct 18th", "18 October 2024", "Fri, Oct 18 2024".
     const month = (m) => MONTHS.findIndex((x) => m.toLowerCase().startsWith(x)) + 1;
-    const mdy = raw.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s*(\d{4}))?/i);
-    const dmy = raw.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?(?:,?\s*(\d{4}))?/i);
+    // Also "the 2nd of March" and "March the 2nd".
+    const mdy = raw.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s*(\d{4}))?/i);
+    const dmy = raw.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?(?:,?\s*(\d{4}))?/i);
     if (mdy) date = isoDate(`${mdy[3] ? `${mdy[3]}-` : ''}${month(mdy[1])}-${mdy[2]}`, base);
     else if (dmy) date = isoDate(`${dmy[3] ? `${dmy[3]}-` : ''}${month(dmy[2])}-${dmy[1]}`, base);
   }
@@ -1850,14 +1917,32 @@ function parseClock(text, base = null) {
 }
 
 /**
+ * A story-day counter in a tracker's date: "Day 3", "Day 3 of spring", "D+3", "3일차", "3일째", "제3일", "the 3rd day".
+ * Its number, or null. It is not a calendar date: the date it means is counted from a day whose date is known.
+ */
+function dayCounter(text) {
+  const t = String(text || '');
+  const m = t.match(/\bday\s*#?\s*(\d{1,4})\b/i) || t.match(/\bD\s*\+\s*(\d{1,4})\b/) || t.match(/(\d{1,4})\s*일\s*(?:차|째)/) || t.match(/제\s*(\d{1,4})\s*일/) || t.match(/\b(\d{1,4})(?:st|nd|rd|th)\s+day\b/i) || t.match(/第\s*(\d{1,4})\s*[天日]/);
+  return m ? Number(m[1]) : null;
+}
+
+const WEEKDAY_NAMES = [/\bsun(?:day)?\b|일요일/i, /\bmon(?:day)?\b|월요일/i, /\btue(?:s|sday)?\b|화요일/i, /\bwed(?:nesday)?\b|수요일/i, /\bthu(?:r|rs|rsday)?\b|목요일/i, /\bfri(?:day)?\b|금요일/i, /\bsat(?:urday)?\b|토요일/i];
+/** The weekday a tracker's date names ("Saturday", "토요일"), 0 = Sunday, or null (none, or more than one). */
+function weekdayOf(text) {
+  const hits = WEEKDAY_NAMES.map((re, i) => (re.test(String(text || '')) ? i : -1)).filter((i) => i >= 0);
+  return hits.length === 1 ? hits[0] : null;
+}
+
+/**
  * " (작중 24-10-18 (금) 14:00 · 날씨: 비)" after a speaker name: the story date from a tracker (when the message has
  * no date line of its own) and the tracker's weather.
  */
 function clockNote(message) {
   const c = message?.clock;
   const parts = [];
-  if ((c?.date || c?.time) && !dateInText(message.content, c?.date || null)) {
-    const day = c.date ? `${c.date.slice(2)} (${WEEKDAYS[new Date(`${c.date}T00:00:00Z`).getUTCDay()]})` : '';
+  if ((c?.date || c?.time || c?.label) && (message.clockOnly || !dateInText(message.content, c?.date || null))) {
+    // A tracker date that could not be read as a calendar day is passed on in its own words (not an older date).
+    const day = c.date ? `${shortDay(c.date)} (${WEEKDAYS[new Date(`${c.date}T00:00:00Z`).getUTCDay()]})` : c.label || '';
     parts.push(`작중 ${[day, c.time].filter(Boolean).join(' ')}`);
   }
   if (message?.weather) parts.push(`날씨: ${message.weather}`);
@@ -1882,7 +1967,7 @@ function notAMeal(text) {
 function storyTime(messages, base = null) {
   let latest = null;
   for (const m of messages || []) {
-    const own = dateInText(m.content, latest?.slice(0, 10) || base);
+    const own = m.clockOnly ? null : dateInText(m.content, latest?.slice(0, 10) || base);
     const found = !!own;
     // A date line without a time takes the tracker's time when the tracker is on the same day.
     const time = own?.time || (own && m.clock?.date === own.date ? m.clock.time : null);
@@ -2257,6 +2342,8 @@ function drugName(text) {
   return String(text || '약').replace(/\s*(한|두|세|네|\d+)\s*(알|정|캡슐|포|봉|번|mg|ml).*$/i, '').replace(/\s+/g, '').slice(0, 20) || '약';
 }
 
+// Records older than this (no newer one for the person) are not counted from: the story moved on without them.
+const ROUTINE_STALE_HOURS = 24;
 function renderRoutine(ledger, now = null, { only = null } = {}) {
   // Nothing that happens after "now" (an older prompt preview, or a reroll further back) is counted.
   // A hand-added entry always counts: the person put it there on purpose.
@@ -2270,6 +2357,14 @@ function renderRoutine(ledger, now = null, { only = null } = {}) {
   for (const who of people) {
     // A picked person with nothing recorded yet: said so plainly (not as a row of "no record" notes).
     if (chosen && !all.some((r) => r.who === who)) { lines.push(`- ${who}: 기록 없음`); continue; }
+    // Nothing written down for a day or more (the story skipped days or months, or they were away): the old
+    // records say nothing about now. Counted from them, the model was told they had not eaten for 60 days, or had
+    // slept for 60 days, and played it.
+    const lastAt = all.filter((r) => r.who === who && r.at).map((r) => r.at).sort().at(-1);
+    if (now && lastAt && Date.parse(`${now}:00Z`) - Date.parse(`${lastAt}:00Z`) >= ROUTINE_STALE_HOURS * 3600000) {
+      lines.push(`- ${who}: ${clock(lastAt, today)} 이후 기록 없음(그사이 시간이 흘렀거나 건너뛰었을 뿐이니, 굶었거나 계속 잤다고 여기지 마)`);
+      continue;
+    }
     const of = (what) => all.filter((r) => r.who === who && r.what === what);
     // Times they were plainly up: a sleep can't have run through these.
     const awake = all.filter((r) => r.who === who && ['meal', 'wash', 'groom', 'medicine'].includes(r.what) && r.at).map((r) => r.at);
@@ -2399,7 +2494,7 @@ function dawnFix(value, item, evidence, batch) {
 
 function dayLabel(iso) {
   const d = new Date(`${iso}T00:00:00Z`);
-  return `${iso.slice(2)} (${WEEKDAYS[d.getUTCDay()]})`;
+  return `${shortDay(iso)} (${WEEKDAYS[d.getUTCDay()]})`;
 }
 
 /** "24-10-18 (금)~24-10-20 (일), 지금 1/3일째" — the day count comes from the newest story date read. */
@@ -2446,7 +2541,7 @@ function beginBatch(ledger, firstIndex) {
 function commitBatch(ledger, batch) {
   for (const message of batch) ledger.processed.push({ id: message.id, h: message.h, ...(message.c ? { c: message.c } : {}) });
   const date = storyDate(batch);
-  if (date && (!ledger.storyDate || date > ledger.storyDate)) ledger.storyDate = date;
+  if (date) ledger.storyDate = date;
   const time = storyTime(batch);
   if (time && (!ledger.storyTime || time > ledger.storyTime)) ledger.storyTime = time;
   const last = batch.at(-1)?.number;
@@ -2856,6 +2951,12 @@ module.exports = {
   formatPeriod,
   storyDate,
   parseClock,
+  isoDateStrict,
+  fullYear,
+  shortDay,
+  addDays,
+  dayCounter,
+  weekdayOf,
   deadlineOf,
   deadlineList,
   verifiedBefore,

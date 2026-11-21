@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // node --test tests/test-alias-text.cjs
 // An alias that a merge left in running text can be written as a form the user types: running text only, never quoted

@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-attribution-followup.cjs
 // Follow-up cases to the live dialogue check of 0.11.43, rebuilt with invented names and lines only: narration
 // that only mentions someone, saved lines asked again, a role named later, second questions, the check record,

@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // An author plan's hidden line ("mystery") must not carry the plan's answer; a plan whose line cannot be written is
 // left bare and not asked again and again. (Invented names.)

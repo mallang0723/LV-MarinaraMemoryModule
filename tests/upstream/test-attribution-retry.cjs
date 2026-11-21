@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 const assert = require('node:assert/strict');
 const S = require('../../src/memory/core/scenes.generated.cjs');
 const q={number:1,sentence:1,text:'"안녕하세요."',by:null,to:null,attributionChecked:7};

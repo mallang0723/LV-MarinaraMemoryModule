@@ -1,16 +1,16 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
-// The library's seven tabs: every old screen is still there as a sub-tab, and the new screens and tools are wired.
+// The library's eight tabs (the eighth, 세계관, shows only while World Archive answers): every old screen is still there as a sub-tab, and the new screens and tools are wired.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../../src/memory/ui/runtime.orig.js'), 'utf8').replace(/\r\n/g, '\n');
 
-test('seven tabs hold every screen; the new ones are in VIEWS', () => {
+test('eight tabs hold every screen (세계관 only with World Archive); the new ones are in VIEWS', () => {
   const groups = source.slice(source.indexOf('  const GROUPS = ['), source.indexOf('  ];', source.indexOf('  const GROUPS = [')));
-  assert.equal((groups.match(/^\s+\['[a-z]+', '/gm) || []).length, 7);
-  for (const view of ['home', 'timeline', 'lines', 'scenes', 'setup', 'person', 'facts', 'notebook', 'world', 'names', 'ledger', 'promises', 'life', 'search', 'inject', 'settings']) {
+  assert.equal((groups.match(/^\s+\['[a-z]+', '/gm) || []).length, 8);
+  for (const view of ['home', 'timeline', 'lines', 'scenes', 'setup', 'person', 'facts', 'notebook', 'world', 'names', 'ledger', 'promises', 'life', 'search', 'inject', 'settings', 'worldarchive']) {
     assert.match(groups, new RegExp(`'${view}'`), `${view} is in a tab`);
   }
   assert.match(source, /const VIEWS = \{ timeline: viewTimeline, lines: viewLines, person: viewPerson,/);
@@ -32,7 +32,8 @@ test('home: version notice, things to fix, day counts, recent changes, cost; sea
 });
 
 test('the person page shows a foreign term with its Korean translation as one, like the names tab', () => {
-  const person = source.slice(source.indexOf('  function viewPerson() {'), source.indexOf('\n  }\n', source.indexOf('  function viewPerson() {')));
+  // 0.38.0: the one-person page is 「자세히」 under a card (personDetail)
+  const person = source.slice(source.indexOf('  function personDetail(p) {'), source.indexOf('\n  }\n', source.indexOf('  function personDetail(p) {')));
   assert.match(person, /x\.id === e\.pairWith\); return t \? `\$\{e\.term\}\(\$\{t\.term\}\)` : e\.term;/);
   assert.match(person, /!\(e\.pairOf && allCalls\.some\(\(x\) => x\.id === e\.pairOf\)\)/);
   assert.match(person, /“\$\{esc\(callLabel\(e\)\)\}”/);

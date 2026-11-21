@@ -6,9 +6,10 @@
 import { createHash } from 'node:crypto';
 import { replaceAnchor, replaceRange } from '../../patch-util.mjs';
 
-export const RUNTIME_SHA256 = '2eaf1e63c77ad831f0c34876a2f746ddb97765da6254b3cbd361f7c19c581c0f';
+export const RUNTIME_SHA256 = '66845fe9d3bf3e6e6ada7b7cdc3ab6933b4b7dceab05bd70f3739b7f4e0afba6';
+export const WORLD_PANEL_SHA256 = '655caf69eadb9efbf725b5fb9ffaf37f7150df4152091916fe6fc78c54d3d832';
 
-export function patchMemory({ runtime, uiCss, themeCss, version }) {
+export function patchMemory({ runtime, uiCss, themeCss, version, worldPanel = '' }) {
     const sha = createHash('sha256').update(runtime).digest('hex');
     if (sha !== RUNTIME_SHA256) throw new Error(`memory screen original changed: sha256 ${sha} != pinned ${RUNTIME_SHA256}`);
     let s = runtime;
@@ -56,25 +57,12 @@ export function patchMemory({ runtime, uiCss, themeCss, version }) {
         return;
       }
       if (['setWriteLang', 'setMemLang', 'setTrConn', 'setTrQuotes'].includes(e.target.id))`, { name: 'save fallback memory window' });
-    // 기억 검색: the stored memory is English while the library shows Korean (the translation cache), so searching "테오" found nothing although the Korean view shows 테오.
-    // (Upstream 8d5f090 searches only the stored text, same gap.) Now a record also matches on the Korean text the screen shows for it, and a typed name/term also matches its other
-    // spellings from the name table (canonical name, 글에 쓸 표기, aliases) and the 호칭 사전 원어(번역) pairs. One result per record; the excerpt comes from the text that matched.
+    // 기억 검색: upstream 0.35.3 now also finds an English/Chinese memory by its Korean translation (withKoText in searchableText, the quote lines' own
+    // translation), which is what this port used to add itself (1.2.0-lv.2); that part is dropped and the original's is used as it is. What upstream
+    // still lacks stays here: a typed name/term also matches its other spellings from the name table (canonical name, 글에 쓸 표기, aliases) and the
+    // 호칭 사전 원어(번역) pairs ("테오" finds "Teo" even where no translation is cached). One result per record; the excerpt comes from the text that matched.
     s = replaceAnchor(s, "const needsNames = () => ['names', 'life', 'person'].includes(tab);", "const needsNames = () => ['names', 'life', 'person', 'search'].includes(tab);", { name: 'search needs the name table' });
-    s = replaceRange(s, '  function searchableText(value) {', '  /** Every quoted line of the room, as a record of its own', `  function searchableText(value, translated = false) {
-    if (value == null) return '';
-    const leaf = (x) => (translated ? shown(x) : x);
-    if (Array.isArray(value)) return value.map((x) => searchableText(x, translated)).filter(Boolean).join(' ');
-    if (typeof value !== 'object') return leaf(String(value));
-    const parts = [];
-    for (const [k, v] of Object.entries(value)) {
-      if (v == null) continue;
-      if (SEARCH_TEXT.has(k)) parts.push(Array.isArray(v) ? v.filter((x) => typeof x === 'string').map(leaf).join(' ') : typeof v === 'string' ? leaf(v) : '');
-      else if (SEARCH_NESTED.has(k)) parts.push(searchableText(v, translated));
-    }
-    return parts.filter(Boolean).join(' ').replace(/\\s+/g, ' ');
-  }
-
-  /** What to look for: the typed text plus the same person/term under its other spellings (name table, 호칭 사전 pairs, cached translations of a bare name). */
+    s = replaceAnchor(s, '  /** Every quoted line of the room, as a record of its own', `  /** What to look for: the typed text plus the same person/term under its other spellings (name table, 호칭 사전 pairs, cached translations of a bare name). */
   function searchVariants(raw) {
     const low = (x) => String(x ?? '').trim().toLocaleLowerCase();
     const q = low(raw);
@@ -96,14 +84,13 @@ export function patchMemory({ runtime, uiCss, themeCss, version }) {
     return out;
   }
 
-`, 'search text and variants');
+  /** Every quoted line of the room, as a record of its own`, { name: 'search variants' });
     s = replaceRange(s, '    if (query) for (const [label, kind, records] of groups) for (const record of records) {', '    return `<h1>기억 검색</h1>', `    const variants = searchVariants(searchQuery);
     const find = (text) => { const lower = text.toLocaleLowerCase(); let best = null; for (const v of variants) { const i = lower.indexOf(v); if (i >= 0 && (!best || i < best.at)) best = { at: i, length: v.length }; } return best; };
     if (query) for (const [label, kind, records] of groups) for (const record of records) {
       if (searchWho !== 'all' && !mentions(record, searchWho)) continue;
-      let text = kind === 'quote' ? shown(record.text) : searchableText(record, true);
-      let hit = find(text);
-      if (!hit) { text = kind === 'quote' ? record.text : searchableText(record); hit = find(text); }
+      const text = kind === 'quote' ? record.text : searchableText(record);
+      const hit = find(text);
       if (!hit) continue;
       const start = Math.max(0, hit.at - 45);
       const end = hit.at + hit.length + 110;
@@ -234,6 +221,19 @@ export function patchMemory({ runtime, uiCss, themeCss, version }) {
         if (!confirm('이 방의 기억 모델 호출 합계를 비웁니다. 계속할까요?')) return;
         return act(async () => { meterData = await api('POST', '/api/ext/meter/' + chat + '/reset', {}); meterRoom = room; }, '이 방의 토큰 합계를 비웠습니다.');
       case 'factPickClear':`, { name: 'meter handlers' });
+    // 세계관 설정집 연동 v2 (0.37+): the 「세계관」 tab asks World Archive's server with a bare fetch. Lumiverse has no World Archive, so these
+    // go through the shim like every other request: the backend answers 404, the screen's own check then hides the tab (what the original
+    // does for a Marinara without World Archive) and nothing leaves the page.
+    s = replaceAnchor(s, "const r = await fetch('/api/world-archive/status', {", "const r = await LV.fetch('/api/world-archive/status', {", { name: 'world status fetch' });
+    s = replaceAnchor(s, "const get = async (p) => { const r = await fetch(p, {", "const get = async (p) => { const r = await LV.fetch(p, {", { name: 'world get fetch' });
+    s = replaceAnchor(s, "const send = async (method, p, body) => { const r = await fetch(p, {", "const send = async (method, p, body) => { const r = await LV.fetch(p, {", { name: 'world send fetch' });
+    // The original's build.py appends vendor/world-panel.js (World Archive's screen, byte-pinned as world-panel.orig.js) wrapped exactly like this,
+    // plus `fetch` going through the shim. It only registers __memoryWorldPanel; it never starts on its own.
+    if (worldPanel) {
+        const panelSha = createHash('sha256').update(worldPanel).digest('hex');
+        if (panelSha !== WORLD_PANEL_SHA256) throw new Error(`world panel original changed: sha256 ${panelSha} != pinned ${WORLD_PANEL_SHA256}`);
+        s = replaceAnchor(s, '  install();\n  host.onCleanup?.(cleanup);\n})();', () => '  /* 세계관 설정집 화면 (연동 v2 · 세계관 칸) */\n  (() => {\n    const fetch = (input, init) => LV.fetch(input, init);\n    const __WORLD_ARCHIVE_EMBEDDED__ = true;\n' + worldPanel + '\n  })();\n  install();\n  host.onCleanup?.(cleanup);\n})();', { name: 'world panel embed' });
+    }
     // return a handle instead of installing at evaluation time
     s = replaceAnchor(s, '  install();\n  host.onCleanup?.(cleanup);\n})();', '  install();\n  host.onCleanup?.(cleanup);\n  return { toggle: () => LV.toggle(), open: () => { if (!open) LV.toggle(); }, close: closeLibrary, isOpen: () => open, dispose: cleanup, setRoom: id => { room = id; } };\n}', { name: 'iife close' });
     return s;

@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-speech-marks.cjs
 // 페르소나 말 표시: marks around the user's character's words that stand for a language ("…" English, […] Italian),
 // rules that change from a message on, lines saved with their language, and the language said in the memory.

@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // Ledger fixes: the recalled "그 뒤" lines say who does not know; the scene id at the end of a closing reason is
 // stripped exactly; OOC tidying leaves hand-fixed items alone and keeps what a secret was; "done" words count only in the

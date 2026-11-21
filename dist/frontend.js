@@ -644,7 +644,7 @@ function attachSummarizationFrontend(ctx, { fetch: fetchSetting = globalThis.fet
 
 // src/memory/ui/runtime.generated.js
 function mountMemory(marinara, LV) {
-  const VERSION = "1.4.2-lv.3";
+  const VERSION = "1.5.0-lv.1";
   const UI_CSS = `:host{all:initial;color:#34374b;font:14px/1.65 "Pretendard","Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--im-accent:#7777c8;--im-ink:#34374b;--im-muted:#8e91a6;--im-line:#e9e9f2;--im-paper:#fff;--im-canvas:#f5f5fb;--im-soft:#eeeefa}
 *{box-sizing:border-box}button,input,select,textarea{font:inherit}button{cursor:pointer;color:inherit;border:1px solid var(--im-line);background:var(--im-paper);padding:9px 14px;border-radius:11px;transition:background .15s,transform .15s,box-shadow .15s}button:hover{background:var(--im-soft)}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #aaa7e5;outline-offset:3px}.icon{width:19px;height:19px;flex:none;display:inline-block;vertical-align:middle}#launch{position:fixed;right:20px;bottom:126px;z-index:2147483600;display:flex;align-items:center;gap:8px;color:#fff;background:#7777c8;border:0;border-radius:24px;padding:11px 19px;box-shadow:0 7px 20px #7777c84d}#backdrop{position:fixed;inset:0;background:#20233654;z-index:2147483601}#panel{position:fixed;z-index:2147483602;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1320px,96vw);height:min(900px,91vh);display:grid;grid-template-columns:192px minmax(0,1fr) 224px;background:var(--im-paper);border-radius:26px;box-shadow:0 25px 100px #25254435;overflow:hidden}#panel[hidden],[hidden]{display:none!important}
 .sidebar{display:flex;flex-direction:column;padding:30px 18px 20px;border-right:1px solid var(--im-line);min-width:0}.brand{display:flex;align-items:center;gap:10px;padding:0 12px 30px;color:var(--im-accent);font-size:18px;font-weight:750;letter-spacing:-.8px}.brand .icon{width:27px;height:27px}.brand small{display:block;white-space:nowrap;font:7px/1.8 ui-monospace,monospace;letter-spacing:1.3px;color:#a8a6bd}.nav-label{font-size:9px;letter-spacing:1.8px;color:#b2b1c2;padding:13px 14px 9px}nav{display:flex;flex-direction:column;gap:6px}nav button{display:flex;gap:11px;align-items:center;border:0;background:transparent;text-align:left;font-size:12px;padding:11px 13px;border-radius:10px;color:#9291aa}nav button.selected{background:#eeeeFA;color:#6d69b4;font-weight:700}nav button .icon{width:17px;height:17px}.side-bottom{margin-top:auto;padding-top:26px;display:grid;gap:10px}.side-bottom button{font-size:11px;border:0;display:flex;align-items:center;gap:8px;background:#f7f7fb}.side-bottom small{font-size:9px;color:#b0aec0;padding-left:10px}
@@ -1173,6 +1173,14 @@ pre{font-size:12.5px!important;line-height:1.85!important}
 /* 페르소나 말 표시: one row per mark (start message, mark, language) */
 .speech-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:6px 0}.speech-row label{flex:1 1 110px;min-width:0}.speech-row input,.speech-row select{width:100%}.speech-row button{flex:none}
 .speech-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+/* 0.38.0 인물별 카드 (시안 B): 두 구역 — 설정집에서 · 이 방의 기억 */
+.person-card h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.person-card .person-more{margin-left:auto;font-size:11px}
+.person-zone{font-size:10px!important;letter-spacing:2px!important;margin:12px 0 4px!important}.person-zone:after{max-width:220px}
+.person-card .world-field>span{flex:0 0 76px}.person-card .world-field input[readonly]{cursor:default}
+.wf-caps{display:flex;gap:6px;flex-wrap:wrap;flex:1}.wf-cap{display:inline-block;padding:3px 10px;border:1px solid var(--im-ink);border-radius:999px;font-size:11px;white-space:nowrap}
+.person-detail{margin:12px 0 4px}
+/* 0.38.0 세계관 칸의 오른쪽 칸(설정집 패널 railHtml): 「인물」 아래 줄에 「동물 2 포함」 */
+.rail-stat>span{font-size:13px;line-height:1.5;color:var(--t-ink)}.rail-stat>span small{display:block;font-size:11px!important;color:var(--t-muted)!important}
 `;
   const host = typeof marinara === "object" ? marinara : globalThis.marinara || {};
   const BASE = "/api/memory-module";
@@ -1197,6 +1205,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     ["todo", "할 일", "note", ["ledger", "promises", "life"]],
     ["search", "검색", "search", ["search"]],
     ["inject", "주입 확인", "search", ["inject"]],
+    ["worldarchive", "세계관", "globe", ["worldarchive"]],
     ["settings", "설정", "settings", ["settings"]]
   ];
   const SUBTAB = { timeline: "시간순", lines: "줄기", scenes: "장면·챕터", setup: "배경 설정", person: "인물별", facts: "알게 된 사실", notebook: "수첩", world: "상태·장소·물건", names: "이름 정리", ledger: "끝나지 않은 일", promises: "약속", life: "최근 생활" };
@@ -1318,7 +1327,8 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       settings: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="10" cy="18" r="2"/>',
       close: '<path d="m6 6 12 12M6 18 18 6"/>',
       refresh: '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 6a8 8 0 0 1 14 6M4 12a8 8 0 0 0 14 6"/>',
-      spark: '<path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z"/>'
+      spark: '<path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z"/>',
+      globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'
     };
     return `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.note}</svg>`;
   }
@@ -1754,7 +1764,6 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       try {
         if (!busy) {
           if (was) {
-            store = null;
             storeRoom = "";
             await loadRoom(room);
           } else {
@@ -1793,6 +1802,34 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       schedulePoll();
     }, was || info?.translationPrep?.working || info?.displayTranslating || info?.notebookJob?.state === "running" ? 3000 : 1e4);
   }
+  let foldTab = "";
+  function foldKeys(content) {
+    const seen = new Map;
+    if (typeof content?.querySelectorAll !== "function")
+      return [];
+    return [...content.querySelectorAll("details") || []].map((d) => {
+      const summary = d.querySelector(":scope > summary");
+      const own = Object.entries(d.dataset).find(([k, v]) => v && k !== "act")?.join(":");
+      const words = (own || summary?.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120);
+      const n = (seen.get(words) || 0) + 1;
+      seen.set(words, n);
+      return [d, `${words}#${n}`];
+    });
+  }
+  function foldState(content) {
+    if (foldTab !== tab) {
+      foldTab = tab;
+      return null;
+    }
+    return new Map(foldKeys(content).map(([d, key]) => [key, d.open]));
+  }
+  function restoreFolds(content, folds) {
+    if (!folds?.size)
+      return;
+    for (const [d, key] of foldKeys(content))
+      if (folds.has(key) && d.open !== folds.get(key))
+        d.open = folds.get(key);
+  }
   function editing() {
     const el = root?.activeElement;
     return Boolean(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
@@ -1815,7 +1852,6 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       if (done)
         notice = done;
       if (options.reload !== false) {
-        store = null;
         storeRoom = "";
         await loadRoom(room);
       }
@@ -2055,22 +2091,25 @@ pre{font-size:12.5px!important;line-height:1.85!important}
   }
   const SEARCH_TEXT = new Set(["title", "summary", "text", "why", "time", "place", "weather", "what", "kept", "detail", "cause", "need", "about", "who", "toward", "by", "to", "how", "turns", "keep", "present"]);
   const SEARCH_NESTED = new Set(["events", "quotes", "loose", "recollections", "later", "learned", "latest", "closed", "evidence", "clues"]);
-  function searchableText(value, translated = false) {
+  const withKoText = (text) => {
+    const k = ko(text);
+    return k ? `${text} ${k}` : text;
+  };
+  function searchableText(value) {
     if (value == null)
       return "";
-    const leaf = (x) => translated ? shown(x) : x;
     if (Array.isArray(value))
-      return value.map((x) => searchableText(x, translated)).filter(Boolean).join(" ");
+      return value.map(searchableText).filter(Boolean).join(" ");
     if (typeof value !== "object")
-      return leaf(String(value));
+      return withKoText(String(value));
     const parts = [];
     for (const [k, v] of Object.entries(value)) {
       if (v == null)
         continue;
       if (SEARCH_TEXT.has(k))
-        parts.push(Array.isArray(v) ? v.filter((x) => typeof x === "string").map(leaf).join(" ") : typeof v === "string" ? leaf(v) : "");
+        parts.push(Array.isArray(v) ? v.filter((x) => typeof x === "string").map(withKoText).join(" ") : typeof v === "string" ? withKoText(v) : "");
       else if (SEARCH_NESTED.has(k))
-        parts.push(searchableText(v, translated));
+        parts.push(searchableText(v));
     }
     return parts.filter(Boolean).join(" ").replace(/\s+/g, " ");
   }
@@ -2120,7 +2159,8 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       for (const e of sc.events || [])
         for (const q of e.quotes || []) {
           const l = quoteLine(q);
-          out.push({ id: sc.id, title: `${sc.id} · ${l.who}`, text: l.text, people: [q.by, q.to].filter(Boolean) });
+          const korean = q.translation ? null : ko(q.text);
+          out.push({ id: sc.id, title: `${sc.id} · ${l.who}`, text: korean ? `${l.text} (${korean})` : l.text, people: [q.by, q.to].filter(Boolean) });
         }
     return out;
   }
@@ -2157,12 +2197,8 @@ pre{font-size:12.5px!important;line-height:1.85!important}
         for (const record of records) {
           if (searchWho !== "all" && !mentions(record, searchWho))
             continue;
-          let text = kind === "quote" ? shown(record.text) : searchableText(record, true);
-          let hit = find(text);
-          if (!hit) {
-            text = kind === "quote" ? record.text : searchableText(record);
-            hit = find(text);
-          }
+          const text = kind === "quote" ? record.text : searchableText(record);
+          const hit = find(text);
           if (!hit)
             continue;
           const start = Math.max(0, hit.at - 45);
@@ -2170,7 +2206,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
           const excerpt = `${start ? "…" : ""}${text.slice(start, end)}${text.length > end ? "…" : ""}`;
           results.push(`<a href="#" class="record-link record-row" data-goto-${kind === "quote" ? "scene" : kind}="${esc(record.id)}"><span class="pill neutral">${label}</span><span class="row-main"><b>${esc(record.title || record.about || record.id)}</b><small>${esc(excerpt)}</small></span><span class="chip-arrow">›</span></a>`);
         }
-    return `<h1>기억 검색</h1><p class="intro">이 방의 장면·대사·챕터·큰 흐름·사실·미해결 기록과 닫힌 기록에서 입력한 글자를 찾습니다. 종류와 인물로 거를 수 있습니다. 결과를 누르면 해당 기록으로 이동합니다.</p>
+    return `<h1>기억 검색</h1><p class="intro">이 방의 장면·대사·챕터·큰 흐름·사실·미해결 기록과 닫힌 기록에서 입력한 글자를 찾습니다. 영어·중국어 기억은 한국어 번역으로도 찾습니다(번역이 아직 없는 기억은 원문으로만). 종류와 인물로 거를 수 있습니다. 결과를 누르면 해당 기록으로 이동합니다.</p>
       <form id="memorySearch" class="memory-search"><label for="memorySearchInput">검색어</label><div class="buttons"><input id="memorySearchInput" type="search" value="${esc(searchDraft)}" placeholder="이름, 대사, 장소 등" autocomplete="off"><button class="primary" type="submit">${icon("search")}검색</button><button type="button" data-act="clearSearch">초기화</button></div>
         <div class="buttons search-filters"><select id="searchKind" aria-label="종류로 거르기"><option value="all">모든 종류</option>${[["scene", "장면"], ["quote", "대사"], ["chapter", "챕터"], ["arc", "큰 흐름"], ["fact", "사실"], ["thread", "미해결·닫힌 기록"]].map(([k, l]) => `<option value="${k}" ${searchKind === k ? "selected" : ""}>${l}</option>`).join("")}</select>
         <select id="searchWho" aria-label="인물로 거르기"><option value="all">모든 인물</option>${personNames().map((n) => `<option value="${esc(n)}" ${searchWho === n ? "selected" : ""}>${esc(nameShown(n))}</option>`).join("")}</select></div></form>
@@ -2821,6 +2857,11 @@ pre{font-size:12.5px!important;line-height:1.85!important}
         <button data-act="aliasPreview" data-alias="${esc(a)}" data-input="${id}">글 속 표기 바꾸기</button></div>`;
     };
     const table = Object.entries(names.people || {}).filter(([, v]) => v.aliases?.length || v.display).map(([k, v]) => `<li><b>${esc(k)}</b>${v.display ? ` · 글에는 ${esc(v.display)}` : ""}${v.aliases?.length ? ` · 별칭: ${v.aliases.map(esc).join(", ")}` : ""}${v.aliases?.length ? v.aliases.map((a) => aliasRow(k, a)).join("") : ""}</li>`).join("");
+    const auto = (names.autoMerged || []).map((r) => {
+      const key = `nameAutoUndo:${r.id}`;
+      return `<div class="routine-row"><span>${esc(day(r.at))} · <b>${esc(r.source)}</b> → <b>${esc(r.target)}</b> (${r.changes}곳)${r.why ? `<br><small>단어장: ${esc(r.why)}</small>` : ""}</span>
+        <button class="ghost" data-act="nameAutoUndo" data-id="${esc(r.id)}">${armed === key ? "한 번 더 누르면 되돌립니다" : "되돌리기"}</button></div>`;
+    }).join("");
     const last = (names.history || []).at(-1);
     const history = (names.history || []).slice().reverse().map((h) => `<li>${esc(day(h.at))} · ${h.kind === "merge" ? "중복 합치기" : h.kind === "alias-text" ? "글 속 표기 바꾸기" : "이름 바꾸기"}: ${esc(h.source)} → ${esc(h.target)} (${h.changes}곳)</li>`).join("");
     return `<div class="eyebrow">NAMES</div><h1>이름 정리</h1>
@@ -2829,6 +2870,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       ${previewBox()}
       ${addressPaper(names.address, addressForm, armed, names.known || [])}
       ${form}
+      <div class="paper"><h2>자동으로 합친 이름 · ${names.autoMerged?.length || 0}건</h2><p class="hint">번역 단어장에 짝지어 둔 이름(예: Daniel = 다니엘)이 기억에 따로 저장돼 있으면 한 사람으로 자동으로 합칩니다. 남기는 이름은 기억을 정리하는 언어를 따릅니다(한국어로 정리하면 한국어 이름, 영어로 정리하면 영어 이름). 되돌리면 그 합침으로 바뀐 곳이 원래대로 돌아가고(그 뒤에 다시 고친 곳은 그대로), 그 짝은 다시 자동으로 합치지 않습니다.</p>${auto ? auto : '<p class="hint">없습니다.</p>'}</div>
       <div class="paper"><h2>같은 사람일 수 있음 · ${names.suggestions?.length || 0}건</h2><p class="hint">철자나 소리가 비슷할 뿐 확실하지 않아 자동으로 합치지 않습니다. 같은 사람이면 미리 보기 뒤 합치고, 다른 사람이면 '다른 사람'을 눌러 다시 묻지 않게 하세요.</p>${sug || '<p class="hint">없습니다.</p>'}</div>
       <div class="paper"><h2>이미 저장된 중복 · ${names.duplicates?.length || 0}명</h2><p class="hint">별칭이나 이름만 부른 형태(조사 포함)처럼 규칙으로 같은 사람인 이름이 따로 저장된 경우입니다. 합치면 기록은 하나도 버리지 않고 이야기 순서대로 모읍니다(같은 기록이 두 번 저장된 것만 하나로).</p>${dup ? `<ul>${dup}</ul><div class="buttons"><button data-act="mergePreview">중복 합치기 미리 보기</button></div>` : '<p class="hint">없습니다.</p>'}</div>
       <div class="paper"><h2>별칭 표</h2>${table ? `<ul>${table}</ul>` : '<p class="hint">아직 별칭이 없습니다.</p>'}</div>
@@ -2855,6 +2897,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     const book = a.addressBook ? `<div class="paper"><h2>호칭 사전 · ${entries.length}개</h2>
       <p class="hint">누가 누구를 어떻게 부르는지입니다. 저장된 대사에서 같은 부르는 말을 두 번 이상 쓴 것만 자동으로 올라오고(모델을 부르지 않습니다), 직접 추가한 것은 횟수와 상관없이 남습니다. ‘대사 확인에 쓰기’를 켜 둔 말은 대사의 화자·상대를 확인할 때 쓰입니다(그 말로 불린 사람은 상대이고 화자가 아님). 자동으로 올라온 항목은 다음 정리 때 대사에 맞게 다시 계산되고, 고치면 직접 추가한 것이 됩니다.</p>
       ${entries.length ? entries.map(row).join("") : '<p class="hint">아직 없습니다.</p>'}
+      ${(a.blocked || []).length ? `<details class="address-blocked" data-list="address-blocked"><summary>지운 호칭 · ${a.blocked.length}개 (다시 자동으로 만들지 않음)</summary><p class="hint">지운 호칭은 저장된 대사에 다시 나와도 자동으로 올리지 않습니다. 되살리면 다음 정리 때 대사에 있으면 다시 올라옵니다(직접 추가해도 됩니다).</p>${a.blocked.map((b) => `<div class="routine-row"><span><b>${esc(b.from)}</b> → <b>${esc(b.to)}</b>: ${esc(b.term)}</span><button class="ghost" data-act="addressUnblock" data-key="${esc(b.key)}">되살리기</button></div>`).join("")}</details>` : ""}
       <h3>${f.id ? "호칭 고치기" : "호칭 직접 추가"}</h3>
       <div class="routine-row address-form"><input id="addrFrom" list="addrPeople" value="${esc(f.from)}" placeholder="부르는 사람" aria-label="부르는 사람"><input id="addrTo" list="addrPeople" value="${esc(f.to)}" placeholder="불리는 사람" aria-label="불리는 사람"><input id="addrTerm" value="${esc(f.term)}" placeholder="부르는 말 (예: 보스)" aria-label="부르는 말"><input id="addrNote" value="${esc(f.note)}" placeholder="메모(선택)" aria-label="메모">
         <datalist id="addrPeople">${people}</datalist>
@@ -3015,6 +3058,20 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1e4);
   }
+  function datesPaper(d) {
+    if (!d)
+      return "";
+    const list = (d.fixes || []).map((f) => `<div class="routine-row"><span>메시지 ${esc(f.number)}번부터 <b>${esc(f.date)}${f.time ? ` ${esc(f.time)}` : ""}</b></span><button class="ghost" data-act="dateFixRemove" data-id="${esc(f.id)}">지우기</button></div>`).join("");
+    return `<div class="paper"><h2>작중 날짜</h2>
+      <p class="hint">지금 기억 서재가 읽은 이 방의 작중 날짜: <b>${d.today ? esc(d.today) : "모름"}</b>. 트래커나 메시지 글에서 날짜를 자동으로 읽는데, 잘못 읽었으면 여기서 바로잡을 수 있습니다. 정한 날짜는 그 메시지부터 다음 날짜가 나올 때까지 이어지고, 그 때문에 날짜가 바뀐 장면은 모델을 부르지 않고 바로 고쳐집니다.</p>
+      <label>메시지 번호<input id="dateFixNumber" type="number" min="1" inputmode="numeric" placeholder="비우면 마지막 메시지"></label>
+      <label>날짜 (연도-월-일)<input id="dateFixDate" type="text" inputmode="numeric" placeholder="예: 2024-03-01, 1766-08-19"></label>
+      <label>시각 (없어도 됨)<input id="dateFixTime" type="text" inputmode="numeric" placeholder="예: 14:30"></label>
+      <div class="buttons"><button class="primary" data-act="dateFixAdd">이 메시지부터 이 날짜로</button></div>
+      ${list ? `<h3>직접 정한 날짜</h3>${list}` : ""}
+      <label class="setting-switch"><span>메시지 글에서도 날짜 읽기<small>끄면 메시지 글(상태창 등)에 적힌 날짜는 읽지 않고, 트래커와 여기서 정한 날짜만 씁니다. 상태창의 숫자(예: 3/10)를 날짜로 잘못 읽을 때 끄세요.</small></span><input type="checkbox" id="setDatesFromText" ${d.fromText !== false ? "checked" : ""}></label>
+    </div>`;
+  }
   function viewSettings() {
     if (!info)
       return emptyRoom();
@@ -3030,12 +3087,14 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       </div>
       <div class="paper"><h2>이 방</h2>
         <label class="setting-switch"><span>기억 사용<small>켜면 답변마다 장부와 장면을 자동으로 갱신합니다.</small></span><input type="checkbox" id="setEnabled" ${info.enabled ? "checked" : ""}></label>
+        <label>기억 관리 모드<select id="setRoomMode"><option value="character" ${info.mode !== "simulator" ? "selected" : ""}>캐릭터 RP</option><option value="simulator" ${info.mode === "simulator" ? "selected" : ""}>세계 시뮬레이터</option></select></label>${info.worldLink?.linked ? `<label class="setting-switch"><span>설정집 연동<small>이 방은 세계관 설정집에 연결돼 있습니다. 켜 두면 기억을 정리할 때 그 묶음에 나온 사람끼리의 설정집 관계(가족·친구·연인 등)를 「처음부터 아는 사이」로 알려 주고(정리 한 번에 100~170토큰쯤), 설정집의 영어·한국어 이름 쌍으로 같은 사람을 합칩니다. 끄면 둘 다 멈추고 지시문은 연동이 없을 때와 같아집니다(이미 합친 이름은 그대로, 이름 정리에서 되돌리기).</small></span><input type="checkbox" id="setWorldLink" ${info.worldLink.on ? "checked" : ""}></label>` : ""}<p class="hint">세계 시뮬레이터는 봇 카드를 이야기를 진행하는 내레이터로 보고, 카드가 연기하는 NPC들을 한 명씩 인물로 기억합니다(수첩·아는 사람·관계). 카드 이름으로는 인물·수첩을 만들지 않고, 대사 앞 이름도 카드 이름으로 붙이지 않습니다. 세계관 설정집이 이 방에 연결돼 있으면 그 인물 목록을 읽어 씁니다. 바꿔도 지우는 기억은 없고, 다음 정리부터 적용됩니다.</p>
         <label>장면의 디테일<select id="setDetailLevel"><option value="standard" ${!info.organize?.detailLevel || info.organize.detailLevel === "standard" ? "selected" : ""}>보통</option><option value="detailed" ${info.organize?.detailLevel === "detailed" ? "selected" : ""}>자세히</option><option value="very_detailed" ${info.organize?.detailLevel === "very_detailed" ? "selected" : ""}>아주 자세히</option></select></label><p class="hint">자세할수록 행동과 반응, 사건의 앞뒤를 더 세밀하게 기록하도록 요청합니다. 정리와 회상에 쓰이는 토큰이 늘어날 수 있습니다.</p>
         <label>주변 인물 정리<select id="setNpcCoverage"><option value="standard" ${info.organize?.npcCoverage !== "expanded" ? "selected" : ""}>기본</option><option value="expanded" ${info.organize?.npcCoverage === "expanded" ? "selected" : ""}>NPC·모브 자세히</option></select></label>
         <p class="hint">기본은 기존 방식으로 정리합니다. NPC·모브 자세히를 선택하면 1:1 채팅에서도 주변 인물의 역할·행동·대화와 사건에 미친 영향을 더 자세히 정리하도록 요청합니다.</p>
         <label>원문 인용 방식<select id="setQuoteMode"><option value="dialogue" ${!info.organize?.quoteMode || info.organize.quoteMode === "dialogue" ? "selected" : ""}>대사 위주</option><option value="narration" ${info.organize?.quoteMode === "narration" ? "selected" : ""}>서술 위주</option><option value="both" ${info.organize?.quoteMode === "both" ? "selected" : ""}>대사 + 서술 둘 다 · 토큰량 높음</option></select></label><p class="hint">대사 위주는 중요한 대사를 중심으로, 서술 위주는 장면의 행동·상황을 보여 주는 서술을 중심으로 인용합니다. 서술 위주에서도 중요한 대사는 함께 보존하도록 요청합니다. 둘 다를 선택하면 대사와 서술을 더 넉넉히 인용하므로 정리와 회상에 쓰이는 토큰이 늘어날 수 있습니다.</p><p class="hint">이 방에만 적용됩니다. 저장 후 새로 정리하는 장면부터 적용되며, 이미 정리한 장면을 바꾸려면 원문부터 다시 정리해야 합니다. 실제 정리 결과는 사용하는 모델에 따라 달라질 수 있습니다.</p><div class="buttons"><button data-act="saveOrganizePreferences">이 방의 정리 방식 저장</button></div>
         <label>이 방의 대사 확인 방식<select id="setAttributionRoom" data-attribution-room="1"><option value="follow" ${(info.attributionCheck?.room || "follow") === "follow" ? "selected" : ""}>기본값 따름 (지금 모든 방 기본값: ${esc(attributionModeLabel(info.attributionCheck?.global))})</option>${attributionModeOptions(info.attributionCheck?.room)}</select></label><p class="hint">${ATTRIBUTION_MODE_HINT} 바꾸면 바로 저장되고, 다음 정리부터 적용됩니다.</p>
       </div>
+      ${datesPaper(info.dates)}
       ${featuresPaper(info.features)}
       ${backupPaper({ armed, preview: restorePreview && restorePreview.room === room ? restorePreview : null, withVectors: backupVectors, running: running(), undo: info.restoreUndo })}
       <div class="paper"><h2>모든 방 공통</h2>
@@ -3118,6 +3177,11 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       ${orphans.length ? `${rows}<div class="buttons"><button data-act="orphanDeleteAll"><span class="warn">모두 삭제 (${orphans.length}개)</span></button></div>` : '<p class="hint">삭제된 방의 기억이 없습니다.</p>'}</div>`;
   }
   function inspector() {
+    if (tab === "worldarchive" && worldTab.linked === true && worldTab.instance?.railHtml) {
+      const html = worldTab.instance.railHtml();
+      if (html)
+        return `${html}<div class="rail-footer">기억 서재 · 기억 모듈판 v${VERSION}</div>`;
+    }
     if (!info)
       return "";
     const stats = threadStats();
@@ -3424,9 +3488,14 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     const people = personNames();
     if (!people.length)
       return `<h1>인물별</h1><div class="empty">${icon("person")}아직 인물이 없습니다.</div>`;
-    if (!people.includes(selectedPerson))
-      selectedPerson = people[0];
-    const p = selectedPerson;
+    if (selectedPerson && !people.includes(selectedPerson))
+      selectedPerson = "";
+    loadWaPeople();
+    return `<div class="eyebrow">PEOPLE · ${people.length}</div><h1>인물별</h1>
+      <p class="intro">사람마다 두 구역으로 모았습니다. 「설정집에서」는 세계관 설정집의 외형 · 성격 · 관계(이 방이 세계관에 연결돼 있을 때, 고치는 것은 설정집에서), 「이 방의 기억」은 이 방에서 정리된 지금 상태 · 알게 된 사실 · 수첩입니다. 「자세히」에서 장면 · 대사 · 끝나지 않은 일까지 봅니다.</p>
+      ${people.map(personCard).join("")}`;
+  }
+  function personDetail(p) {
     const all = store.facts || [];
     const facts = all.filter((f) => f.about === p && !(f.replacedBy && all.some((x) => x.id === f.replacedBy)));
     const notes = (world?.notes || {})[p] || [];
@@ -3447,10 +3516,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     const calls = allCalls.filter((e) => (e.from === p || e.to === p) && !(e.pairOf && allCalls.some((x) => x.id === e.pairOf)));
     const field = (label, v) => v && (!Array.isArray(v) || v.length) ? `<dt>${label}</dt><dd>${esc(Array.isArray(v) ? v.join(" · ") : v)}</dd>` : "";
     const section = (key, title, count, body, openNow = false) => `<details class="paper person-sec" data-list="person:${esc(key)}" ${openLists.has(`person:${key}`) || openNow ? "open" : ""}><summary><b>${title}</b> · ${count}</summary>${body}</details>`;
-    return `<div class="eyebrow">PEOPLE · ${people.length}</div><h1>인물별</h1>
-      <p class="intro">한 사람에 대한 기억을 한곳에 모았습니다: 지금 상태, 부르는 말, 알게 된 사실, 수첩, 끝나지 않은 일, 함께한 장면과 주고받은 대사. 고치는 것은 각 항목의 원래 화면에서 합니다(링크).</p>
-      <div class="person-chips">${people.map((n) => `<button class="${n === p ? "selected" : ""}" data-act="selectPerson" data-id="${esc(n)}">${esc(nameShown(n))}</button>`).join("")}</div>
-      <div class="paper"><h2>${esc(nameShown(p))}</h2>
+    return `<div class="person-detail"><div class="paper"><h2>${esc(nameShown(p))} · 자세히</h2>
         ${card ? `<dl class="person-now">${field("있는 곳", card.location)}${field("차림", card.outfit)}${field("다친 곳", card.injuries)}${field("가진 것", card.carrying)}${field("기분", card.mood)}${field("그 밖", card.other)}</dl>` : '<p class="hint">지금 상태 기록이 없습니다(상태·장소·물건에서 켜고 고칠 수 있음).</p>'}
         ${(() => {
       const own = calls.filter((e) => e.from === p);
@@ -3468,8 +3534,71 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       ${section("quotes", "주고받은 대사 (최근 12개)", quotes.length, quotes.length ? quotes.map(({ sc, q }) => {
       const l = quoteLine(q);
       return `<div class="quote-card"><small>${esc(sc.id)} · ${esc(l.who)}</small><blockquote>${esc(l.text)}</blockquote></div>`;
-    }).join("") : '<p class="hint">없습니다.</p>')}`;
+    }).join("") : '<p class="hint">없습니다.</p>')}</div>`;
   }
+  const waPeople = { room: "", at: 0, loading: false, entities: [], relations: [], linked: false };
+  function loadWaPeople() {
+    if (waPeople.loading || waPeople.room === room && Date.now() - waPeople.at < 30000)
+      return;
+    if (!worldTab.available)
+      return;
+    waPeople.loading = true;
+    const id = room;
+    (async () => {
+      try {
+        const e = await api("GET", `/api/world-archive/rooms/${encodeURIComponent(id)}/entities`);
+        const r = e?.worldId ? await api("GET", `/api/world-archive/rooms/${encodeURIComponent(id)}/relations`).catch(() => ({ relations: [] })) : { relations: [] };
+        Object.assign(waPeople, { room: id, at: Date.now(), linked: Boolean(e?.worldId), entities: (e?.entities || []).filter((x) => x.type === "person"), relations: r?.relations || [] });
+      } catch {
+        Object.assign(waPeople, { room: id, at: Date.now(), linked: false, entities: [], relations: [] });
+      } finally {
+        waPeople.loading = false;
+        if (tab === "person")
+          render();
+      }
+    })();
+  }
+  const waKey = (x) => String(x || "").normalize("NFC").toLowerCase().replace(/[\s"'“”‘’·,.()]+/g, "");
+  function waPersonOf(name) {
+    if (waPeople.room !== room || !waPeople.linked)
+      return null;
+    const keys = new Set([name, nameShown(name)].map(waKey).filter(Boolean));
+    return waPeople.entities.find((e) => [e.name, ...e.aliases || []].some((n) => keys.has(waKey(n)))) || null;
+  }
+  function waRelationsOf(ent) {
+    return waPeople.relations.filter((r) => r.from === ent.entityId || r.to === ent.entityId).map((r) => {
+      const mine = r.from === ent.entityId;
+      const other = mine ? r.toName : r.fromName;
+      const what = r.type === "스승·제자" ? mine ? "스승" : "제자" : r.type === "가족" && r.note && mine ? r.note.replace(/과거에는.*$/, "").trim() || "가족" : r.type;
+      return `${other} · ${what}`;
+    });
+  }
+  const wfRow = (label, value) => value ? `<div class="world-field"><span>${esc(label)}</span><input readonly value="${esc(value)}" aria-label="${esc(label)}"></div>` : "";
+  function personCard(p) {
+    const all = store.facts || [];
+    const facts = all.filter((f) => f.about === p && !(f.replacedBy && all.some((x) => x.id === f.replacedBy)));
+    const notes = (world?.notes || {})[p] || [];
+    const card = (world?.cards || []).find((c) => c.name === p);
+    const ent = waPersonOf(p);
+    const pill = ent ? String(ent.fields?.species || "").trim() || String(ent.fields?.affiliation || "").split(/[,，、]/)[0].trim() : "";
+    const rels = ent ? waRelationsOf(ent) : [];
+    const wa = ent ? `<p class="eyebrow person-zone">설정집에서 · 세계관</p>
+        ${wfRow("외형", ent.fields?.appearance)}${wfRow("성격", ent.fields?.personality)}
+        ${rels.length ? `<div class="world-field"><span>관계</span><div class="wf-caps">${rels.map((x) => `<span class="wf-cap">${esc(x)}</span>`).join("")}</div></div>` : ""}
+        ${!ent.fields?.appearance && !ent.fields?.personality && !rels.length ? '<p class="hint">설정집에 이 사람의 외형 · 성격 · 관계가 아직 없습니다.</p>' : ""}` : "";
+    const now = card ? [card.location, card.carrying, card.injuries, card.mood, card.other].filter(Boolean).join(" · ") : "";
+    const last = (list, get) => list.length ? ` · 「${clipText(shown(get(list[list.length - 1])), 40)}」` : "";
+    const mem = `<p class="eyebrow person-zone">이 방의 기억</p>
+        ${wfRow("지금", now)}${wfRow("알게 된 사실", facts.length ? `${facts.length}개${last(facts, (f) => f.text)}` : "")}${wfRow("수첩", notes.length ? `${notes.length}개${last(notes, (n) => n.text)}` : "")}
+        ${!now && !facts.length && !notes.length ? '<p class="hint">이 방의 기억에 아직 이 사람의 상태 · 사실 · 수첩이 없습니다.</p>' : ""}`;
+    const open = p === selectedPerson;
+    return `<div class="world-card person-card${open ? " is-open" : ""}"><h3>${esc(nameShown(p))}${pill ? ` <span class="pill">${esc(clipText(pill, 16))}</span>` : ""}
+        <button class="ghost person-more" data-act="selectPerson" data-id="${esc(open ? "" : p)}" aria-expanded="${open}">${open ? "접기" : "자세히"}</button></h3>${wa}${mem}${open ? personDetail(p) : ""}</div>`;
+  }
+  const clipText = (t, n) => {
+    const s = String(t || "");
+    return s.length > n ? `${s.slice(0, n)}…` : s;
+  };
   let ledgerFilter = "all";
   let ledgerWho = "all";
   const pickedThreads = new Set;
@@ -3651,7 +3780,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     const merged = [...parts.reduce((m, p) => m.set(p.name, (m.get(p.name) || 0) + p.size), new Map)].sort((a, b) => b[1] - a[1]);
     return `<div class="paper"><h2>섹션별 분량</h2>${merged.map(([name, size]) => `<div class="bar-row"><span>${esc(name)}</span><span class="bar"><span style="width:${Math.max(1, Math.round(size / total * 100))}%"></span></span><small>${Math.round(size / total * 100)}%</small></div>`).join("")}</div>`;
   }
-  const VIEWS = { timeline: viewTimeline, lines: viewLines, person: viewPerson, notebook: viewNotebook, home: viewHome, setup: viewSetup, scenes: viewScenes, search: viewSearch, facts: viewFacts, ledger: viewLedger, promises: viewPromises, life: viewLife, world: viewWorld, names: viewNames, inject: viewInject, settings: viewSettings };
+  const VIEWS = { timeline: viewTimeline, lines: viewLines, person: viewPerson, notebook: viewNotebook, home: viewHome, setup: viewSetup, scenes: viewScenes, search: viewSearch, facts: viewFacts, ledger: viewLedger, promises: viewPromises, life: viewLife, world: viewWorld, names: viewNames, inject: viewInject, settings: viewSettings, worldarchive: () => "" };
   function subTabs() {
     const views = groupOf(tab)[3];
     if (views.length < 2)
@@ -3685,6 +3814,8 @@ pre{font-size:12.5px!important;line-height:1.85!important}
         b.classList.toggle("selected", b.dataset.tab === tab);
         continue;
       }
+      if (g[0] === "worldarchive")
+        b.hidden = !worldTab.available;
       b.classList.toggle("selected", g === here);
       b.dataset.tab = lastIn[g[0]] || g[3][0];
     }
@@ -3701,11 +3832,14 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     err.textContent = lastError;
     const content = root.querySelector("#content");
     const scroll = content.scrollTop;
+    const folds = foldState(content);
     const jobError = info?.job?.error || info?.sceneJob?.error;
     const warning = jobError ? `<div class="note" role="alert">기억 정리를 마치지 못했습니다. ${esc(jobError)}</div>` : "";
     const translation = trPending || trError ? `<div class="note" role="status">${trError ? `한국어 번역을 마치지 못했습니다. ${esc(trError)}` : trWorking ? "한국어 번역 중입니다." : trAuto ? "한국어 번역이 남아 있습니다." : "자동 번역이 꺼져 있어 일부 항목이 영어로 보입니다."} ${trPending ? `남은 항목: ${trPending}개.` : ""} <button data-act="retryTranslation">${trAuto || trError ? "남은 항목 다시 번역" : "지금 번역"}</button></div>` : "";
     content.innerHTML = warning + translation + subTabs() + VIEWS[tab]();
+    restoreFolds(content, folds);
     content.scrollTop = scroll;
+    showWorldTab(content);
     root.querySelector("#inspector").innerHTML = inspector();
     const n = root.querySelector("#themeToggle");
     n.innerHTML = icon(theme === "dark" ? "sun" : "moon");
@@ -3731,7 +3865,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
   async function handle(actName, el) {
     const id = el?.dataset?.id;
     const chat = encodeURIComponent(room);
-    if (actName !== "fresh" && !actName.startsWith("deleteFact") && actName !== "closeThread" && actName !== "factBulkDelete" && actName !== "rebuildChapters" && actName !== "deleteRoutine" && !["trackerUndoApplied", "nameApply", "mergeApply", "aliasApply", "nameUndo", "backupDownload", "restoreApply", "restoreUndo", "addressDelete", "stateReset", "placeDelete", "keepDelete", "noteDelete", "noteRebuildAll", "trackerDelete", "trackerDropStart"].includes(actName))
+    if (actName !== "fresh" && !actName.startsWith("deleteFact") && actName !== "closeThread" && actName !== "factBulkDelete" && actName !== "rebuildChapters" && actName !== "deleteRoutine" && !["trackerUndoApplied", "nameApply", "mergeApply", "aliasApply", "nameUndo", "nameAutoUndo", "backupDownload", "restoreApply", "restoreUndo", "addressDelete", "stateReset", "placeDelete", "keepDelete", "noteDelete", "noteRebuildAll", "trackerDelete", "trackerDropStart"].includes(actName))
       armed = "";
     switch (actName) {
       case "meterRefresh":
@@ -3922,6 +4056,15 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       case "refresh":
         rooms = [];
         return act(refresh, "새로 불러왔습니다.", { reload: false });
+      case "worldLinkRoom":
+        worldTab.working = true;
+        return act(async () => {
+          try {
+            await linkRoomToWorld();
+          } finally {
+            worldTab.working = false;
+          }
+        }, "이 방을 세계관에 연결했습니다.");
       case "start":
         return act(() => api("POST", `/chats/${chat}/start`, { fresh: false }), "정리를 시작했습니다.");
       case "fresh":
@@ -4342,7 +4485,14 @@ pre{font-size:12.5px!important;line-height:1.85!important}
           if (addressForm.id === id)
             addressForm = { id: "", from: "", to: "", term: "", note: "" };
           names = null;
-        }, "호칭을 지웠습니다.");
+        }, "호칭을 지웠습니다. 대사에 다시 나와도 자동으로 만들지 않습니다(아래 「지운 호칭」에서 되살릴 수 있습니다).");
+      case "addressUnblock": {
+        const key = el.dataset.key || "";
+        return act(async () => {
+          await api("POST", `/chats/${chat}/address`, { action: "unblock", key });
+          names = null;
+        }, "지운 호칭을 되살렸습니다. 다음 정리 때 대사에 있으면 다시 올라옵니다.");
+      }
       case "suggestAccept":
       case "suggestIgnore": {
         const accept = actName === "suggestAccept";
@@ -4365,6 +4515,17 @@ pre{font-size:12.5px!important;line-height:1.85!important}
           await api("POST", `/chats/${chat}/names/dismiss`, { source: el.dataset.source, target: el.dataset.target });
           names = null;
         }, "다른 사람으로 두었습니다. 다시 묻지 않습니다.");
+      case "nameAutoUndo":
+        if (armed !== `nameAutoUndo:${id}`) {
+          armed = `nameAutoUndo:${id}`;
+          return render();
+        }
+        armed = "";
+        return act(async () => {
+          const r = await api("POST", `/chats/${chat}/names/auto-undo`, { id });
+          names = null;
+          notice = `${r.source} → ${r.target} 자동 합침을 되돌렸습니다. 이 짝은 다시 자동으로 합치지 않습니다.${r.kept ? ` 그 뒤에 다시 고친 ${r.kept}곳은 그대로 두었습니다.` : ""}`;
+        });
       case "nameUndo":
         if (armed !== "nameUndo") {
           armed = "nameUndo";
@@ -4497,6 +4658,20 @@ pre{font-size:12.5px!important;line-height:1.85!important}
         const mode = serverSettings?.routine === false ? "on" : "default";
         return act(() => api("POST", `/chats/${encodeURIComponent(room)}/routine-mode`, { mode }), "이 방에서 최근 생활 기록을 켰습니다. 새 메시지부터 이어서 기록합니다.");
       }
+      case "dateFixAdd": {
+        const number = root.querySelector("#dateFixNumber")?.value.trim();
+        const date = root.querySelector("#dateFixDate")?.value.trim();
+        const time = root.querySelector("#dateFixTime")?.value.trim();
+        return act(async () => {
+          const r = await api("POST", `/chats/${encodeURIComponent(room)}/dates`, { action: "add", number: number ? Number(number) : null, date, time });
+          notice = `작중 날짜를 정했습니다.${r.redated ? ` 날짜가 바뀐 장면 ${r.redated}개를 고쳤습니다.` : ""}`;
+        });
+      }
+      case "dateFixRemove":
+        return act(async () => {
+          const r = await api("POST", `/chats/${encodeURIComponent(room)}/dates`, { action: "remove", id });
+          notice = `직접 정한 날짜를 지웠습니다.${r.redated ? ` 날짜가 바뀐 장면 ${r.redated}개를 고쳤습니다.` : ""}`;
+        });
       case "saveOrganizePreferences": {
         const npcCoverage = root.querySelector("#setNpcCoverage")?.value, quoteMode = root.querySelector("#setQuoteMode")?.value, detailLevel = root.querySelector("#setDetailLevel")?.value;
         if (!room)
@@ -4801,10 +4976,117 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     (document.body || document.documentElement).append(button);
     return button;
   }
+  const worldTab = { available: false, gone: false, instance: null, linked: null, linkRoom: "", worlds: null, working: false };
+  async function checkWorldTab() {
+    if (worldTab.gone)
+      return;
+    let ok = false;
+    try {
+      const r = await LV.fetch("/api/world-archive/status", { credentials: "same-origin", cache: "no-store", headers: { "x-marinara-csrf": "1" } });
+      ok = r.ok && Boolean((await r.json())?.version);
+    } catch {}
+    ok = ok && Boolean(globalThis.__memoryWorldPanel?.start);
+    const was = worldTab.available;
+    worldTab.available = ok;
+    if (!ok)
+      worldTab.gone = true;
+    try {
+      if (ok)
+        document.documentElement.dataset.memoryWorldTab = "on";
+      else
+        delete document.documentElement.dataset.memoryWorldTab;
+    } catch {}
+    if (!ok && tab === "worldarchive")
+      tab = "home";
+    if (was !== ok)
+      render();
+  }
+  async function loadWorldLinkState() {
+    const id = room;
+    worldTab.linkRoom = id;
+    worldTab.linked = null;
+    try {
+      const get = async (p) => {
+        const r = await LV.fetch(p, { credentials: "same-origin", cache: "no-store", headers: { "x-marinara-csrf": "1" } });
+        if (!r.ok)
+          throw Error(String(r.status));
+        return r.json();
+      };
+      const r = await get(`/api/world-archive/rooms/${encodeURIComponent(id)}`);
+      if (worldTab.linkRoom !== id)
+        return;
+      worldTab.linked = Boolean(r?.worldId);
+      if (!worldTab.linked)
+        worldTab.worlds = (await get("/api/world-archive/worlds")).worlds || [];
+    } catch (error) {
+      worldTab.linked = false;
+      worldTab.worlds = worldTab.worlds || [];
+    }
+    render();
+  }
+  function worldLinkCard() {
+    const worlds = worldTab.worlds || [];
+    const opts = worlds.map((w) => `<option value="${esc(w.worldId)}">${esc(w.name)}</option>`).join("");
+    return `<div class="paper"><h2>세계관</h2><p class="hint">이 방은 세계관 설정집의 세계관에 연결돼 있지 않습니다. 연결하면 이 칸에서 설정집을 보고 고칠 수 있고, 기억을 정리할 때 설정집 관계를 함께 씁니다.</p>
+      ${worlds.length ? `<label>연결할 세계관<select id="worldLinkPick">${opts}</select></label>` : '<p class="hint">아직 세계관이 없습니다. 이 방 이름으로 새 세계관을 만들어 연결합니다.</p>'}
+      <div class="buttons"><button class="primary" data-act="worldLinkRoom" ${worldTab.working ? "disabled" : ""}>이 방을 세계관에 연결하기</button></div></div>`;
+  }
+  async function linkRoomToWorld() {
+    const pick = root.querySelector("#worldLinkPick")?.value || "";
+    const send = async (method, p, body) => {
+      const r = await LV.fetch(p, { method, credentials: "same-origin", cache: "no-store", headers: { "x-marinara-csrf": "1", "content-type": "application/json" }, body: JSON.stringify(body) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok)
+        throw Error(d?.error || String(r.status));
+      return d;
+    };
+    let worldId = pick;
+    if (!worldId)
+      worldId = (await send("POST", "/api/world-archive/worlds", { name: roomLabel(rooms.find((r) => r.id === room) || { id: room }) || "새 세계관" })).worldId;
+    await send("PUT", `/api/world-archive/rooms/${encodeURIComponent(room)}`, { worldId });
+    worldTab.linked = true;
+  }
+  function showWorldTab(content) {
+    const box = root.querySelector("#worldMount");
+    const here = tab === "worldarchive" && worldTab.available;
+    if (here && worldTab.linkRoom !== room)
+      loadWorldLinkState();
+    const panel = here && worldTab.linked === true;
+    content.hidden = panel;
+    box.hidden = !panel;
+    if (here && !panel)
+      content.innerHTML = worldTab.linked === false ? worldLinkCard() : '<p class="hint">세계관 연결을 확인하는 중…</p>';
+    if (!panel)
+      return;
+    if (!worldTab.instance) {
+      try {
+        worldTab.instance = globalThis.__memoryWorldPanel.start(box, { theme });
+      } catch (error) {
+        box.textContent = `세계관 칸을 열지 못했습니다: ${error?.message || error}`;
+      }
+    } else
+      worldTab.instance.setTheme?.(theme);
+    if (!worldTab.railTimer)
+      worldTab.railTimer = setInterval(() => {
+        if (tab !== "worldarchive" || !root) {
+          clearInterval(worldTab.railTimer);
+          worldTab.railTimer = null;
+          return;
+        }
+        const el = root.querySelector("#inspector");
+        const html = inspector();
+        if (el && el.innerHTML !== html)
+          el.innerHTML = html;
+      }, 1500);
+  }
   function openLibrary() {
     if (open || disposed)
       return;
     open = true;
+    if (worldTab.available) {
+      worldTab.linkRoom = "";
+      checkWorldTab();
+    }
     const current = activeChatId();
     if (current && current !== room) {
       room = current;
@@ -4917,6 +5199,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
             <button id="close" class="close" aria-label="기억 서재 닫기" title="닫기">${icon("close")}</button></header>
           <div id="status" role="status"></div><div id="error" hidden></div>
           <main id="content"></main>
+          <div id="worldMount" class="world-mount" hidden></div>
         </div>
         <aside class="inspector" id="inspector"></aside>
 
@@ -4926,6 +5209,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     root.host.setAttribute("data-theme", theme);
     launcher?.setAttribute("data-theme", theme);
     installSelectionButton();
+    checkWorldTab();
     for (const type of ["keydown", "keypress", "keyup"])
       root.addEventListener(type, (e) => e.stopPropagation());
     root.addEventListener("input", (e) => {
@@ -5076,6 +5360,21 @@ pre{font-size:12.5px!important;line-height:1.85!important}
           localStorage.setItem("memory-module-font", font);
         } catch {}
         return render();
+      }
+      if (e.target.id === "setRoomMode") {
+        const mode = e.target.value === "simulator" ? "simulator" : "character";
+        act(() => api("POST", `/chats/${encodeURIComponent(room)}/mode`, { mode }), mode === "simulator" ? "세계 시뮬레이터로 바꿨습니다. 다음 정리부터 적용됩니다." : "캐릭터 RP로 바꿨습니다. 다음 정리부터 적용됩니다.");
+      }
+      if (e.target.id === "setDatesFromText") {
+        const on = e.target.checked;
+        act(async () => {
+          const r = await api("POST", `/chats/${encodeURIComponent(room)}/dates`, { fromText: on });
+          notice = `${on ? "메시지 글에서도 날짜를 읽습니다." : "메시지 글의 날짜는 읽지 않고 트래커와 직접 정한 날짜만 씁니다."}${r.redated ? ` 날짜가 바뀐 장면 ${r.redated}개를 고쳤습니다.` : ""}`;
+        });
+      }
+      if (e.target.id === "setWorldLink") {
+        const on = e.target.checked;
+        act(() => api("POST", `/chats/${encodeURIComponent(room)}/world-link`, { on }), on ? "설정집 연동을 켰습니다. 다음 정리부터 적용됩니다." : "설정집 연동을 껐습니다. 다음 정리부터 적용됩니다.");
       }
       if (e.target.dataset?.tk && ["type", "scope", "unit"].includes(e.target.dataset.tk)) {
         readTrackerForm();
@@ -5335,6 +5634,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     });
   }
   const EXTRA_CSS = `
+.world-mount{display:block;height:calc(100% - 8px);min-height:560px;overflow:hidden}.world-mount[hidden]{display:none!important}#content[hidden]{display:none!important}
     .memory-search{margin-bottom:18px}.memory-search input{flex:1;min-width:120px}.memory-search .buttons{flex-wrap:wrap}
     #launch{position:fixed;right:18px;bottom:122px;width:64px;height:64px;padding:0;border:0;border-radius:0;place-items:center;color:inherit;
       background:transparent!important;box-shadow:none!important;filter:drop-shadow(0 3px 5px #00000040);transition:transform .18s,filter .18s}
@@ -5366,6 +5666,2046 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     if (window.memoryModuleLibrary?.launcher === launcher)
       delete window.memoryModuleLibrary;
   }
+  (() => {
+    const fetch = (input, init) => LV.fetch(input, init);
+    const __WORLD_ARCHIVE_EMBEDDED__ = true;
+    (() => {
+      const EMBEDDED = typeof __WORLD_ARCHIVE_EMBEDDED__ !== "undefined" && __WORLD_ARCHIVE_EMBEDDED__ === true;
+      if (!EMBEDDED && document.getElementById("marinara-world-archive-root"))
+        return;
+      const VERSION = "0.6.1";
+      const PANEL_CONTRACT = 2;
+      const UPDATE_MSG = "세계관 칸을 쓰려면 기억 서재(또는 설정집)를 업데이트해 주세요. 지금은 보기만 할 수 있습니다.";
+      const BASE = "/api/world-archive";
+      const GRAIN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
+      const STAMP = "M4 11L4.75 11A2.05 2.05 0 0 0 8.85 11L10.35 11A2.05 2.05 0 0 0 14.45 11L15.95 11A2.05 2.05 0 0 0 20.05 11L21.55 11A2.05 2.05 0 0 0 25.65 11L27.15 11A2.05 2.05 0 0 0 31.25 11L32.75 11A2.05 2.05 0 0 0 36.85 11L38.35 11A2.05 2.05 0 0 0 42.45 11L43.95 11A2.05 2.05 0 0 0 48.05 11L49.55 11A2.05 2.05 0 0 0 53.65 11L55.15 11A2.05 2.05 0 0 0 59.25 11L60 11L60 11.57A2.05 2.05 0 0 0 60 15.68L60 16.82A2.05 2.05 0 0 0 60 20.93L60 22.07A2.05 2.05 0 0 0 60 26.18L60 27.32A2.05 2.05 0 0 0 60 31.43L60 32.58A2.05 2.05 0 0 0 60 36.67L60 37.83A2.05 2.05 0 0 0 60 41.92L60 43.08A2.05 2.05 0 0 0 60 47.17L60 48.33A2.05 2.05 0 0 0 60 52.42L60 53L59.25 53A2.05 2.05 0 0 0 55.15 53L53.65 53A2.05 2.05 0 0 0 49.55 53L48.05 53A2.05 2.05 0 0 0 43.95 53L42.45 53A2.05 2.05 0 0 0 38.35 53L36.85 53A2.05 2.05 0 0 0 32.75 53L31.25 53A2.05 2.05 0 0 0 27.15 53L25.65 53A2.05 2.05 0 0 0 21.55 53L20.05 53A2.05 2.05 0 0 0 15.95 53L14.45 53A2.05 2.05 0 0 0 10.35 53L8.85 53A2.05 2.05 0 0 0 4.75 53L4 53L4 52.42A2.05 2.05 0 0 0 4 48.33L4 47.17A2.05 2.05 0 0 0 4 43.08L4 41.92A2.05 2.05 0 0 0 4 37.83L4 36.67A2.05 2.05 0 0 0 4 32.58L4 31.43A2.05 2.05 0 0 0 4 27.32L4 26.18A2.05 2.05 0 0 0 4 22.07L4 20.93A2.05 2.05 0 0 0 4 16.82L4 15.68A2.05 2.05 0 0 0 4 11.57Z";
+      const KINDS = [
+        { type: "person", label: "인물", en: "PEOPLE", icon: "person", hint: "이 세계에 사는 사람들. 외형·성격 같은 기본 정보와, 사건으로 바뀐 「지금 상태」를 따로 적어 둡니다." },
+        { type: "place", label: "장소", en: "PLACES", icon: "place", hint: "건물, 방, 숲, 도시. 고정된 구조와 출입구·연결을 적어 둡니다. 누가 잠깐 들른 일은 여기가 아니라 기억 쪽에 남습니다." },
+        { type: "group", label: "집단", en: "GROUPS", icon: "group", hint: "가문, 학교, 기숙사, 동아리, 조직. 구성원과 위계를 적어 둡니다." },
+        { type: "rule", label: "규칙", en: "RULES", icon: "rule", hint: "법, 제도, 관례, 금기, 학교 규칙처럼 지켜야 하는 것. 내용은 메모 칸에 적어 주세요." },
+        { type: "system", label: "시스템", en: "SYSTEMS", icon: "gear", hint: "마법, 능력, 경제, 점수처럼 이 세계가 돌아가는 원리. 작동 방식과 제약·대가를 적어 둡니다." },
+        { type: "schedule", label: "일정", en: "SCHEDULE", icon: "calendar", hint: "수업 시간표, 반복 행사, 정기 활동. 언제·어디서·누가를 적어 둡니다." },
+        { type: "history", label: "역사", en: "HISTORY", icon: "book", hint: "이야기가 시작되기 전의 일과 세계관 연혁. 시기·장소·관련 인물과 결과를 적어 둡니다. 이야기 안에서 지금 일어나는 일은 기억 쪽에 남습니다." },
+        { type: "custom", label: "기타", en: "MISC", icon: "star", hint: "어디에도 안 맞는 이 세계만의 설정. 필요한 칸은 「칸 추가」로 만들 수 있습니다." }
+      ];
+      const KIND = Object.fromEntries(KINDS.map((k) => [k.type, k]));
+      const ICONS = {
+        overview: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17" stroke-dasharray="1.6 2"/><path d="M12 8.6l.9 2.5 2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9z"/>',
+        person: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.8 3.6-5.6 7-5.6s6.2 1.8 7 5.6"/>',
+        place: '<path d="M4 20h16M6 20V9l6-4.5L18 9v11"/><path d="M10 20v-5h4v5"/>',
+        group: '<circle cx="9" cy="9" r="3"/><circle cx="16.5" cy="10" r="2.4"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M14.6 14.6c2.5-.3 4.6 1 5.4 3.9"/>',
+        rule: '<path d="M7 3.5h10v17H7z"/><path d="M10 8h4M10 11.5h4M10 15h2.5"/>',
+        gear: '<path d="M17.7 9.9L20 10.1v3.8l-2.3.2-.1.4 1.4 1.8-2.7 2.7-1.8-1.4-.4.1-.2 2.3h-3.8l-.2-2.3-.4-.1-1.8 1.4L5 16.3l1.4-1.8-.1-.4L4 13.9v-3.8l2.3-.2.1-.4L5 7.7 7.7 5l1.8 1.4.4-.1.2-2.3h3.8l.2 2.3.4.1L16.3 5 19 7.7l-1.4 1.8z"/><circle cx="12" cy="12" r="2.6"/>',
+        book: '<path d="M12 6.8C10 5.3 7.2 4.9 4 5.3v13c3.2-.4 6 0 8 1.5 2-1.5 4.8-1.9 8-1.5v-13c-3.2-.4-6 0-8 1.5zM12 6.8v13"/>',
+        calendar: '<rect x="4" y="5.5" width="16" height="14.5" rx="1"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>',
+        star: '<path d="M12 4l1.8 6.2L20 12l-6.2 1.8L12 20l-1.8-6.2L4 12l6.2-1.8z"/>',
+        world: '<circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5"/><path d="M3.8 9h16.4M3.8 15h16.4"/>',
+        close: '<path d="m6 6 12 12M18 6 6 18"/>',
+        sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
+        moon: '<path d="M20 14.2A8 8 0 0 1 9.8 4 8 8 0 1 0 20 14.2z"/>',
+        search: '<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>',
+        back: '<path d="M14.5 6 8.5 12l6 6"/>',
+        score: '<path d="M5 20V11M12 20V5M19 20v-6"/><path d="M3.5 20h17" opacity=".5"/>',
+        log: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/><path d="M3.5 12h2M18.5 12h2" opacity=".5"/>'
+      };
+      const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ""}</svg>`;
+      const LAUNCH_ICON = `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="${STAMP}" fill="#f1eee7" stroke="#0000002e" stroke-width=".5"/><rect x="9" y="15.5" width="46" height="33" fill="none" stroke="#141414" stroke-width=".9"/><line x1="43.5" y1="16.5" x2="43.5" y2="47.5" stroke="#141414" stroke-width=".9" stroke-dasharray="1.6 1.6"/><text x="26.2" y="29.6" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="6.4" text-anchor="middle" fill="#141414" letter-spacing=".3">WORLD</text><text x="26.2" y="37.8" font-family="ui-monospace,Menlo,monospace" font-size="3.4" text-anchor="middle" fill="#141414" letter-spacing=".25">ARCHIVE</text><circle cx="49.3" cy="32" r="3.9" fill="none" stroke="#141414" stroke-width=".55" stroke-dasharray=".9 .9"/><path d="M49.3 28.9l.55 2.55 2.55.55-2.55.55-.55 2.55-.55-2.55-2.55-.55 2.55-.55z" fill="#141414"/></svg>`;
+      const BRAND = `<svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="24" cy="24" r="14.5" fill="none" stroke="currentColor" stroke-width=".8" stroke-dasharray="1.4 2.2"/><path d="M24 2v44M2 24h44" stroke="currentColor" stroke-width=".5" opacity=".55"/><path d="M24 14.5l2 7.5 7.5 2-7.5 2-2 7.5-2-7.5-7.5-2 7.5-2z" fill="currentColor"/><circle cx="37" cy="12" r="1.1" fill="currentColor"/><circle cx="11" cy="35" r=".8" fill="currentColor"/><circle cx="35.5" cy="36.5" r=".6" fill="currentColor"/></svg>`;
+      const CSS2 = `
+:host{all:initial;--wa-ink:#151515;--wa-paper:#f4f1ea;--wa-paper2:#ebe7dd;--wa-muted:#6d685f;--wa-line:#15151526;--wa-field:#faf8f3;--wa-field-line:#1515153a;--wa-soft:#e4dfd3;--wa-side:#151515;--wa-side-ink:#ece8df;
+  --wa-serif:var(--font-y2k,"Gowun Batang","Nanum Myeongjo","Noto Serif KR",Georgia,serif);--wa-mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --wa-sans:var(--font-y2k,"Pretendard","Noto Sans KR",-apple-system,system-ui,sans-serif);--wa-grain:${GRAIN};
+  font:14px/1.65 var(--wa-sans);color:var(--wa-ink)}
+:host([data-theme=dark]){--wa-ink:#ece8df;--wa-paper:#1b1a18;--wa-paper2:#131312;--wa-muted:#a39d92;--wa-line:#ece8df2b;--wa-field:#222120;--wa-field-line:#ece8df40;--wa-soft:#2a2826;--wa-side:#0c0c0b}
+*{box-sizing:border-box}[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1.5px solid var(--wa-ink);background:transparent;border-radius:3px;padding:8px 14px;transition:background .15s,transform .15s}
+button:hover{background:var(--wa-soft)}button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--wa-ink);color:var(--wa-paper);font-weight:700}
+button.primary:hover{background:#000}:host([data-theme=dark]) button.primary:hover{background:#fff}
+button.quiet{border-color:transparent;color:var(--wa-muted);padding:6px 8px}button.quiet:hover{color:var(--wa-ink);background:transparent;text-decoration:underline}
+button.danger{color:#a3321f;border-color:#a3321f}:host([data-theme=dark]) button.danger{color:#f0a18f;border-color:#f0a18f}
+:focus-visible{outline:3px solid #8fa3c9;outline-offset:2px}
+.icon{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+input,select,textarea{width:100%;border-radius:3px;background:var(--wa-field);border:1px solid var(--wa-field-line);padding:9px 11px;line-height:1.55}
+textarea{min-height:84px;resize:vertical}
+label.f{display:block;font:11px/1.4 var(--wa-mono);letter-spacing:1.5px;color:var(--wa-muted);margin:14px 0 6px}
+label.f em{font:12px var(--wa-sans);letter-spacing:0;font-style:normal;opacity:.85;margin-left:6px}
+
+#launch{position:fixed;right:18px;bottom:196px;z-index:2147483600;width:64px;height:64px;padding:0;border:0;background:transparent;filter:drop-shadow(0 3px 6px #0005);transition:transform .2s}
+#launch:hover{background:transparent;transform:translateY(-2px) rotate(3deg)}
+#launch svg{width:100%;height:100%;display:block}
+@media(max-width:720px){#launch{width:58px;height:58px;bottom:186px}}
+#backdrop{position:fixed;inset:0;z-index:2147483601;background:#0a0a0a8c;backdrop-filter:grayscale(1)}
+#panel{position:fixed;z-index:2147483602;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1280px,96vw);height:min(880px,92vh);
+  display:grid;grid-template-columns:200px minmax(0,1fr) 248px;background:var(--wa-grain),var(--wa-paper);color:var(--wa-ink);border:1.5px solid var(--wa-ink);border-radius:6px;box-shadow:0 30px 90px #0007;overflow:hidden}
+
+.side{position:relative;display:flex;flex-direction:column;padding:28px 16px 18px;background:var(--wa-grain),var(--wa-side);color:var(--wa-side-ink);min-width:0}
+.side:after{content:"";position:absolute;top:10px;bottom:10px;right:-1px;border-right:2px dashed #ece8df55;pointer-events:none}
+.brand{display:flex;align-items:center;gap:10px;padding:0 6px 26px}
+.brand-mark{width:44px;height:44px;flex:none;color:var(--wa-side-ink)}
+.brand b{display:block;font:700 18px/1.2 var(--wa-serif);letter-spacing:-.5px}
+.brand small{display:block;font:7.5px/1.8 var(--wa-mono);letter-spacing:2.4px;color:#ece8df99;white-space:nowrap}
+.nav-label{font:9px var(--wa-mono);letter-spacing:3px;color:#ece8df80;padding:6px 12px 10px}
+nav{display:flex;flex-direction:column;gap:4px}
+nav button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:1px solid transparent;color:#ece8dfcc;padding:10px 12px;font-size:13px}
+nav button:hover{background:#ece8df14;color:#fff}
+nav button .n{margin-left:auto;font:10px var(--wa-mono);opacity:.6}
+nav button.on{background:#ece8df;color:#151515;font-weight:700;
+  -webkit-mask:radial-gradient(circle at 0 50%,#0000 6px,#000 6.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,#0000 6px,#000 6.5px) right/51% 100% no-repeat;
+  mask:radial-gradient(circle at 0 50%,#0000 6px,#000 6.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,#0000 6px,#000 6.5px) right/51% 100% no-repeat}
+.side-bottom{margin-top:auto;padding-top:20px;display:grid;gap:8px}
+.side-bottom button{display:flex;align-items:center;gap:8px;border:1px solid #ece8df55;color:var(--wa-side-ink);font-size:12px}
+.side-bottom button:hover{background:#ece8df14}
+.side-bottom small{font:9.5px var(--wa-mono);color:#ece8df80;letter-spacing:.5px;padding:0 4px}
+
+.work{display:flex;flex-direction:column;min-width:0;min-height:0}
+.top{display:flex;align-items:center;gap:12px;padding:18px 28px;border-bottom:1.5px solid var(--wa-ink)}
+.top select{max-width:340px}
+.top .grow{flex:1}
+.round{width:42px;height:42px;padding:0;border-radius:50%!important;display:grid;place-items:center;border:1px solid var(--wa-ink)}
+main{flex:1;overflow:auto;padding:30px 30px 60px}
+.eyebrow{display:flex;align-items:center;gap:10px;font:10.5px var(--wa-mono);letter-spacing:3px;opacity:.75;margin:0 0 8px}
+.eyebrow:after{content:"";flex:1;max-width:220px;border-top:1px dashed currentColor;opacity:.6}
+h1{font:800 28px/1.3 var(--wa-serif);letter-spacing:-.5px;margin:0 0 10px;overflow-wrap:anywhere}
+h2{font:700 17px/1.4 var(--wa-serif);margin:0 0 10px}
+.intro{color:var(--wa-muted);margin:0 0 22px;max-width:760px;text-align:justify;white-space:pre-wrap}
+.msg{font-size:13px;margin:0 0 16px;padding:9px 13px;border:1.5px dashed currentColor;border-radius:3px;white-space:pre-wrap}
+.msg.bad{color:#a3321f}:host([data-theme=dark]) .msg.bad{color:#f0a18f}
+.paper{background:var(--wa-grain),var(--wa-paper);border:1.5px solid var(--wa-ink);border-radius:4px;box-shadow:4px 4px 0 var(--wa-ink);padding:20px 22px;margin:0 4px 22px 0}
+.paper .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sub{color:var(--wa-muted);font-size:12.5px}
+.pill{display:inline-block;font:10px/1.6 var(--wa-mono);letter-spacing:1.5px;text-transform:uppercase;border:1px solid var(--wa-ink);border-radius:2px;padding:1px 7px;transform:rotate(-2deg);white-space:nowrap}
+pre{white-space:pre-wrap;word-break:break-word;font:12.5px/1.65 var(--wa-mono);margin:12px 0 0;max-height:340px;overflow:auto;background:var(--wa-field);border:1px dashed var(--wa-field-line);border-radius:3px;padding:14px}
+
+/* admission stubs */
+.stubs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 24px}
+.stub{position:relative;text-align:left;background:var(--wa-grain),var(--wa-paper);border:0;border-radius:0;padding:16px 16px 26px;outline:1.5px solid var(--wa-ink);outline-offset:-6px;filter:drop-shadow(0 2px 3px #0002);
+  -webkit-mask:radial-gradient(circle at 0 50%,#0000 7px,#000 7.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,#0000 7px,#000 7.5px) right/51% 100% no-repeat;
+  mask:radial-gradient(circle at 0 50%,#0000 7px,#000 7.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,#0000 7px,#000 7.5px) right/51% 100% no-repeat}
+.stub:hover{background:var(--wa-grain),var(--wa-soft)}
+.stub:after{content:"";position:absolute;left:14px;right:14px;bottom:10px;height:7px;opacity:.35;background:repeating-linear-gradient(90deg,currentColor 0 1px,#0000 1px 3px,currentColor 3px 5px,#0000 5px 7px)}
+.stub strong{display:block;font:800 26px/1.2 var(--wa-serif)}
+.stub small{font-size:11.5px;color:var(--wa-muted)}
+
+/* entity cards */
+.toolbar{display:flex;gap:10px;align-items:center;margin:0 0 18px}
+.search{position:relative;flex:1;max-width:360px}
+.search input{padding-left:36px}
+.search .icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--wa-muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px;padding:0 4px 4px 0}
+.card{position:relative;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;width:100%;text-align:left;padding:16px 18px 14px;background:var(--wa-grain),var(--wa-paper);border:1.5px solid var(--wa-ink);border-radius:4px;box-shadow:3px 3px 0 var(--wa-ink)}
+.card:hover{background:var(--wa-grain),var(--wa-paper);transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--wa-ink)}
+.card .nm{font:700 17px/1.35 var(--wa-serif);padding-right:48px;overflow-wrap:anywhere}
+.card .al{font:10.5px/1.5 var(--wa-mono);color:var(--wa-muted);letter-spacing:.3px;margin-top:2px;overflow-wrap:anywhere}
+.card .pin{position:absolute;right:12px;top:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
+.chip{font-size:11.5px;line-height:1.5;padding:2px 10px;border:1px solid var(--wa-ink);border-radius:999px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip:nth-child(even){border-radius:2px}
+.fact .past,.sec .past,.state .past{display:block;margin-top:3px;font-size:11.5px;color:var(--wa-muted)}.pending{display:block;margin-top:4px;font-size:12px}
+.card .hit{margin:8px 0 0;font-size:12.5px;color:var(--wa-muted)}.card .hit mark{background:var(--accent-soft,#f3e2a8);color:inherit;padding:0 1px;border-radius:2px}
+.card .snip{margin:10px 0 12px;font-size:12.5px;color:var(--wa-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-align:justify}
+.card .foot{margin-top:auto;margin-bottom:0;padding-top:8px;padding-top:8px;border-top:1px dashed var(--wa-line);font:9.5px var(--wa-mono);letter-spacing:1.5px;color:var(--wa-muted);display:flex;justify-content:space-between}
+.empty{padding:40px 20px;text-align:center;border:1.5px dashed var(--wa-line);border-radius:4px;color:var(--wa-muted)}
+.empty h2{color:var(--wa-ink)}
+
+/* detail sheet */
+.sheet-head{display:flex;gap:18px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.sheet-head .al{font:11px var(--wa-mono);color:var(--wa-muted);letter-spacing:.5px;margin:-4px 0 0}
+.facts{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 6px}
+.fact{min-width:120px;max-width:100%;padding:10px 18px 12px;background:var(--wa-grain),var(--wa-paper);outline:1.2px solid var(--wa-ink);outline-offset:-4px;
+  -webkit-mask:radial-gradient(circle at 0 50%,#0000 5px,#000 5.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,#0000 5px,#000 5.5px) right/51% 100% no-repeat;
+  mask:radial-gradient(circle at 0 50%,#0000 5px,#000 5.5px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,#0000 5px,#000 5.5px) right/51% 100% no-repeat}
+.fact small{display:block;font:9.5px var(--wa-mono);letter-spacing:1.5px;color:var(--wa-muted)}
+.fact b{font:700 15px var(--wa-serif);overflow-wrap:anywhere}
+.sec{padding:16px 0 4px;border-top:1px dashed var(--wa-line);margin-top:14px}
+.sec small,.state small{display:block;font:10px var(--wa-mono);letter-spacing:2px;color:var(--wa-muted);margin-bottom:6px}
+.sec p,.state p{margin:0;white-space:pre-wrap;text-align:justify;overflow-wrap:anywhere}
+.tt-wrap{overflow-x:auto;margin:4px 0 8px}.tt{border-collapse:collapse;font-size:13px;min-width:100%}.tt th,.tt td{border:1px solid var(--wa-line);padding:6px 8px;vertical-align:top;text-align:left}.tt thead th{font:10px var(--wa-mono);letter-spacing:1px;color:var(--wa-muted)}.tt td small{display:block}.tt td.wide{opacity:.5;font-style:italic}.tt-clash{border:1.5px dashed var(--wa-ink);border-radius:3px;padding:8px 10px;margin:4px 0 8px}.tt-clash p{margin:4px 0}.tt-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.tt-form input{min-width:0;flex:1 1 120px}
+.roster-add{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}.roster-add select{max-width:100%}
+.state{margin-top:18px;padding:14px 16px;border:1.5px dashed var(--wa-ink);border-radius:3px}
+.meta{margin-top:20px;font:10px var(--wa-mono);letter-spacing:1px;color:var(--wa-muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:20px}
+.actions .grow{flex:1}
+
+/* forms */
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+.extra-row{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr) auto;gap:8px;align-items:start;margin-top:8px}
+.check{display:flex;gap:8px;align-items:center;margin-top:16px;font-size:13px}.check input{width:auto}
+.ask{display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 10px;border:1.5px dashed #a3321f;border-radius:3px;color:#a3321f;font-size:13px}
+:host([data-theme=dark]) .ask{border-color:#f0a18f;color:#f0a18f}
+.back{display:inline-flex;align-items:center;gap:4px;border:0;padding:4px 0;margin:0 0 14px;color:var(--wa-muted);font-size:13px}
+.back:hover{background:transparent;color:var(--wa-ink)}
+
+/* rail */
+.rail{border-left:1.5px solid var(--wa-ink);padding:26px 20px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.rail-title{font:10.5px var(--wa-mono);letter-spacing:2px;text-transform:uppercase}
+.rail .room{font:700 16px/1.4 var(--wa-serif);overflow-wrap:anywhere}
+.chart{position:relative;width:150px;height:150px;margin:6px auto 0}
+.chart svg{width:100%;height:100%}
+.chart .num{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.chart .num b{font:800 22px/1 var(--wa-serif)}
+.chart .num small{font:9px var(--wa-mono);letter-spacing:1.5px;color:var(--wa-muted);margin-top:4px}
+.rail hr{border:0;border-top:1.5px dashed var(--wa-line);margin:4px 0;width:100%}
+.rail p{margin:0;font-size:12px;color:var(--wa-muted);text-align:justify}
+.rail .row{display:flex;flex-wrap:wrap;gap:6px}
+
+/* automatic updates */
+.auto-line{display:flex;gap:8px;align-items:flex-start}.auto-line .dot{margin-top:6px}
+.dot{display:inline-block;flex:none;width:8px;height:8px;border-radius:50%;border:1.5px solid var(--wa-ink)}
+.dot.on{background:var(--wa-ink)}
+.dot.run{background:var(--wa-ink);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.err{color:#a3321f;font-size:12.5px}:host([data-theme=dark]) .err{color:#f0a18f}
+.toggle{display:flex;gap:10px;align-items:center;font-size:14px;cursor:pointer}
+.toggle input{appearance:none;-webkit-appearance:none;width:44px;height:24px;border-radius:999px;border:1.5px solid var(--wa-ink);background:var(--wa-field);position:relative;padding:0;flex:none;cursor:pointer}
+.toggle input:before{content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--wa-ink);transition:transform .15s}
+.toggle input:checked{background:var(--wa-ink)}.toggle input:checked:before{background:var(--wa-paper);transform:translateX(20px)}
+.auto-tag{font:9.5px var(--wa-mono);letter-spacing:1px;margin-left:6px;opacity:.7}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 0;border-top:1px dashed var(--wa-line)}
+.hist li:first-child{border-top:0}
+.hist .what{overflow-wrap:anywhere}.hist .what b{font-family:var(--wa-serif)}
+.hist .ev{grid-column:1;font-size:12.5px;color:var(--wa-muted);text-align:justify}
+.hist .when{font:10px var(--wa-mono);letter-spacing:1px;color:var(--wa-muted)}
+.hist li.undone .what{text-decoration:line-through;opacity:.55}
+.hist .side-act{grid-row:1/span 3;grid-column:2;align-self:center}
+@media(max-width:1080px){#panel{grid-template-columns:190px minmax(0,1fr)}.rail{display:none}}
+@media(max-width:720px){
+  #panel{inset:0;left:0;top:0;transform:none;width:100vw;height:100dvh;border:0;border-radius:0;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
+  .side{padding:12px 12px 8px}
+  .side:after{top:auto;left:8px;right:8px;bottom:-1px;border-right:0;border-bottom:2px dashed #ece8df55}
+  .brand{padding:0 52px 10px 2px}.brand-mark{width:32px;height:32px}.brand b{font-size:16px}
+  .nav-label,.side-bottom{display:none}
+  nav{flex-direction:row;overflow-x:auto;gap:4px;scrollbar-width:none}
+  nav button{width:auto;flex:none;padding:7px 11px;font-size:12.5px;gap:6px}nav button .n{margin-left:2px}
+  nav button .icon{width:15px;height:15px}
+  .top{padding:10px 14px}.top select{max-width:none}
+  #themeToggle{width:36px;height:36px}
+  #close{position:fixed;right:12px;top:12px;z-index:5;background:#f3efe7;color:#151515;border:1.5px solid #151515;width:38px;height:38px}
+  :host([data-theme=dark]) #close{background:#262522;color:#f3efe7;border-color:#f3efe7}
+  main{padding:20px 16px 50px}
+  h1{font-size:23px}
+  .stubs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cards{grid-template-columns:1fr}
+  .toolbar{flex-wrap:wrap}.search{max-width:none;flex:1 1 100%}.toolbar>span{display:none}.toolbar>.primary{flex:1}
+  .grid3,.grid2{grid-template-columns:1fr}
+  .extra-row{grid-template-columns:1fr auto}.extra-row textarea{grid-column:1/-1}
+  .paper{padding:16px}
+  .mobile-only{display:block!important}
+}
+.mobile-only{display:none}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+/* 기억 서재의 「세계관」 칸 안: no button, no backdrop, the window fills the tab */
+:host([data-embedded]){display:block;height:100%}
+:host([data-embedded]) #launch,:host([data-embedded]) #backdrop,:host([data-embedded]) #close{display:none!important}
+:host([data-embedded]) #panel{position:relative;left:auto;top:auto;transform:none;width:100%;height:100%;min-height:560px;z-index:auto;box-shadow:none;border-radius:0}
+/* ===== v0.6.0 세계관 칸 (시안 C · E · F · G, 사용자 확정 2026-11-21) — 기억 서재 클래스 이름(subtabs · world-card · rail-stat …)을 그대로 씀 ===== */
+:host{--wt-cream:#f3efe2;--wt-cream-line:#ddd5bf;--wt-c1:#e3e8f2;--wt-c1-line:#c9d2e3;--wt-c3:#ecebe8;--wt-c3-line:#d6d4cf;--wt-c4:#dfe6e9;--wt-c4-line:#c5d0d5;--wt-c6:#eef0f6;--wt-c6-line:#d3d8e6;--wt-c7:#e6ece4;--wt-c7-line:#cad6c6;--wt-c8:#ece6ee;--wt-c8-line:#d6cbdb;
+  --wt-white:#fff;--wt-night:#1b1c22;--wt-night-ink:#eeebe3;--wt-night-sub:#a9adbd;--wt-blue:#4c5d8f;--wt-gothic:"Gowun Batang","Nanum Myeongjo","Noto Serif KR",Georgia,serif}
+:host([data-theme=dark]){--wt-cream:#2a2721;--wt-cream-line:#4a4437;--wt-c1:#252a33;--wt-c1-line:#3a4252;--wt-c3:#292826;--wt-c3-line:#413f3b;--wt-c4:#242a2c;--wt-c4-line:#3a4649;--wt-c6:#272930;--wt-c6-line:#3e4250;--wt-c7:#252a24;--wt-c7-line:#3c4639;--wt-c8:#2a262c;--wt-c8-line:#453c49;
+  --wt-white:#1f1e1c;--wt-night:#0d0d0c;--wt-night-ink:#ece8df;--wt-night-sub:#a39d92;--wt-blue:#a9b6d8}
+.subtabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.subtab{border:1px solid var(--wa-line);background:var(--wa-paper);color:var(--wa-ink);border-radius:999px;padding:5px 12px;font-size:11px;line-height:1.6}
+.subtab:hover{background:var(--wa-soft)}.subtab.selected{background:var(--wa-ink);color:var(--wa-paper);border-color:var(--wa-ink)}
+.wt-years{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 6px;align-items:center}.wt-years>span{font-size:11px;color:var(--wa-muted);margin-right:4px}
+.wt-year{padding:5px 14px;border:1px solid var(--wa-ink);border-radius:999px;font:600 13px var(--wt-gothic);line-height:1.4}
+.wt-year.past{opacity:.55}.wt-year.now{background:var(--wa-ink);color:var(--wa-paper)}.wt-year.next{border-style:dashed;opacity:.75}
+.wt-year.none{border:1px dashed var(--wa-line);font:12px var(--wa-sans);color:var(--wa-muted)}.wt-year.on{outline:2px solid var(--wa-ink);outline-offset:2px}.wt-year.now.on{outline:0}
+.wt-eyebrow{font:10px var(--wa-mono);letter-spacing:2px;color:var(--wa-muted);margin:18px 0 2px;display:flex;align-items:center;gap:10px}.wt-eyebrow:after{content:"";flex:1;max-width:220px;border-top:1px dashed currentColor;opacity:.6}
+.wt-h1{margin:0 0 4px}.wt-h1 span{font-size:18px;color:var(--wa-muted);font-weight:700}.wt-lead{margin:0 0 6px;color:var(--wa-muted)}
+.wt-find{width:100%;margin:10px 0 0;padding:9px 14px;border:1px solid var(--wa-line);border-radius:999px;background:transparent}
+.wt-sec{margin:22px 0 8px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700}.wt-sec:after{content:"";flex:1;border-top:1px dashed var(--wa-line)}
+.wt-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cap{display:inline-block;padding:3px 11px;border:1px solid var(--wa-ink);border-radius:999px;font-size:11px;line-height:1.6;white-space:nowrap;background:transparent;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:var(--wa-muted)}
+.world-card{border-top:1px solid var(--wa-line);padding:12px 0}.world-card h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;font:700 15px var(--wa-serif)}.world-card h3 button{border:0;padding:0;font:inherit}
+.world-field{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0}.world-field>span{flex:0 0 64px;font-size:11px}
+.wt-grp{font-size:11px;color:var(--wa-muted);margin:6px 0 3px}
+.wt-rule{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--wa-line);font-size:13px}.wt-rule b{min-width:150px;flex:none;font-family:var(--wa-serif)}.wt-rule button{border:0;padding:0;text-align:left;font:inherit;font-weight:700;min-width:150px;flex:none}
+.wt-rule span{color:var(--wa-ink);overflow-wrap:anywhere}.wt-rule small{color:var(--wa-muted)}
+.wt-empty{color:var(--wa-muted);font-size:12.5px;margin:6px 0}
+/* 시간표 (시안 E) */
+.wt-tt{width:100%;border-collapse:separate;border-spacing:6px 0;table-layout:fixed;margin:0 -6px}
+.wt-tt th{font:600 15px/1.2 var(--wt-gothic);padding:8px 0 10px;border-bottom:1.5px solid var(--wa-ink);text-align:center}
+.wt-tt th small{display:block;font:9px var(--wa-mono);letter-spacing:2px;color:var(--wa-muted);margin-top:3px}
+.wt-tt th.today{background:var(--wt-cream);border-radius:10px 10px 0 0}.wt-tt th.blank{width:64px;border:0}
+.wt-tt td{vertical-align:top;padding:3px 0}.wt-tt td.t{width:64px;text-align:right;padding:10px 6px 0 0;font-size:11px;color:var(--wa-muted)}.wt-tt td.t b{display:block;color:var(--wa-ink);font:600 12px var(--wt-gothic)}
+.wt-tt td.todaycol{background:var(--wt-cream);padding:3px 4px}.wt-tt td.todaycol.end{border-radius:0 0 10px 10px;padding-bottom:7px}.wt-tt th.today{padding-left:4px;padding-right:4px}
+.wt-c{border-radius:12px;padding:10px 10px 9px;height:100%;min-height:58px;border:1px solid transparent;text-align:left;width:100%;display:block}
+.wt-c b{display:block;font:600 14px/1.25 var(--wt-gothic);overflow-wrap:anywhere}.wt-c small{display:block;font-size:10px;color:var(--wa-muted);margin-top:3px}
+.wt-c.s1{background:var(--wt-c1);border-color:var(--wt-c1-line)}.wt-c.s2{background:var(--wt-cream);border-color:var(--wt-cream-line)}.wt-c.s3{background:var(--wt-c3);border-color:var(--wt-c3-line)}
+.wt-c.s4{background:var(--wt-c4);border-color:var(--wt-c4-line)}.wt-c.s5{background:var(--wt-c6);border-color:var(--wt-c6-line)}.wt-c.s6{background:var(--wt-c7);border-color:var(--wt-c7-line)}.wt-c.s7{background:var(--wt-c8);border-color:var(--wt-c8-line)}
+.wt-c.changed{background:var(--wt-white);border-color:var(--wa-ink)}.wt-c.wide{opacity:.55}
+.wt-was{font-size:10px;color:var(--wt-blue);margin-top:4px}
+.wt-free{border:1px dashed var(--wa-line);border-radius:12px;min-height:58px}
+.wt-lunch td{padding:0}.wt-lunch td.l{text-align:center;font-size:11px;color:var(--wa-muted);letter-spacing:6px;padding:4px 0;border-top:1px dashed var(--wa-line);border-bottom:1px dashed var(--wa-line)}
+.wt-night{background:var(--wt-night);color:var(--wt-night-ink);border-radius:12px;padding:10px;position:relative;overflow:hidden;min-height:58px;border:1px solid var(--wt-night);text-align:left;width:100%;display:block}
+:host([data-theme=dark]) .wt-night{border-color:var(--wa-field-line)}
+.wt-night b{display:block;color:var(--wt-night-ink);font:600 14px/1.25 var(--wt-gothic)}.wt-night small{display:block;color:var(--wt-night-sub);font-size:10px;margin-top:3px}
+.wt-night i{position:absolute;width:2px;height:2px;border-radius:50%;background:var(--wt-night-ink);opacity:.75}
+.wt-clash{font-size:12px;margin:6px 0;color:var(--wa-muted)}
+.wt-dtab{display:none;gap:6px;margin:6px 0 14px}.wt-dtab button{flex:1;text-align:center;padding:8px 0;border:1px solid var(--wa-ink);border-radius:999px;font:600 14px var(--wt-gothic)}
+.wt-dtab button.td{background:var(--wt-cream)}.wt-dtab button.on{background:var(--wa-ink);color:var(--wa-paper)}
+.wt-day{display:none}.wt-drow{display:grid;grid-template-columns:58px minmax(0,1fr);gap:10px;margin-bottom:8px;align-items:stretch}
+.wt-drow .t{text-align:right;font-size:11px;color:var(--wa-muted);padding-top:10px}.wt-drow .t b{display:block;color:var(--wa-ink);font:600 12px var(--wt-gothic)}
+.wt-dlunch{text-align:center;font-size:11px;letter-spacing:6px;color:var(--wa-muted);border-top:1px dashed var(--wa-line);border-bottom:1px dashed var(--wa-line);padding:4px 0;margin:4px 0 10px 68px}
+/* 학사일정 (시안 F) */
+.wt-mon{display:flex;align-items:baseline;gap:10px;margin:22px 0 8px}.wt-mon b{font:600 20px var(--wt-gothic)}.wt-mon small{font:9px var(--wa-mono);letter-spacing:2px;color:var(--wa-muted)}
+.wt-mon:after{content:"";flex:1;border-top:1.5px solid var(--wa-ink);transform:translateY(-5px)}
+.wt-newyear{display:flex;align-items:center;gap:12px;margin:28px 0 4px}.wt-newyear b{font:600 26px var(--wt-gothic)}.wt-newyear:after{content:"";flex:1;border-top:3px double var(--wa-ink)}
+.wt-ev{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 12px;border-radius:12px;margin:6px 0;background:var(--wa-paper);border:1px solid var(--wa-line);width:100%;text-align:left;font-weight:400}
+.wt-ev:hover{background:var(--wa-paper);filter:brightness(.98)}
+.wt-ev .d{text-align:center;font:600 20px/1 var(--wt-gothic)}.wt-ev .d small{display:block;font:10px var(--wa-mono);color:var(--wa-muted);margin-top:4px;letter-spacing:1px}
+.wt-ev .n b{display:block;font:600 15px var(--wt-gothic);overflow-wrap:anywhere}.wt-ev .n small{color:var(--wa-muted);font-size:11px}
+.wt-ev .k{font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid var(--wa-ink);white-space:nowrap}
+.wt-ev.past{opacity:.45}.wt-ev.c1{background:var(--wt-c1);border-color:var(--wt-c1-line)}.wt-ev.c2{background:var(--wt-cream);border-color:var(--wt-cream-line)}.wt-ev.c3{background:var(--wt-c3);border-color:var(--wt-c3-line)}
+.wt-ev.next{background:var(--wt-night);color:var(--wt-night-ink);border-color:var(--wt-night)}:host([data-theme=dark]) .wt-ev.next{background:#2b2924;border-color:#e8dfc4}
+.wt-ev.next .n small,.wt-ev.next .d small{color:var(--wt-night-sub)}.wt-ev.next .k{border-color:var(--wt-night-ink)}
+.wt-ev.cancel .n b{text-decoration:line-through}.wt-ev.cancel .k{border-style:dashed;color:var(--wa-muted)}.wt-ev.noyear{border-style:dashed}
+.wt-today{display:flex;align-items:center;gap:8px;margin:12px 0;color:var(--wt-blue);font-size:11px;font-weight:700}
+.wt-today:before{content:"";width:9px;height:9px;border-radius:50%;background:var(--wt-blue)}.wt-today:after{content:"";flex:1;border-top:1.5px solid var(--wt-blue)}
+.wt-ev .was{color:var(--wt-blue);font-size:10px;margin-left:6px}
+/* 오른쪽 칸 (기억 서재 inspector와 같은 모양) */
+.rail-stat{display:flex;align-items:center;gap:14px;padding:8px 0}.rail-stat b{flex:none;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font:700 15px var(--wa-serif);color:#151515;
+  background:radial-gradient(circle,#151515 0 1.6px,#f4f1ea 2.2px 14px,#151515 14.5px 15.5px,#0000 16px),repeating-radial-gradient(circle,#151515 0 1.1px,#2a2a2a 1.5px 2.4px);box-shadow:0 3px 8px #0004;transition:transform .6s}
+.rail-stat:hover b{transform:rotate(200deg)}
+.rail-stat span{font-size:13px;line-height:1.5}.rail-stat small{display:block;font-size:11px;color:var(--wa-muted)}
+.rail-divider{border-top:1.5px dashed var(--wa-line);margin:18px 0}.rail-note h3{font:700 13px var(--wa-serif);margin:0 0 6px}.rail-note p{font-size:11px;color:var(--wa-muted);margin:0;line-height:1.8}
+/* 기억 서재의 「세계관」 칸 안: 옆 메뉴 · 위 · 오른쪽 칸 없이 내용만(기억 서재가 그 셋을 가짐) */
+:host([data-embedded]) #panel{grid-template-columns:minmax(0,1fr);border:0;background:transparent}
+:host([data-embedded]) .side,:host([data-embedded]) .top,:host([data-embedded]) .rail{display:none!important}
+:host([data-embedded]) main{padding:24px 30px 40px}
+@media(max-width:720px){
+  .wt-tt{display:none}.wt-dtab{display:flex}.wt-day.on{display:block}
+  .wt-rule{flex-direction:column;gap:2px}.wt-rule b,.wt-rule button{min-width:0}
+  .wt-ev{grid-template-columns:46px minmax(0,1fr) auto;gap:8px;padding:8px 10px}.wt-ev .k{font-size:10px;padding:2px 7px}
+  :host([data-embedded]) main{padding:16px 14px 40px}
+}
+`;
+      function boot(target, opts = {}) {
+        const host = document.createElement("div");
+        host.id = target ? "marinara-world-archive-tab" : "marinara-world-archive-root";
+        if (target)
+          host.setAttribute("data-embedded", "");
+        const root = host.attachShadow({ mode: "open" });
+        root.innerHTML = `<style>${CSS2}</style>
+    <button id="launch" type="button" aria-label="세계관 설정집 열기" aria-expanded="false">${LAUNCH_ICON}</button>
+    <div id="backdrop" hidden></div>
+    <section id="panel" role="dialog" aria-modal="true" aria-label="세계관 설정집" hidden>
+      <aside class="side"></aside>
+      <div class="work"><div class="top"></div><main></main></div>
+      <aside class="rail"></aside>
+    </section>`;
+        (target || document.body || document.documentElement).append(host);
+        const $ = (s) => root.querySelector(s);
+        const el = { launch: $("#launch"), backdrop: $("#backdrop"), panel: $("#panel"), side: $(".side"), top: $(".top"), main: $("main"), rail: $(".rail") };
+        const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        const store = {
+          get(k, d = "") {
+            try {
+              return localStorage.getItem(k) ?? d;
+            } catch {
+              return d;
+            }
+          },
+          set(k, v) {
+            try {
+              localStorage.setItem(k, v);
+            } catch {}
+          }
+        };
+        const st = {
+          theme: opts.theme || store.get("world-archive-theme") || (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
+          readOnly: false,
+          fields: {},
+          worlds: [],
+          worldId: store.get("world-archive-world") || null,
+          entities: [],
+          room: null,
+          roomName: "",
+          preview: null,
+          view: "tabs",
+          tab: null,
+          year: null,
+          tabQuery: "",
+          ttDay: null,
+          rosterOpen: new Set,
+          fromTabs: false,
+          detail: null,
+          editing: null,
+          draft: null,
+          ask: null,
+          query: "",
+          msg: "",
+          bad: false,
+          busy: false,
+          loaded: false,
+          auto: null,
+          history: [],
+          connections: null,
+          pairs: [],
+          dupes: false
+        };
+        const activeChatId = () => store.get("marinara-active-chat-id", "");
+        const world = () => st.worlds.find((w) => w.worldId === st.worldId) || null;
+        async function api(method, path, body) {
+          if (st.readOnly && method !== "GET")
+            throw Error(UPDATE_MSG);
+          const init = { method, credentials: "same-origin", cache: "no-store", headers: { "x-marinara-csrf": "1" } };
+          if (method !== "GET") {
+            init.headers["content-type"] = "application/json";
+            init.body = JSON.stringify(body ?? {});
+          }
+          let res;
+          try {
+            res = await fetch(path.startsWith("/api/") ? path : BASE + path, init);
+          } catch {
+            throw Error("서버에 연결하지 못했습니다. 마리나라가 다시 켜지는 중이라면 잠시 뒤에 다시 시도해 주세요.");
+          }
+          const text = await res.text();
+          let data = null;
+          try {
+            data = text ? JSON.parse(text) : null;
+          } catch {
+            data = { error: text.slice(0, 200) };
+          }
+          if (res.status === 404 && path === "/status")
+            throw Error("서버에 World Archive 모듈이 없거나 꺼져 있습니다. 서버 쪽 설치를 먼저 확인해 주세요.");
+          if (res.status === 401)
+            throw Error("마리나라 로그인이 끝났습니다. 페이지를 새로 고쳐 다시 로그인해 주세요.");
+          if (!res.ok)
+            throw Error(data?.error || `서버 오류 (${res.status})`);
+          return data;
+        }
+        async function run(fn, ok) {
+          if (st.busy)
+            return;
+          st.busy = true;
+          st.msg = "";
+          try {
+            await fn();
+            if (ok) {
+              st.msg = ok;
+              st.bad = false;
+            }
+          } catch (e) {
+            st.msg = e?.message || String(e);
+            st.bad = true;
+          } finally {
+            st.busy = false;
+            render();
+          }
+        }
+        async function loadWorlds() {
+          st.worlds = (await api("GET", "/worlds")).worlds || [];
+          if (!world()) {
+            const linked = st.room?.worldId && st.worlds.some((w) => w.worldId === st.room.worldId) ? st.room.worldId : null;
+            st.worldId = linked || st.worlds[0]?.worldId || null;
+          }
+          if (st.worldId)
+            store.set("world-archive-world", st.worldId);
+        }
+        async function loadEntities() {
+          st.entities = st.worldId ? (await api("GET", `/worlds/${st.worldId}/entities`)).entities || [] : [];
+          st.relations = st.worldId ? (await api("GET", `/worlds/${st.worldId}/relations`).catch(() => ({ relations: [] }))).relations || [] : [];
+          st.rosters = {};
+          try {
+            st.pairs = st.worldId ? (await api("GET", `/worlds/${st.worldId}/duplicates`)).pairs || [] : [];
+          } catch {
+            st.pairs = [];
+          }
+          try {
+            st.groupSuggest = st.worldId ? (await api("GET", `/worlds/${st.worldId}/group-suggestions`)).suggestions || [] : [];
+          } catch {
+            st.groupSuggest = [];
+          }
+          if (st.detail && !st.entities.some((e) => e.entityId === st.detail))
+            st.detail = null;
+        }
+        async function loadRoom() {
+          const id = activeChatId();
+          st.room = null;
+          st.preview = null;
+          st.roomName = "";
+          if (!id)
+            return;
+          st.room = await api("GET", `/rooms/${encodeURIComponent(id)}`);
+          if (st.room.worldId)
+            st.preview = await api("GET", `/rooms/${encodeURIComponent(id)}/preview`);
+          try {
+            st.roomName = (await api("GET", `/api/chats/${encodeURIComponent(id)}`))?.name || "";
+          } catch {}
+          st.auto = null;
+          if (st.room.worldId) {
+            try {
+              st.auto = await api("GET", `/rooms/${encodeURIComponent(id)}/auto`);
+            } catch {}
+          }
+          pollAuto();
+        }
+        async function loadHistory() {
+          st.history = st.worldId ? (await api("GET", `/worlds/${st.worldId}/history`)).changes || [] : [];
+        }
+        async function loadScores() {
+          const id = activeChatId();
+          st.scores = id && st.room?.worldId === st.worldId && world()?.scoreboard?.name ? await api("GET", `/rooms/${encodeURIComponent(id)}/scores`) : null;
+        }
+        async function loadConnections() {
+          try {
+            st.connections = (await api("GET", "/connections")).connections || [];
+          } catch {
+            st.connections = [];
+          }
+        }
+        let pollTimer = null;
+        function pollAuto() {
+          clearTimeout(pollTimer);
+          if (st.auto?.job?.state !== "running" || el.panel.hidden)
+            return;
+          pollTimer = setTimeout(async () => {
+            try {
+              const id = activeChatId();
+              st.auto = await api("GET", `/rooms/${encodeURIComponent(id)}/auto`);
+              if (st.auto.job?.state !== "running") {
+                await loadEntities();
+                st.preview = await api("GET", `/rooms/${encodeURIComponent(id)}/preview`);
+                if (st.view === "log")
+                  await loadHistory();
+                if (st.view === "scores")
+                  await loadScores();
+              }
+            } catch {}
+            if (!st.busy)
+              render();
+            pollAuto();
+          }, 1500);
+        }
+        async function loadAll(followRoom) {
+          const status = await api("GET", "/status");
+          st.fields = status.fields || {};
+          st.serverVersion = status.version || null;
+          st.readOnly = Number(status.contract || 1) !== PANEL_CONTRACT;
+          await loadRoom();
+          if (followRoom && st.room?.worldId)
+            st.worldId = st.room.worldId;
+          await loadWorlds();
+          await loadEntities();
+          st.loaded = true;
+        }
+        const defs = (type) => st.fields[type] || [];
+        const count = (type) => st.entities.filter((e) => e.type === type).length;
+        const fmtDate = (iso) => {
+          const d = new Date(iso);
+          return isNaN(d) ? "" : `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+        };
+        const shortId = (id) => String(id || "").slice(0, 4).toUpperCase();
+        const roomTitle = () => esc(st.roomName || (activeChatId() ? "지금 채팅방" : "열린 채팅방 없음"));
+        function sideHtml() {
+          const items = [["tabs", "세계관", "world", null], ["overview", "한눈에", "overview", null], ...KINDS.map((k) => [k.type, k.label, k.icon, count(k.type)]), ...world()?.scoreboard?.name ? [["scores", "점수판", "score", null]] : [], ["log", "기록", "log", null]];
+          return `
+      <div class="brand">${BRAND}<div><b>세계관 설정집</b><small>WORLD ARCHIVE</small></div></div>
+      <div class="nav-label">YOUR WORLD</div>
+      <nav>${items.map(([v, label, ic, n]) => `<button type="button" data-act="go" data-view="${v}" class="${st.view === v ? "on" : ""}" ${!st.worldId && v !== "overview" ? "disabled" : ""}>${icon(ic)}<span>${label}</span>${n == null || !st.worldId ? "" : `<span class="n">${n}</span>`}</button>`).join("")}</nav>
+      <div class="side-bottom">
+        ${st.worldId ? `<button type="button" data-act="go" data-view="world">${icon("world")}세계관 정보 고치기</button>` : ""}
+        <button type="button" data-act="go" data-view="new-world">${icon("star")}새 세계관 만들기</button>
+        <small>세계관 설정집 v${VERSION}</small>
+      </div>`;
+        }
+        function topHtml() {
+          const opts = st.worlds.map((w) => `<option value="${esc(w.worldId)}" ${w.worldId === st.worldId ? "selected" : ""}>${esc(w.name)}${w.worldId === st.room?.worldId ? "  · 이 방" : ""}</option>`).join("");
+          return `${st.worlds.length ? `<select id="worldSelect" aria-label="세계관 고르기">${opts}</select>` : '<span class="sub">아직 세계관이 없습니다</span>'}
+      <span class="grow"></span>
+      <button id="themeToggle" class="round" type="button" data-act="theme" aria-label="${st.theme === "dark" ? "밝게" : "어둡게"}">${icon(st.theme === "dark" ? "sun" : "moon")}</button>
+      <button id="close" class="round" type="button" data-act="close" aria-label="닫기">${icon("close")}</button>`;
+        }
+        function chartSvg(ratio) {
+          const r = 62, c = 2 * Math.PI * r, fill = Math.max(0, Math.min(1, ratio));
+          return `<svg viewBox="0 0 150 150" aria-hidden="true">
+      <circle cx="75" cy="75" r="72" fill="none" stroke="currentColor" stroke-width=".8"/>
+      <circle cx="75" cy="75" r="${r}" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1.5 3" opacity=".55"/>
+      <circle cx="75" cy="75" r="${r}" fill="none" stroke="currentColor" stroke-width="3.2" stroke-dasharray="${(c * fill).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 75 75)"/>
+      <circle cx="75" cy="75" r="46" fill="none" stroke="currentColor" stroke-width=".6" opacity=".5"/>
+      <path d="M75 0v18M75 132v18M0 75h18M132 75h18" stroke="currentColor" stroke-width=".7"/>
+      <circle cx="122" cy="30" r="1.4" fill="currentColor"/><circle cx="28" cy="118" r="1" fill="currentColor"/><circle cx="125" cy="117" r=".8" fill="currentColor"/></svg>`;
+        }
+        function roomState() {
+          if (!activeChatId())
+            return { kind: "none" };
+          const linked = st.room?.worldId;
+          if (!linked)
+            return { kind: "unlinked" };
+          if (linked === st.worldId)
+            return { kind: "this" };
+          return { kind: "other", name: st.worlds.find((w) => w.worldId === linked)?.name || "다른 세계관" };
+        }
+        function roomButtons() {
+          const s = roomState();
+          if (s.kind === "none" || !st.worldId)
+            return "";
+          if (s.kind === "this")
+            return `<button type="button" data-act="unlink">연결 끊기</button>`;
+          return `<button class="primary" type="button" data-act="link">이 세계관을 읽게 하기</button>`;
+        }
+        function roomLine() {
+          const s = roomState();
+          if (s.kind === "none")
+            return "채팅방을 하나 열면 여기서 연결할 수 있습니다.";
+          if (s.kind === "unlinked")
+            return "아직 어떤 세계관도 읽지 않습니다.";
+          if (s.kind === "this")
+            return "지금 이 세계관을 읽고 있습니다.";
+          return `지금은 「${esc(s.name)}」을(를) 읽고 있습니다.`;
+        }
+        function autoHtml(compact) {
+          const s = roomState();
+          if (s.kind !== "this")
+            return "";
+          const w = world();
+          const a = st.auto;
+          const job = a?.job;
+          if (!w.auto?.enabled)
+            return `<div class="auto-line"><span class="dot"></span><span class="sub">자동 반영이 꺼져 있습니다.</span>${compact ? "" : ' <button class="quiet" type="button" data-act="go" data-view="world">켜기</button>'}</div>`;
+          if (!w.auto.connectionId)
+            return `<div class="auto-line"><span class="dot"></span><span class="sub">자동 반영에 쓸 연결을 골라 주세요.</span> <button class="quiet" type="button" data-act="go" data-view="world">고르기</button></div>`;
+          const running = job?.state === "running";
+          const status = running ? `${esc(job.stage || "읽는 중")}` : `메시지 ${w.auto.every}개마다 읽습니다${a?.pending != null ? ` · 아직 안 읽은 메시지 ${a.pending}개` : ""}`;
+          const last = job && !running && job.state === "done" ? `<div class="sub">지난번: 새 설정 ${job.added}개 · 바뀐 칸 ${job.changed}개${job.dropped ? ` · 근거가 없어 뺀 것 ${job.dropped}개` : ""}${job.fieldsDropped ? ` · 근거와 안 맞아 뺀 칸 ${job.fieldsDropped}개` : ""}</div>` : "";
+          const err = job?.state === "error" ? `<div class="err">${esc(job.error)}</div>` : "";
+          const cost = a?.past?.messages ? ` · 메시지 ${a.past.messages}개 · 약 ${Math.max(1, Math.round(a.past.tokens / 1000)).toLocaleString()}천 토큰` : "";
+          const again = st.ask === "restart" ? `<span class="ask">지난 대화를 처음부터 읽을까요${cost ? `(${cost.slice(3)})` : ""}? 토큰이 많이 듭니다. 설정은 지우지 않고, 읽은 위치만 처음으로 돌아갑니다. <button type="button" data-act="read-restart">다시 읽기</button><button class="quiet" type="button" data-act="ask" data-key="">취소</button></span>` : `<button class="quiet" type="button" data-act="ask" data-key="restart">지난 대화도 읽기(토큰 많이 듦)${cost}</button>`;
+          return `<div class="auto-line"><span class="dot ${running ? "run" : "on"}"></span><span class="sub">자동 반영 · ${status}</span></div>${last}${err}
+      ${running ? "" : `<div class="row" style="margin-top:8px"><button type="button" data-act="read-now" ${a?.pending === 0 ? "disabled" : ""}>지금 읽기</button>${compact ? "" : again}</div>`}`;
+        }
+        function railHtml() {
+          const p = st.preview;
+          const s = roomState();
+          return `${st.view === "tabs" && world() ? `${worldRailHtml()}<hr>` : ""}
+      <div class="rail-title">이 방</div>
+      <div class="room">${roomTitle()}</div>
+      <p>${roomLine()}</p>
+      <div class="row">${roomButtons()}</div>
+      ${autoHtml(true)}
+      ${(s.kind === "this" || s.kind === "other") && p ? `
+        <div class="chart">${chartSvg(p.chars / Math.max(1, p.budget))}<div class="num"><b>${p.chars.toLocaleString()}</b><small>/ ${p.budget.toLocaleString()}자</small></div></div>
+        <p>이번 답변에 설정 <b>${p.included.length}개</b>가 들어갑니다.${p.omitted.length ? ` 글자 수 한도 때문에 <b>${p.omitted.length}개</b>가 빠졌습니다. 「늘 먼저 넣기」한 설정이 먼저 들어갑니다.` : ""}</p>` : ""}
+      <hr>
+      <p>프리셋에 <b>{{세계}}</b>를 넣은 자리에 연결한 세계관 설정이 들어갑니다. 설정은 서버에 저장되어 다른 기기에서도 똑같이 보입니다.</p>`;
+        }
+        function overviewHtml() {
+          const w = world();
+          const stubs = KINDS.map((k) => [k.type, k.label]);
+          const p = st.preview;
+          return `
+      <div class="eyebrow">WORLD ARCHIVE · V${VERSION}</div>
+      <h1>${esc(w.name)}</h1>
+      <p class="intro">${w.description ? esc(w.description) : "시대·배경 설명이 아직 없습니다. 「세계관 정보 고치기」에서 적어 두면 설정 맨 앞에 함께 들어갑니다."}</p>
+      <div class="stubs">${stubs.map(([t, label]) => `<button class="stub" type="button" data-act="go" data-view="${t}"><strong>${count(t)}</strong><small>${label}</small></button>`).join("")}</div>
+      <div class="paper">
+        <h2>이 방 · ${roomTitle()}</h2>
+        <p class="sub" style="margin:0 0 12px">${roomLine()}</p>
+        <div class="row">${roomButtons()}</div>
+        ${roomState().kind === "this" ? `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--wa-line)">${autoHtml(false)}</div>` : ""}
+      </div>
+      ${roomState().kind === "this" && p ? `
+      <div class="paper">
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0">이번 답변에 들어갈 내용</h2><span class="pill">${p.chars.toLocaleString()} / ${p.budget.toLocaleString()}자</span></div>
+        <p class="sub" style="margin:8px 0 0">설정 ${p.included.length}개${p.omitted.length ? ` · 글자 수 한도 때문에 ${p.omitted.length}개 빠짐` : ""}${p.skipped > 0 ? ` · 장면 밖이라 뺀 것 ${p.skipped}개` : ""}. 프리셋의 {{세계}} 자리에 이대로 들어갑니다.</p>
+        <pre>${esc(p.text) || "(비어 있음)"}</pre>
+      </div>
+      <div class="paper">
+        <h2 style="margin:0">삽화용 외형 · {{세계외형}}</h2>
+        <p class="sub" style="margin:8px 0 0">삽화 에이전트 프롬프트에 <b>{{세계외형}}</b>(또는 {{world_looks}})을 넣으면, 장면에 나온 인물 가운데 외형 칸이 있는 사람만 들어갑니다. 최근 메시지에 나온 사람이 먼저입니다.${p.looks?.omitted?.length ? ` 길이 때문에 ${p.looks.omitted.length}명 빠짐.` : ""}</p>
+        <pre>${esc(p.looks?.text || "") || (p.looks?.sceneKnown ? "(장면에 외형이 적힌 인물이 없음)" : "(다음 답변부터 장면을 압니다)")}</pre>
+      </div>` : ""}
+      <div class="paper mobile-only"><p class="sub" style="margin:0">프리셋에 <b>{{세계}}</b>를 넣은 자리에 연결한 세계관 설정이 들어갑니다.</p></div>`;
+        }
+        function cardHtml(e) {
+          const d = defs(e.type);
+          const chips = d.filter((f) => f.kind === "line" && e.fields?.[f.key]).map((f) => `<span class="chip" title="${esc(f.label)}">${esc(e.fields[f.key])}</span>`).join("");
+          const firstText = d.find((f) => f.kind === "text" && f.key !== "state" && e.fields?.[f.key]);
+          const snip = firstText ? e.fields[firstText.key] : e.description;
+          return `<button class="card" type="button" data-act="open" data-id="${esc(e.entityId)}" data-search="${esc([e.name, ...e.aliases].join(" ").toLowerCase())}">
+      ${e.pinned ? '<span class="pill pin">고정</span>' : e.provenance?.source === "auto" ? '<span class="pill pin">자동</span>' : ""}
+      <div class="nm">${esc(e.name)}</div>
+      ${e.aliases.length ? `<div class="al">${esc(e.aliases.join(" · "))}</div>` : ""}
+      ${chips ? `<div class="chips">${chips}</div>` : ""}
+      ${snip ? `<p class="snip">${esc(snip)}</p>` : ""}
+      <div class="foot"><span>${KIND[e.type].en} · ${shortId(e.entityId)}</span><span>${fmtDate(e.updatedAt)}</span></div>
+    </button>`;
+        }
+        function listHtml(type) {
+          const k = KIND[type];
+          const list = st.entities.filter((e) => e.type === type).sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.name.localeCompare(b.name, "ko"));
+          return `
+      <div class="eyebrow">${k.en} · ${list.length}</div>
+      <h1>${k.label}</h1>
+      <p class="intro">${k.hint}</p>
+      <div class="toolbar">
+        ${list.length ? `<label class="search">${icon("search")}<input id="q" type="search" placeholder="이름 · 다른 이름 · 내용으로 찾기" value="${esc(st.query)}" aria-label="찾기"></label>` : ""}
+        <span style="flex:1"></span>
+        <button class="primary" type="button" data-act="new" data-type="${type}">새 ${k.label}</button>
+      </div>
+      ${type === "group" && st.groupSuggest?.length ? `<p class="sub" style="margin:-6px 0 14px">소속 칸에만 있는 이름 · ${st.groupSuggest.map((g) => `<button class="quiet" type="button" data-act="group-make" data-name="${esc(g.name)}" title="${esc(g.people.join(", "))}의 소속 칸${g.owner ? ` · 지금은 「${esc(g.owner)}」의 다른 이름` : ""}">${esc(g.name)} · 집단으로 만들기</button>`).join(" ")}</p>` : ""}
+      ${type === "schedule" && !st.readOnly ? `<p class="sub" style="margin:-6px 0 14px"><button class="quiet" type="button" data-act="cal-gather" title="날짜가 정해진 한 번뿐인 행사 일정을 그 집단·장소의 학사일정으로 옮깁니다(코드로)">학사일정으로 모으기</button> <button class="quiet" type="button" data-act="tt-gather" title="요일·시간이 정해진 수업·일과 일정을 그 집단·사람의 시간표 칸으로 옮깁니다. 코드로 먼저 하고, 안 되는 것만 작은 호출 한 번">시간표로 모으기</button></p>` : ""}
+      ${pairsOf(type).length ? `<p style="margin:-6px 0 14px"><button class="quiet" type="button" data-act="dupes">${type === "person" ? "같은 사람일 수 있음" : "같은 것일 수 있음"} ${pairsOf(type).length}쌍</button></p>` : ""}
+      ${list.length ? `<div class="cards">${list.map(cardHtml).join("")}</div><p class="sub" id="noHit" hidden>찾는 이름이 없습니다.</p>` : `<div class="empty"><h2>아직 ${k.label} 설정이 없습니다</h2><p>「새 ${k.label}」으로 첫 항목을 만들어 주세요.</p></div>`}`;
+        }
+        function copula(word) {
+          const c = String(word).trim().slice(-1).charCodeAt(0);
+          return c >= 44032 && c <= 55203 && (c - 44032) % 28 ? "이에요" : "예요";
+        }
+        async function loadRoster(id) {
+          st.rosters = st.rosters || {};
+          if (st.rosters[id])
+            return;
+          st.rosters[id] = { loading: true };
+          try {
+            st.rosters[id] = await api("GET", `/worlds/${st.worldId}/entities/${id}/members`);
+          } catch {
+            st.rosters[id] = { members: [], failed: true };
+          }
+          if (st.detail === id || st.view === "tabs")
+            render();
+        }
+        function rosterHtml(g) {
+          const r = st.rosters?.[g.entityId];
+          if (!r || r.loading) {
+            if (!r)
+              loadRoster(g.entityId);
+            return '<div class="sec"><small>구성원 명단</small><p class="sub">불러오는 중…</p></div>';
+          }
+          const list = r.members || [];
+          const inList = new Set(list.map((m) => m.entityId));
+          const chip = (m) => `<button class="quiet" type="button" data-act="open" data-id="${esc(m.entityId)}">${esc(m.name)}${m.unnamed ? " <small>(이름 모름)</small>" : ""}${m.via ? ` <small>· ${esc(m.via)}</small>` : ""}</button><button class="quiet" type="button" data-act="member-off" data-group="${esc(m.viaId || g.entityId)}" data-id="${esc(m.entityId)}" title="${esc(m.via || g.name)}의 명단에서 빼기 — 그 인물의 소속 칸에서 이 이름을 지웁니다" aria-label="${esc(m.name)} 빼기">×</button>`;
+          const part = (kind, label) => {
+            const rows = list.filter((m) => m.kind === kind);
+            return rows.length ? `<p><small>${label} ${rows.length}</small><br>${rows.map(chip).join("")}</p>` : "";
+          };
+          const named = list.filter((m) => !m.unnamed).length;
+          const others = st.entities.filter((x) => x.type === "person" && !inList.has(x.entityId)).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+          const add = others.length ? `<span class="roster-add"><select id="rosterPick" aria-label="명단에 더할 인물">${others.map((x) => `<option value="${esc(x.entityId)}">${esc(x.name)}</option>`).join("")}</select><button class="quiet" type="button" data-act="member-add" data-group="${esc(g.entityId)}">명단에 더하기</button></span>` : "";
+          const body = list.length ? part("member", "구성원") + part("staff", "맡은 사람") + part("past", "지난 구성원") : '<p class="sub">아직 이 집단에 소속된 인물이 없습니다.</p>';
+          const head = r.counts?.total ? `이름 아는 사람 ${r.counts.known}명 / 전체 ${r.counts.total}명` : `${list.length}명${named !== list.length ? ` (이름 아는 사람 ${named}명)` : ""}`;
+          return `<div class="sec"><small>구성원 명단 · ${head} · 인물마다 적힌 소속으로 모음</small>${body}${add}</div>`;
+        }
+        const TT_DAYS = ["월", "화", "수", "목", "금", "토", "일", "평일", "매일"];
+        function ttSlotRank(s) {
+          const t = String(s);
+          let m = t.match(/^(\d+)\s*교시/);
+          if (m)
+            return Number(m[1]) * 100;
+          m = t.match(/^(\d{1,2}):(\d{2})/);
+          if (m)
+            return Number(m[1]) * 60 + Number(m[2]);
+          m = t.match(/^(\d{1,2})\s*시/);
+          if (m)
+            return Number(m[1]) * 60;
+          const w = ["새벽", "아침", "오전", "점심", "오후", "저녁", "밤", "자정"].findIndex((x) => t.startsWith(x));
+          return w >= 0 ? [300, 420, 540, 720, 840, 1080, 1260, 1440][w] : 2000;
+        }
+        function timetableHtml(e) {
+          const cells = Object.entries(e.timetable?.cells || {});
+          const days = TT_DAYS.filter((d) => cells.some(([, c]) => c.day === d));
+          const slots = [...new Set(cells.map(([, c]) => c.slot))].sort((a, b) => ttSlotRank(a) - ttSlotRank(b) || a.localeCompare(b, "ko"));
+          const cellHtml = (day, slot) => {
+            const key = `${day}|${slot}`;
+            const c = e.timetable.cells[key];
+            if (!c)
+              return "<td></td>";
+            const past = c.past?.[0] ? `<small class="past">이전: ${esc(c.past[0].value)}</small>` : "";
+            const wait = c.pending ? `<small class="pending">대화에서는 「${esc(c.pending.value)}」${copula(c.pending.value)} <button class="quiet" type="button" data-act="cell-pending" data-id="${esc(e.entityId)}" data-key="${esc(key)}">적용</button><button class="quiet" type="button" data-act="cell-pending" data-id="${esc(e.entityId)}" data-key="${esc(key)}" data-discard="1">무시</button></small>` : "";
+            return `<td class="${(e.timetable.wide || []).includes(key) ? "wide" : ""}" title="${esc(c.evidence || "")}${(e.timetable.wide || []).includes(key) ? " — 이 시간 안에 더 자세한 칸이 있어 바탕으로만 보여 줍니다" : ""}">${esc(c.value)}${c.source === "auto" ? '<span class="auto-tag">· 자동</span>' : ""}${past}${wait}</td>`;
+          };
+          const table = cells.length ? `<div class="tt-wrap"><table class="tt"><thead><tr><th></th>${days.map((d) => `<th>${esc(d)}</th>`).join("")}</tr></thead><tbody>${slots.map((sl) => `<tr><th>${esc(sl)}</th>${days.map((d) => cellHtml(d, sl)).join("")}</tr>`).join("")}</tbody></table></div>` : '<p class="sub">아직 칸이 없습니다.</p>';
+          const label = (k) => {
+            const c = e.timetable.cells[k];
+            return c ? `${c.day} ${c.slot} ${c.value}` : k;
+          };
+          const clash = (e.timetable.overlaps || []).filter(([a, b]) => e.timetable.cells[a] && e.timetable.cells[b]);
+          const clashHtml = clash.length ? `<div class="tt-clash" role="status"><b>시간이 겹쳐요 ${clash.length}</b>${clash.map(([a, b]) => `<p>${[a, b].map((k) => `${esc(label(k))}${st.readOnly ? "" : ` <button class="quiet" type="button" data-act="cell-clear" data-id="${esc(e.entityId)}" data-key="${esc(k)}">이 칸 지우기</button>`}`).join(" ↔ ")}</p>`).join("")}</div>` : "";
+          const owner = st.entities.find((x) => x.entityId === e.timetable.ownerId);
+          const form = st.readOnly ? "" : `<div class="tt-form"><select id="ttDay" aria-label="요일">${TT_DAYS.map((d) => `<option>${d}</option>`).join("")}</select><input id="ttSlot" maxlength="24" placeholder="때(1교시 · 오전 · 09:00–10:30)" aria-label="때"><input id="ttValue" maxlength="80" placeholder="내용(비우면 그 칸을 지움)" aria-label="내용"><button class="quiet" type="button" data-act="cell-save" data-id="${esc(e.entityId)}">칸 저장</button></div>`;
+          return `<div class="sec"><small>시간표${owner ? ` · ${esc(owner.name)}` : ""} · 칸 ${cells.length}</small>${clashHtml}${table}${form}</div>`;
+        }
+        function appliesHtml(e) {
+          const where = st.entities.find((x) => x.entityId === e.appliesTo);
+          const tag = e.sources?.appliesTo === "auto" ? '<span class="auto-tag">· 자동</span>' : "";
+          const opts = st.entities.filter((x) => x.type === "place" || x.type === "group").sort((a, b) => a.type === b.type ? a.name.localeCompare(b.name, "ko") : a.type === "group" ? -1 : 1);
+          const pick = st.readOnly ? "" : `<span class="roster-add"><select id="appliesPick" aria-label="적용되는 곳"><option value="" ${e.appliesTo ? "" : "selected"}>모름</option><option value="world" ${e.appliesTo === "world" ? "selected" : ""}>세계 전체</option>${opts.map((x) => `<option value="${esc(x.entityId)}" ${x.entityId === e.appliesTo ? "selected" : ""}>${esc(x.name)} · ${x.type === "group" ? "집단" : "장소"}</option>`).join("")}</select><button class="quiet" type="button" data-act="applies-set" data-id="${esc(e.entityId)}">바꾸기</button></span>`;
+          const shown = where ? `<button class="quiet" type="button" data-act="open" data-id="${esc(where.entityId)}">${esc(where.name)}</button>` : e.appliesTo === "world" ? "세계 전체" : "모름 <small>(장면 방식에서 맨 뒤에 넣음)</small>";
+          return `<div class="sec"><small>적용되는 곳${tag}</small><p>${shown}</p>${pick}</div>`;
+        }
+        function baseHtml(g) {
+          const at = st.entities.find((x) => x.entityId === g.base);
+          const tag = g.sources?.base === "auto" ? '<span class="auto-tag">· 자동</span>' : "";
+          const places = st.entities.filter((x) => x.type === "place").sort((a, b) => a.name.localeCompare(b.name, "ko"));
+          const pick = st.readOnly ? "" : `<span class="roster-add"><select id="basePick" aria-label="본거지"><option value="">없음</option>${places.map((x) => `<option value="${esc(x.entityId)}" ${x.entityId === g.base ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select><button class="quiet" type="button" data-act="base-set" data-id="${esc(g.entityId)}">바꾸기</button></span>`;
+          return `<div class="sec"><small>본거지${tag}</small><p>${at ? `<button class="quiet" type="button" data-act="open" data-id="${esc(at.entityId)}">${esc(at.name)}</button>` : '<span class="sub">없음</span>'}</p>${pick}</div>`;
+        }
+        function roomHtml(p) {
+          const at = st.entities.find((x) => x.entityId === p.room);
+          const tag = p.sources?.room === "auto" ? '<span class="auto-tag">· 자동</span>' : "";
+          const places = st.entities.filter((x) => x.type === "place").sort((a, b) => a.name.localeCompare(b.name, "ko"));
+          const past = (p.roomPast || []).map((x) => st.entities.find((y) => y.entityId === x.placeId)?.name).filter(Boolean);
+          if (!at && !past.length && st.readOnly)
+            return "";
+          const pick = st.readOnly ? "" : `<span class="roster-add"><select id="roomPick" aria-label="지내는 곳"><option value="">없음</option>${places.map((x) => `<option value="${esc(x.entityId)}" ${x.entityId === p.room ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select><button class="quiet" type="button" data-act="room-set" data-id="${esc(p.entityId)}">바꾸기</button></span>`;
+          return `<div class="sec"><small>지내는 곳${tag}</small><p>${at ? `<button class="quiet" type="button" data-act="open" data-id="${esc(at.entityId)}">${esc(at.name)}</button>` : '<span class="sub">없음</span>'}${past.length ? ` <small class="past">이전: ${esc(past.join(", "))}</small>` : ""}</p>${pick}</div>`;
+        }
+        function stayingHtml(pl) {
+          const who = st.entities.filter((x) => x.type === "person" && x.room === pl.entityId).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+          return who.length ? `<div class="sec"><small>지내는 사람 · ${who.length}</small><p>${who.map((x) => `<button class="quiet" type="button" data-act="open" data-id="${esc(x.entityId)}">${esc(x.name)}</button>`).join(" ")}</p></div>` : "";
+        }
+        function calendarHtml(e) {
+          const list = Object.values(e.calendar?.events || {}).sort((a, b) => String(a.date || "9999").replace(/^--/, "0000-").localeCompare(String(b.date || "9999").replace(/^--/, "0000-")));
+          const rows = list.map((x) => `<li class="${x.cancelled ? "undone" : ""}"><b>${esc(x.date ? x.date.replace(/^--/, "연도 모름 ") : x.when || "")}${x.end ? ` ~ ${esc(x.end)}` : ""}</b> ${esc(x.name)}${x.place ? ` · ${esc(x.place)}` : ""}${x.who ? ` · ${esc(x.who)}` : ""}${x.cancelled ? " · 취소" : ""}${x.source === "auto" ? '<span class="auto-tag">· 자동</span>' : ""}${x.past?.[0] ? ` <small class="past">이전: ${esc(x.past[0].date)}</small>` : ""}${x.pending ? ` <small class="pending">대화에서는 ${esc(x.pending.date || "")}${x.pending.cancelled ? " 취소" : ""} <button class="quiet" type="button" data-act="event-pending" data-id="${esc(e.entityId)}" data-event="${esc(x.id)}">적용</button><button class="quiet" type="button" data-act="event-pending" data-id="${esc(e.entityId)}" data-event="${esc(x.id)}" data-discard="1">무시</button></small>` : ""}</li>`).join("");
+          return `<div class="sec"><small>학사일정 · ${list.length}</small>${rows ? `<ul class="hist">${rows}</ul>` : '<p class="sub">아직 일정이 없습니다.</p>'}</div>`;
+        }
+        function tidyHtml() {
+          const t = st.tidy;
+          if (!t || !t.items.length && !t.fields.length)
+            return "";
+          const items = t.items.map((x) => `<li><b>${esc(x.name)}</b> <small>${esc(x.why || "")}</small> <button class="quiet" type="button" data-act="tidy-trash" data-id="${esc(x.entityId)}">휴지통으로</button><button class="quiet" type="button" data-act="tidy-keep" data-id="${esc(x.entityId)}">남기기</button></li>`).join("");
+          const fields = t.fields.map((x) => `<li><b>${esc(x.name)}</b> · ${x.key === "description" ? "메모" : "성격"}: ${esc(x.value)} <small>${esc(x.why || "")}</small> <button class="quiet" type="button" data-act="tidy-clear" data-id="${esc(x.entityId)}" data-key="${esc(x.key)}">칸 비우기</button><button class="quiet" type="button" data-act="tidy-keep" data-id="${esc(x.entityId)}" data-key="${esc(x.key)}">남기기</button></li>`).join("");
+          return `<div class="paper"><h2>잡다한 설정 정리 · 후보 ${t.items.length + t.fields.length}</h2><p class="hint">지우지 않았습니다. 고른 것만 휴지통으로 가고 기록에서 되돌릴 수 있습니다.</p>${items ? `<ul class="hist">${items}</ul>` : ""}${fields ? `<ul class="hist">${fields}</ul>` : ""}</div>`;
+        }
+        function detailHtml(e) {
+          const k = KIND[e.type];
+          const d = defs(e.type);
+          const f = e.fields || {};
+          const src = e.sources || {};
+          const tag = (k) => (src[k] === "auto" ? '<span class="auto-tag">· 자동</span>' : "") + (e.hidden?.[k] ? '<span class="auto-tag" title="프로필 블록에만 있고 이야기에는 아직 나오지 않았습니다">· 아직 드러나지 않음</span>' : "");
+          const was = (k) => e.past?.[k]?.[0] ? `<small class="past">이전: ${esc(e.past[k][0].value)} <button class="quiet" type="button" data-act="past-prompt" data-id="${esc(e.entityId)}" data-key="${esc(k)}" title="켜면 {{세계}}에 「(과거: …)」가 붙습니다">${e.pastInPrompt?.[k] ? "프롬프트에 넣는 중 · 끄기" : "프롬프트에도 넣기"}</button></small>` : "";
+          const wait = (k) => e.pending?.[k] ? `<small class="pending">대화에서는 「${esc(e.pending[k].value)}」${copula(e.pending[k].value)} <button class="quiet" type="button" data-act="pending" data-id="${esc(e.entityId)}" data-key="${esc(k)}">적용</button><button class="quiet" type="button" data-act="pending-drop" data-id="${esc(e.entityId)}" data-key="${esc(k)}">무시</button></small>` : "";
+          const facts = d.filter((x) => x.kind === "line" && f[x.key]).map((x) => `<div class="fact"><small>${esc(x.label)}${tag(x.key)}</small><b>${esc(f[x.key])}</b>${was(x.key)}${wait(x.key)}</div>`).join("");
+          const secs = d.filter((x) => x.kind === "text" && x.key !== "state" && f[x.key]).map((x) => `<div class="sec"><small>${esc(x.label)}${tag(x.key)}</small><p>${esc(f[x.key])}</p>${was(x.key)}${wait(x.key)}</div>`).join("");
+          const extra = (e.extra || []).filter((x) => x.value).map((x) => `<div class="sec"><small>${esc(x.label)}</small><p>${esc(x.value)}</p></div>`).join("");
+          const memo = e.description ? `<div class="sec"><small>${d.length ? "메모" : "내용"}${tag("description")}</small><p>${esc(e.description)}</p></div>` : "";
+          const rumors = Object.entries(e.rumors || {}).map(([k, r]) => `<div class="sec"><small>${esc(d.find((x) => x.key === k)?.label || k)} · 확인 안 됨 · ${esc(r.by || "소문")}의 말</small><p>${esc(r.value)}</p></div>`).join("");
+          const rels = (st.relations || []).filter((r) => r.from === e.entityId || r.to === e.entityId).map((r) => {
+            const other = st.entities.find((x) => x.entityId === (r.from === e.entityId ? r.to : r.from));
+            if (!other)
+              return "";
+            return `<button class="quiet" type="button" data-act="open" data-id="${esc(other.entityId)}">${esc(r.type)} · ${esc(other.name)}${r.note ? ` (${esc(r.note)})` : ""}${r.source === "auto" ? '<span class="auto-tag">· 자동</span>' : ""}</button>`;
+          }).join("");
+          const relSec = rels ? `<div class="sec"><small>관계</small><p>${rels}</p></div>` : "";
+          const empty = !facts && !secs && !extra && !memo && !f.state && !rels;
+          const askKey = `entity:${e.entityId}`;
+          return `
+      ${st.fromTabs ? `<button class="back" type="button" data-act="go" data-view="tabs">${icon("back")}세계관 칸으로</button>` : `<button class="back" type="button" data-act="go" data-view="${e.type}">${icon("back")}${k.label} 목록</button>`}
+      <div class="paper">
+        <div class="sheet-head">
+          <div>
+            <div class="eyebrow">${k.en} · ${shortId(e.entityId)}</div>
+            <h1 style="margin-bottom:6px">${esc(e.name)}</h1>
+            ${e.aliases.length ? `<p class="al">다른 이름 · ${esc(e.aliases.join(", "))}</p>` : ""}
+            ${e.glossaryName && e.glossaryName !== e.name ? `<p class="sub" style="margin:6px 0 0">번역 단어장에는 「${esc(e.glossaryName)}」${copula(e.glossaryName)} <button class="quiet" type="button" data-act="glossary-name" data-id="${esc(e.entityId)}">적용</button></p>` : ""}
+          </div>
+          ${e.pinned ? '<span class="pill">늘 먼저 넣기</span>' : ""}${e.nameCheck ? `<span class="pill" title="근거 문장에는 「${esc(e.nameCheck.said)}」이(가) 나옵니다. 이름을 확인해 주세요(고치면 사라집니다).">이름 확인 필요</span>` : ""}
+        </div>
+        ${facts ? `<div class="facts">${facts}</div>` : ""}
+        ${rumors}${e.type === "rule" || e.type === "system" ? appliesHtml(e) : ""}${e.type === "group" ? baseHtml(e) : ""}${e.type === "person" ? roomHtml(e) : ""}${e.type === "place" ? stayingHtml(e) : ""}${e.timetable ? timetableHtml(e) : ""}${e.calendar ? calendarHtml(e) : ""}${secs}${extra}${memo}${e.type === "group" ? rosterHtml(e) : ""}${relSec}
+        ${f.state ? `<div class="state"><small>지금 상태 · 사건으로 바뀐 것${tag("state")}</small><p>${esc(f.state)}</p>${was("state")}${wait("state")}</div>` : ""}
+        ${empty ? '<p class="sub" style="margin-top:16px">아직 적힌 칸이 없습니다. 「고치기」에서 채워 주세요.</p>' : ""}
+        <div class="meta">만든 날 ${fmtDate(e.createdAt)} · 고친 날 ${fmtDate(e.updatedAt)} · ${e.provenance?.source === "auto" ? "대화에서 자동으로 추가" : "직접 입력"}${e.provenance?.evidence ? `<br>근거 “${esc(e.provenance.evidence)}”` : ""}</div>
+        <div class="actions">
+          <button class="primary" type="button" data-act="edit" data-id="${esc(e.entityId)}">고치기</button>
+          <button type="button" data-act="pin" data-id="${esc(e.entityId)}">${e.pinned ? "고정 풀기" : "늘 먼저 넣기"}</button>
+          <span class="grow"></span>
+          ${st.ask === askKey ? `<span class="ask">정말 지울까요? <button class="danger" type="button" data-act="delete" data-id="${esc(e.entityId)}">지우기</button><button class="quiet" type="button" data-act="ask" data-key="">취소</button></span>` : `<button class="quiet" type="button" data-act="ask" data-key="${askKey}">지우기</button>`}
+        </div>
+      </div>`;
+        }
+        const clip = (v, n) => {
+          const x = String(v || "");
+          return x.length > n ? `${x.slice(0, n)}…` : x;
+        };
+        function personSide(e) {
+          const f = e.fields || {};
+          const rows = defs(e.type).filter((x) => f[x.key]).map((x) => `<div class="sec"><small>${esc(x.label)}${e.sources?.[x.key] === "auto" ? '<span class="auto-tag">· 자동</span>' : ""}</small><p>${esc(clip(f[x.key], 160))}</p></div>`).join("");
+          const memo = e.description ? `<div class="sec"><small>메모</small><p>${esc(clip(e.description, 160))}</p></div>` : "";
+          return `<div>
+      <h2 style="margin:0 0 2px">${esc(e.name)}</h2>
+      ${e.aliases.length ? `<p class="sub" style="margin:0">다른 이름 · ${esc(e.aliases.join(", "))}</p>` : ""}
+      ${rows}${memo}${!rows && !memo ? '<p class="sub" style="margin-top:10px">아직 적힌 칸이 없습니다.</p>' : ""}
+    </div>`;
+        }
+        const pairsOf = (type) => (st.pairs || []).filter((p) => (p.type || "person") === type);
+        function dupesHtml() {
+          const byId = (id) => st.entities.find((e) => e.entityId === id);
+          const type = KIND[st.view] ? st.view : "person";
+          const person = type === "person";
+          const pairs = pairsOf(type).map((p) => ({ ...p, ea: byId(p.a), eb: byId(p.b) })).filter((p) => p.ea && p.eb);
+          return `
+      <button class="back" type="button" data-act="go" data-view="${type}">${icon("back")}${KIND[type].label} 목록</button>
+      <div class="eyebrow">${person ? "PEOPLE · SAME PERSON?" : "SAME ONE?"} · ${pairs.length}</div>
+      <h1>${person ? "같은 사람일 수 있음" : "같은 것일 수 있음"}</h1>
+      <p class="intro">이름이나 다른 이름이 겹치거나, 자동 반영이 같은 것인지 헷갈려 한 ${person ? "인물" : "설정"}입니다. 같은 ${person ? "사람" : "것"}이면 「합치기」로 하나로 모을 수 있습니다. 자동으로 합치지는 않습니다. 합친 뒤에도 「기록」에서 되돌릴 수 있습니다.</p>
+      ${pairs.length ? pairs.map(({ a, b, why, ea, eb }) => {
+            const key = `merge:${a}:${b}`;
+            return `<div class="paper">
+          <p class="sub" style="margin:0 0 10px">${esc(why)}</p>
+          <div class="grid2">${personSide(ea)}${personSide(eb)}</div>
+          <div class="actions">
+            ${st.ask === key ? `<span class="ask">어느 이름을 남길까요? 다른 쪽 이름은 다른 이름으로 들어가고, 빈 칸은 다른 쪽 내용으로 채웁니다. 직접 쓴 칸은 그대로 둡니다.
+                  <button class="danger" type="button" data-act="merge" data-keep="${esc(a)}" data-drop="${esc(b)}">「${esc(ea.name)}」 남기기</button>
+                  <button class="danger" type="button" data-act="merge" data-keep="${esc(b)}" data-drop="${esc(a)}">「${esc(eb.name)}」 남기기</button>
+                  <button class="quiet" type="button" data-act="ask" data-key="">취소</button></span>` : `<button class="primary" type="button" data-act="ask" data-key="${key}">합치기</button>
+                 <button type="button" data-act="dismiss" data-a="${esc(a)}" data-b="${esc(b)}">${person ? "다른 사람이에요" : "다른 것이에요"}</button>`}
+          </div>
+        </div>`;
+          }).join("") : `<div class="empty"><h2>${person ? "같은 사람일 수 있는 인물이" : "같은 것일 수 있는 설정이"} 없습니다</h2><p>이름이나 다른 이름이 겹치는 설정이 생기면 여기에 보입니다.</p></div>`}`;
+        }
+        function fieldInput(x, value, hideLabel) {
+          const hint = x.hint ? `<em>${esc(x.hint)}</em>` : "";
+          const label = `<label class="f" for="fd-${x.key}" ${hideLabel ? "hidden" : ""}>${esc(x.label)}${hint}</label>`;
+          return x.kind === "line" ? `<div>${label}<input id="fd-${x.key}" data-field="${x.key}" maxlength="200" value="${esc(value)}"></div>` : `<div>${label}<textarea id="fd-${x.key}" data-field="${x.key}" maxlength="2000">${esc(value)}</textarea></div>`;
+        }
+        function extraRow(x = { label: "", value: "" }) {
+          return `<div class="extra-row" data-extra><input data-x="label" maxlength="40" placeholder="칸 이름 (예: 좋아하는 것)" value="${esc(x.label)}"><textarea data-x="value" maxlength="2000" rows="1" style="min-height:42px">${esc(x.value)}</textarea><button class="quiet" type="button" data-act="drop-extra">빼기</button></div>`;
+        }
+        function formHtml(e, type) {
+          const isNew = st.editing === "new";
+          const v = st.draft || e || {};
+          const k = KIND[type];
+          const d = defs(type);
+          const f = v.fields || {};
+          const lines = d.filter((x) => x.kind === "line");
+          const texts = d.filter((x) => x.kind === "text" && x.key !== "state");
+          const state = d.find((x) => x.key === "state");
+          return `
+      <button class="back" type="button" data-act="cancel">${icon("back")}${isNew ? `${k.label} 목록` : "돌아가기"}</button>
+      <div class="eyebrow">${k.en} · ${isNew ? "새로 만들기" : "고치기"}</div>
+      <h1>${isNew ? `새 ${k.label}` : esc(e?.name || "")}</h1>
+      <p class="intro">직접 고친 칸은 그 뒤로 자동 반영이 덮어쓰지 않습니다.</p>
+      <form class="paper" id="entityForm" onsubmit="return false">
+        <div class="grid2">
+          <div><label class="f" for="fd-name">이름</label><input id="fd-name" maxlength="120" value="${esc(v.name || "")}"></div>
+          <div><label class="f" for="fd-type">종류</label><select id="fd-type">${KINDS.map((x) => `<option value="${x.type}" ${x.type === type ? "selected" : ""}>${x.label}</option>`).join("")}</select></div>
+        </div>
+        <label class="f" for="fd-aliases">다른 이름<em>애칭·영어 표기·직함. 쉼표로 나눠 주세요</em></label>
+        <input id="fd-aliases" value="${esc((v.aliases || []).join(", "))}">
+        ${lines.length ? `<div class="grid3">${lines.map((x) => fieldInput(x, f[x.key] || "")).join("")}</div>` : ""}
+        ${texts.map((x) => fieldInput(x, f[x.key] || "")).join("")}
+        ${state ? `<div class="state"><small>지금 상태 · 사건으로 바뀐 것</small><p class="sub" style="margin:0 0 8px">${esc(state.hint || "")}</p>${fieldInput(state, f.state || "", true)}</div>` : ""}
+        <label class="f">추가 칸<em>이 항목에만 필요한 칸</em></label>
+        <div id="extras">${(v.extra || []).map(extraRow).join("")}</div>
+        <button type="button" data-act="add-extra" style="margin-top:8px">칸 추가</button>
+        <label class="f" for="fd-desc">${d.length ? "메모" : "내용"}</label>
+        <textarea id="fd-desc" maxlength="4000">${esc(v.description || "")}</textarea>
+        <label class="check"><input type="checkbox" id="fd-pinned" ${v.pinned ? "checked" : ""}> 늘 먼저 넣기 (글자 수가 모자랄 때 이 설정부터 넣습니다)</label>
+        <div class="actions"><button class="primary" type="button" data-act="save">저장</button><button class="quiet" type="button" data-act="cancel">취소</button></div>
+      </form>`;
+        }
+        function newWorldHtml(first) {
+          return `
+      <div class="eyebrow">WORLD ARCHIVE · NEW</div>
+      <h1>${first ? "첫 세계관 만들기" : "새 세계관"}</h1>
+      <p class="intro">세계관 하나에 인물·장소·규칙 같은 설정을 모아 두고, 채팅방마다 어떤 세계관을 읽을지 고릅니다. 여러 방이 같은 세계관을 함께 써도 됩니다.</p>
+      <form class="paper" onsubmit="return false">
+        <label class="f" for="nw-name">세계관 이름</label><input id="nw-name" maxlength="120" placeholder="예: 별빛 학원">
+        <label class="f" for="nw-desc">시대·배경<em>설정 맨 앞에 들어갑니다</em></label><textarea id="nw-desc" maxlength="4000" placeholder="예: 1988년, 산 위의 기숙학교."></textarea>
+        <div class="actions"><button class="primary" type="button" data-act="create-world">만들기</button>${first ? "" : '<button class="quiet" type="button" data-act="go" data-view="overview">취소</button>'}</div>
+      </form>`;
+        }
+        function worldHtml() {
+          const w = world();
+          return `
+      <div class="eyebrow">WORLD · SETTINGS</div>
+      <h1>세계관 정보</h1>
+      <form class="paper" onsubmit="return false">
+        <label class="f" for="w-name">이름</label><input id="w-name" maxlength="120" value="${esc(w.name)}">
+        <label class="f" for="w-desc">시대·배경<em>설정 맨 앞에 들어갑니다</em></label><textarea id="w-desc" maxlength="4000" style="min-height:120px">${esc(w.description)}</textarea>
+        <label class="f" for="w-budget">프롬프트에 넣을 최대 글자 수<em>300~20000. 넘치면 고정하지 않은 설정부터 빠집니다</em></label><input id="w-budget" type="number" min="300" max="20000" step="100" value="${w.injectChars}" style="max-width:200px">
+        <label class="f" for="w-mode">넣는 방식<em>장면 방식은 최근 메시지 12개에 이름이 나온 설정만 넣습니다</em></label><select id="w-mode" style="max-width:360px"><option value="all" ${w.injectMode === "scene" ? "" : "selected"}>전부 넣기</option><option value="scene" ${w.injectMode === "scene" ? "selected" : ""}>장면에 나온 것만(고정·규칙·시스템은 늘)</option></select>
+        <label class="f" for="w-year">학년도 시작 달<em>시간표와 학사일정을 학년도로 나눕니다(이야기 속 날짜를 알 때)</em></label><select id="w-year" style="max-width:200px">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${(w.yearStart || 9) === i + 1 ? "selected" : ""}>${i + 1}월</option>`).join("")}</select>
+        <label class="f">{{세계}} 맨 끝 두 줄<em>글자 수 안에서 고정 설정 다음으로 먼저 자리를 잡습니다</em></label>
+        <label class="check"><input type="checkbox" id="w-tail-cast" ${w.tail?.cast !== false ? "checked" : ""}> [이미 있는 인물] — 이름 목록(600자까지, 최근 순 · 넘으면 「외 N명」)</label>
+        <label class="check"><input type="checkbox" id="w-tail-bal" ${w.tail?.balance !== false ? "checked" : ""}> [균형] — 반복 등장 인물(두 번 이상 나왔거나 고정) 수를 칸별로</label>
+        <label class="f" for="w-balance">균형 볼 칸<em>쉼표로 나눔 · 4개까지 · 기본 성별. 인물 칸 이름(성별 · 종 · 소속 …)이 아니면 인물의 추가 칸으로 생기고, 자동 반영은 근거가 있을 때만 채웁니다</em></label><input id="w-balance" maxlength="100" value="${esc(((w.balance?.length) ? w.balance : ["성별"]).join(", "))}">
+        <label class="f" for="w-names">{{세계}} 이름 표기<em>자동: 영어로 진행하는 방에서는 「원래 표기(한국어)」</em></label><select id="w-names" style="max-width:360px">${[["auto", "자동"], ["ko", "한국어만"], ["original", "원래 표기(한국어)"]].map(([v, l]) => `<option value="${v}" ${(w.nameStyle || "auto") === v ? "selected" : ""}>${l}</option>`).join("")}</select>
+        <div class="grid2">
+          <div><label class="f" for="w-board">점수판 이름<em>비우면 점수를 찾지 않습니다 (예: 기숙사 점수)</em></label><input id="w-board" maxlength="40" value="${esc(w.scoreboard?.name || "")}"></div>
+          <div><label class="f" for="w-unit">단위<em>예: 점</em></label><input id="w-unit" maxlength="10" value="${esc(w.scoreboard?.unit || "")}" style="max-width:140px"></div>
+        </div>
+        <div class="actions"><button class="primary" type="button" data-act="save-world">저장</button></div>
+      </form>
+      <form class="paper" onsubmit="return false">
+        <h2>자동 반영</h2>
+        <p class="sub" style="margin:0 0 4px">이 세계관을 읽는 방에서 답변이 오면, 아직 안 읽은 대화를 읽고 새 인물·장소·규칙과 새로 밝혀진 사실을 바로 설정에 넣습니다. 원문에 근거가 있는 것만 넣고, 직접 쓴 칸은 덮어쓰지 않습니다. 바뀐 내용은 「기록」에서 하나씩 되돌릴 수 있습니다. 가장 최근 메시지 두 개는 리롤될 수 있어 다음 차례에 읽습니다.</p>
+        <label class="toggle" style="margin-top:14px"><input type="checkbox" id="a-on" ${w.auto?.enabled ? "checked" : ""}> 자동 반영 켜기</label>
+        <div class="grid2">
+          <div><label class="f" for="a-conn">읽을 때 쓸 연결<em>저렴하고 긴 글을 잘 읽는 모델</em></label>
+            <select id="a-conn"><option value="">${st.connections == null ? "불러오는 중…" : "(골라 주세요)"}</option>${(st.connections || []).map((c) => `<option value="${esc(c.id)}" ${c.id === w.auto?.connectionId ? "selected" : ""}>${esc(c.name)}${c.model ? ` · ${esc(c.model)}` : ""}</option>`).join("")}</select></div>
+          <div><label class="f" for="a-every">몇 메시지마다 읽을까요<em>2~50</em></label><input id="a-every" type="number" min="2" max="50" value="${w.auto?.every ?? 6}" style="max-width:140px"></div>
+        </div>
+        <div class="actions"><button class="primary" type="button" data-act="save-auto">저장</button></div>
+      </form>
+      <div class="paper">
+        <h2>인물 종 채우기 <small>추가 기능</small></h2>
+        <p class="sub" style="margin:0 0 12px">「종」 칸이 생기기 전에 읽은 인물은 종이 비어 있습니다. 누를 때만, 종이 빈 인물의 이름 · 다른 이름 · 외형 · 메모를 모아 100명씩 작은 호출로 묻고, 사람이 아닌 존재(반려동물 · 마법 생물 같은)에만 종을 적습니다. 직접 고친 칸은 건드리지 않고, 기록에서 하나씩 되돌릴 수 있습니다. 자동 반영 연결을 씁니다.</p>
+        ${tidyHtml()}
+        <div class="row"><button type="button" data-act="tidy" title="한 번 스친 물건·주문 같은 규칙·시스템·일정과, 성격·메모에 섞인 사건을 후보로만 고릅니다(작은 호출). 지우지는 않습니다.">잡다한 설정 정리</button><button type="button" data-act="species-fill">인물 종 채우기</button><button type="button" data-act="applies-fill" title="적용되는 곳이 빈 규칙·시스템을 이름·분류·내용만으로 한 번에 묻습니다(작은 호출). 근거가 없으면 모름으로 둡니다.">규칙 적용되는 곳 채우기</button><button type="button" data-act="location-fill" title="아직 어느 장소 안에도 없는 장소를 위치 칸으로 먼저 잇고, 남은 것만 작은 호출로 묻습니다.">장소 위치 채우기</button></div>
+      </div>
+      <div class="paper">
+        <h2>백업 · 복원</h2>
+        <p class="sub" style="margin:0 0 12px">이 세계관의 설정 · 관계 · 기록을 파일 하나로 내려받습니다. 복원하면 「(복원)」이 붙은 새 세계관이 생기고, 지금 세계관은 그대로입니다. 방 연결은 복원되지 않습니다.</p>
+        <div class="row"><button type="button" data-act="backup">백업 내려받기</button><label class="quiet" style="cursor:pointer;padding:6px 8px">백업에서 복원<input id="restore-file" type="file" accept="application/json,.json" hidden></label></div>
+      </div>
+      <div class="paper">
+        <h2>세계관 지우기</h2>
+        <p class="sub" style="margin:0 0 12px">설정 ${st.entities.length}개도 함께 지워지고, 이 세계관을 읽던 방들은 연결이 끊깁니다. 서버의 world-archive/trash 폴더에 사본이 남습니다.</p>
+        ${st.ask === "world" ? `<span class="ask">정말 「${esc(w.name)}」을(를) 지울까요? <button class="danger" type="button" data-act="delete-world">지우기</button><button class="quiet" type="button" data-act="ask" data-key="">취소</button></span>` : '<button class="danger" type="button" data-act="ask" data-key="world">세계관 지우기</button>'}
+      </div>`;
+        }
+        const ACTION_TEXT = {
+          create: (c) => `새 ${KIND[c.type]?.label || "설정"} <b>${esc(c.name)}</b>${c.by === "person" ? " · 직접 만듦" : ""}`,
+          edit: (c) => {
+            const label = { name: "이름", description: "메모", aliases: "다른 이름", pinned: "고정", extra: "추가 칸", type: "종류" };
+            const keys = (c.keys || []).map((k) => label[k] || (st.fields[c.type] || []).find((f) => f.key === k)?.label || k);
+            return `<b>${esc(c.name)}</b> · 직접 고침${keys.length ? `: ${esc(keys.join(", "))}` : ""}`;
+          },
+          field: (c) => `<b>${esc(c.name)}</b> · ${esc((st.fields[c.type] || []).find((f) => f.key === c.key)?.label || c.key)}: ${c.before ? `${esc(c.before)} → ` : ""}${esc(c.after)}${c.correction ? " · 정정됨" : ""}`,
+          rumor: (c) => `<b>${esc(c.name)}</b> · ${esc((st.fields[c.type] || []).find((f) => f.key === c.key)?.label || c.key)}: 확인 안 됨 「${esc(c.after)}」 · ${esc(c.by2 || "소문")}의 말`,
+          alias: (c) => `<b>${esc(c.name)}</b> · 다른 이름 「${esc(c.after)}」`,
+          memo: (c) => `<b>${esc(c.name)}</b> · 메모: ${esc(c.after)}`,
+          merge: (c) => `<b>${esc(c.name)}</b> · 「${esc(c.dropName)}」와(과) 합침`,
+          rename: (c) => `<b>${esc(c.before)}</b> → <b>${esc(c.after)}</b> · 번역 단어장의 이름으로`,
+          "relation-add": (c) => `관계 <b>${esc(c.name)}</b> · ${esc(c.relation?.type || "")}${c.relation?.note ? ` (${esc(c.relation.note)})` : ""}`,
+          "relation-note": (c) => `관계 <b>${esc(c.name)}</b> · ${c.before ? `${esc(c.before)} → ` : ""}${esc(c.after)}`,
+          "relation-flip": (c) => `관계 <b>${esc(c.name)}</b> · ${esc(c.relation?.type || "")} 방향 바뀜`,
+          "relation-remove": (c) => `관계 <b>${esc(c.name)}</b> · ${esc(c.relation?.type || "")} 끝남`,
+          cell: (c) => `<b>${esc(c.name)}</b> · ${esc(String(c.key || "").replace("|", " "))}: ${c.before ? `${esc(c.before)} → ` : ""}${c.after ? esc(c.after) : "지움"}${c.moved ? ` · 시간표로 옮김(${esc((st.fields[c.moved.type] || []).find((f) => f.key === c.moved.key)?.label || c.moved.key)} 칸에서)` : ""}`,
+          event: (c) => `<b>${esc(c.name)}</b> · ${esc(c.after?.name || c.before?.name || "")}: ${c.before?.date && c.after?.date && c.before.date !== c.after.date ? `${esc(c.before.date)} → ` : ""}${esc(c.after?.date || c.after?.when || "")}${c.after?.cancelled && !c.before?.cancelled ? " · 취소" : ""}${c.after ? "" : " 지움"}`,
+          "cell-pending": (c) => `<b>${esc(c.name)}</b> · ${esc(String(c.key || "").replace("|", " "))}: 대화에서는 「${esc(c.after)}」`,
+          base: (c) => `<b>${esc(c.name)}</b> · 본거지: ${esc(c.beforeName || "없음")} → ${esc(c.afterName || "없음")}`,
+          extra: (c) => `<b>${esc(c.name)}</b> · ${esc(c.key)}: ${c.before ? `${esc(c.before)} → ` : ""}${esc(c.after)}`,
+          room: (c) => `<b>${esc(c.name)}</b> · 지내는 곳: ${esc(c.beforeName || "없음")} → ${esc(c.afterName || "없음")}`,
+          reveal: (c) => `<b>${esc(c.name)}</b> · ${esc((st.fields[c.type] || []).find((f) => f.key === c.key)?.label || c.key)}: 이야기에 드러남`,
+          applies: (c) => `<b>${esc(c.name)}</b> · 적용되는 곳: ${esc(c.beforeName || "세계 전체")} → ${esc(c.afterName || "세계 전체")}`,
+          "alias-remove": (c) => `<b>${esc(c.name)}</b> · 이름이 아닌 다른 이름 「${esc(c.alias)}」 뗌`,
+          "alias-move": (c) => `<b>${esc(c.name)}</b> · 다른 이름 「${esc(c.alias)}」을(를) 새 집단 「${esc(c.to)}」(으)로 옮김`,
+          delete: (c) => `<b>${esc(c.name)}</b> 지움${c.relations?.length ? ` · 관계 ${c.relations.length}개도 함께` : ""}`
+        };
+        const quoted = (t) => `“${esc(String(t).trim().replace(/^["“”'「『]+|["“”'」』]+$/g, ""))}”`;
+        const fmtTime = (iso) => {
+          const d = new Date(iso);
+          return isNaN(d) ? "" : `${fmtDate(iso)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        };
+        function historyHtml() {
+          const list = st.history;
+          return `
+      <div class="eyebrow">HISTORY · ${list.length}</div>
+      <h1>기록</h1>
+      <p class="intro">자동 반영이 바꾼 내용과 직접 합친 인물입니다. 잘못 들어간 건 「되돌리기」로 하나씩 되돌릴 수 있습니다. 그 뒤에 다시 바뀌었거나 직접 고친 설정은 되돌리지 않습니다.</p>
+      ${list.length ? `<div class="paper"><ul class="hist">${list.map((c) => `
+        <li class="${c.undoneAt ? "undone" : ""}">
+          <div class="what">${(ACTION_TEXT[c.action] || (() => esc(c.action)))(c)}</div>
+          ${c.evidence ? `<div class="ev">${quoted(c.evidence)}</div>` : ""}
+          <div class="when">${fmtTime(c.at)}${c.undoneAt ? " · 되돌림" : ""}</div>
+          <div class="side-act">${c.undoneAt ? "" : `<button class="quiet" type="button" data-act="undo" data-id="${esc(c.id)}">되돌리기</button>`}</div>
+        </li>`).join("")}</ul></div>` : '<div class="empty"><h2>아직 기록이 없습니다</h2><p>자동 반영을 켜면 대화에서 찾은 설정이 여기에 남습니다.</p></div>'}`;
+        }
+        function scoresHtml() {
+          const w = world();
+          const b = w.scoreboard || {};
+          const unit = esc(b.unit || "");
+          const sc = st.scores;
+          const head = `
+      <div class="eyebrow">SCOREBOARD · ${roomTitle()}</div>
+      <h1>${esc(b.name || "점수판")}</h1>
+      <p class="intro">이 방의 점수입니다. 자동 반영이 대화에서 「누가 몇 점을, 왜」를 근거 문장과 함께 찾고, 합계는 코드가 더합니다. 리롤·수정·삭제로 사라진 메시지의 점수는 합계에서 빠집니다. 합계는 {{세계}}에 「[점수]」 줄로 들어갑니다.</p>`;
+          if (!sc)
+            return head + '<div class="empty"><h2>이 방이 이 세계관을 읽지 않습니다</h2><p>점수판은 방마다 따로입니다. 이 세계관에 연결한 방에서 열어 주세요.</p></div>';
+          const totals = sc.totals.length ? `<div class="stubs">${sc.totals.map((t) => `<div class="stub"><strong>${t.total.toLocaleString()}${unit}</strong><small>${esc(t.target)}</small></div>`).join("")}</div>` : '<p class="sub">아직 점수가 없습니다.</p>';
+          const add = `
+      <form class="paper" onsubmit="return false">
+        <h2>손으로 더하기 · 빼기</h2>
+        <div class="grid2">
+          <div><label class="f" for="sc-target">대상</label><input id="sc-target" maxlength="60" list="sc-targets"><datalist id="sc-targets">${sc.totals.map((t) => `<option value="${esc(t.target)}">`).join("")}</datalist></div>
+          <div><label class="f" for="sc-delta">점수<em>빼려면 -10처럼</em></label><input id="sc-delta" type="number" step="1" style="max-width:140px"></div>
+        </div>
+        <label class="f" for="sc-reason">이유</label><input id="sc-reason" maxlength="200">
+        <div class="actions"><button class="primary" type="button" data-act="score-add">기록하기</button></div>
+      </form>`;
+          const list = sc.events.length ? `<div class="paper"><h2>기록 ${sc.events.length}</h2><ul class="hist">${sc.events.map((e) => `
+        <li class="${e.undoneAt || e.gone ? "undone" : ""}">
+          <div class="what"><b>${esc(e.target)}</b> ${e.delta > 0 ? "+" : ""}${e.delta}${unit}${e.reason ? ` · ${esc(e.reason)}` : ""}${e.by === "person" ? " · 직접" : ""}</div>
+          ${e.evidence ? `<div class="ev">${quoted(e.evidence)}</div>` : ""}
+          <div class="when">${fmtTime(e.at)}${e.gone ? " · 메시지가 사라져 합계에서 뺌" : ""}${e.undoneAt ? " · 되돌림" : ""}</div>
+          <div class="side-act">${e.undoneAt ? `<button class="quiet" type="button" data-act="score-undo" data-id="${esc(e.eventId)}" data-undo="0">다시 넣기</button>` : `<button class="quiet" type="button" data-act="score-undo" data-id="${esc(e.eventId)}" data-undo="1">되돌리기</button>`}</div>
+        </li>`).join("")}</ul></div>` : "";
+          return head + `<div class="paper">${totals}</div>` + add + list;
+        }
+        const DAY_EN = { 월: "MON", 화: "TUE", 수: "WED", 목: "THU", 금: "FRI", 토: "SAT", 일: "SUN" };
+        const MONTH_EN = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+        const KO_DAYS = ["일", "월", "화", "수", "목", "금", "토"];
+        const WEEK = ["월", "화", "수", "목", "금", "토", "일"];
+        const ROLE_RE = /(교수|교사|선생|사감|기숙사장|반장|감독생|교장|부교장|학장|원장|단장|부단장|회장|부회장|대장|주장|관리인|관리자|사서|집사|하인|하녀|시종|주인|점원|지배인|족장|우두머리|지도자|수장|창립자|설립자|출신|졸업)/;
+        const hasYear = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
+        const utc = (d) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
+        const dowOf = (d) => KO_DAYS[new Date(utc(d)).getUTCDay()];
+        const fmtKo = (d) => hasYear(d) ? `${Number(d.slice(0, 4))}년 ${Number(d.slice(5, 7))}월 ${Number(d.slice(8, 10))}일` : String(d || "").replace(/^--(\d\d)-(\d\d)$/, (_, m, dd) => `${Number(m)}월 ${Number(dd)}일`);
+        function schoolYearOf(date) {
+          if (!hasYear(date))
+            return null;
+          const start = world()?.yearStart || 9;
+          const y = Number(date.slice(0, 4));
+          const first = Number(date.slice(5, 7)) >= start ? y : y - 1;
+          return start === 1 ? String(first) : `${first}–${String(first + 1).slice(-2)}`;
+        }
+        const storyToday = () => st.room?.worldId === st.worldId && st.room?.story?.date ? st.room.story : null;
+        function worldMap() {
+          const byId = new Map(st.entities.map((e) => [e.entityId, e]));
+          const rels = st.relations || [];
+          const up = new Map;
+          for (const r of rels)
+            if (r.type === "위치" && byId.get(r.from)?.type === "place" && byId.get(r.to)?.type === "place" && !up.has(r.from))
+              up.set(r.from, r.to);
+          const chain = (id) => {
+            const out = [];
+            const seen = new Set([id]);
+            let x = id;
+            while (up.has(x) && !seen.has(up.get(x))) {
+              x = up.get(x);
+              seen.add(x);
+              out.push(x);
+            }
+            return out;
+          };
+          const top = (id) => chain(id).at(-1) || id;
+          const groupUp = new Map;
+          for (const r of rels)
+            if (r.type === "소속" && byId.get(r.from)?.type === "group" && byId.get(r.to)?.type === "group" && !groupUp.has(r.from))
+              groupUp.set(r.from, r.to);
+          const groupHome = (g) => {
+            const seen = new Set;
+            let x = g;
+            while (x && !seen.has(x.entityId)) {
+              seen.add(x.entityId);
+              if (x.base && byId.get(x.base)?.type === "place")
+                return top(x.base);
+              x = byId.get(groupUp.get(x.entityId));
+            }
+            return null;
+          };
+          const homeOf = (id) => {
+            const e = byId.get(id);
+            return !e ? null : e.type === "place" ? top(id) : e.type === "group" ? groupHome(e) : e.type === "person" && e.room && byId.has(e.room) ? top(e.room) : null;
+          };
+          const tabs = new Map;
+          const tabOf = (id) => {
+            if (!tabs.has(id))
+              tabs.set(id, { key: id, place: byId.get(id), places: [], groups: [], rules: [], sheets: [], cals: [] });
+            return tabs.get(id);
+          };
+          const everywhere = { key: "world", rules: [], sheets: [], cals: [] };
+          const lost = { key: "unknown", rules: [], groups: [], places: [], sheets: [], cals: [] };
+          for (const p of st.entities.filter((e) => e.type === "place")) {
+            if (up.has(p.entityId))
+              tabOf(top(p.entityId)).places.push(p);
+            else
+              tabOf(p.entityId);
+          }
+          for (const g of st.entities.filter((e) => e.type === "group")) {
+            const h = groupHome(g);
+            (h ? tabOf(h).groups : lost.groups).push(g);
+          }
+          for (const e of st.entities) {
+            if (RULEISH.has(e.type)) {
+              if (e.appliesTo === "world")
+                everywhere.rules.push(e);
+              else {
+                const h = e.appliesTo && homeOf(e.appliesTo);
+                (h ? tabOf(h).rules : lost.rules).push(e);
+              }
+            }
+            if (e.timetable) {
+              const h = homeOf(e.timetable.ownerId);
+              (h ? tabOf(h).sheets : lost.sheets).push(e);
+            }
+            if (e.calendar) {
+              if (!e.calendar.ownerId)
+                everywhere.cals.push(e);
+              else {
+                const h = homeOf(e.calendar.ownerId);
+                (h ? tabOf(h).cals : lost.cals).push(e);
+              }
+            }
+          }
+          const size = (t) => t.places.length + t.groups.length + t.rules.length + t.sheets.length + t.cals.length;
+          const list = [...tabs.values()].filter((t) => t.place);
+          for (const t of list)
+            if (!size(t))
+              lost.places.push(t.place);
+          const big = list.filter((t) => size(t)).sort((a, b) => size(b) - size(a) || a.place.name.localeCompare(b.place.name, "ko"));
+          const pathOf = (p) => [...chain(p.entityId).slice(0, -1).reverse().map((id) => byId.get(id)?.name), p.name].filter(Boolean).join(" › ");
+          return { byId, big, everywhere, lost, size, pathOf, top, homeOf, up, groupUp };
+        }
+        const RULEISH = new Set(["rule", "system"]);
+        const caps = (list, label = (e) => e.name) => `<div class="wt-row">${list.map((e) => `<button class="cap" type="button" data-act="open" data-id="${esc(e.entityId)}" data-q="${esc(label(e).toLowerCase())}">${esc(label(e))}</button>`).join("")}</div>`;
+        const ruleText = (e) => e.description || e.fields?.how || e.fields?.category || "";
+        const rulesHtml = (list) => list.slice().sort((a, b) => a.name.localeCompare(b.name, "ko")).map((e) => `<div class="wt-rule" data-q="${esc(`${e.name} ${ruleText(e)}`.toLowerCase())}"><button type="button" data-act="open" data-id="${esc(e.entityId)}">${esc(e.name)}</button><span>${esc(clip(ruleText(e), 140))}${e.type === "system" ? " <small>· 시스템</small>" : ""}</span></div>`).join("");
+        function roleIn(p, g) {
+          const aff = String(p?.fields?.affiliation || "");
+          const named = aff.split(/[,，、]/).filter((x) => [g.name, ...g.aliases || []].some((n) => n && x.includes(n)));
+          const piece = (named.length ? named : aff.split(/[,，、]/)).find((x) => ROLE_RE.test(x)) || "";
+          let t = piece;
+          for (const n of [g.name, ...g.aliases || []])
+            t = t.split(n).join(" ");
+          t = t.replace(/\s+/g, " ").trim();
+          return t || (piece.match(ROLE_RE) || [""])[0];
+        }
+        const shortVia = (via, g) => {
+          const have = new Set(String(g.name).split(/\s+/));
+          const left = String(via).split(/\s+/).filter((x) => !have.has(x) && !String(g.name).includes(x)).join(" ");
+          return left || via;
+        };
+        function rosterCard(g, subs = []) {
+          const r = st.rosters?.[g.entityId];
+          if (!r || r.loading) {
+            if (!r)
+              loadRoster(g.entityId);
+            return `<div class="world-card" data-q="${esc(g.name.toLowerCase())}"><h3><button type="button" data-act="open" data-id="${esc(g.entityId)}">${esc(g.name)}</button> <span class="pill">집단</span></h3><p class="wt-empty">명단을 불러오는 중…</p></div>`;
+          }
+          const list = r.members || [];
+          const byId = new Map(st.entities.map((e) => [e.entityId, e]));
+          const open = st.rosterOpen?.has(g.entityId);
+          const cap = (m, extra) => `<button class="cap" type="button" data-act="open" data-id="${esc(m.entityId)}" data-q="${esc(m.name.toLowerCase())}">${esc(m.name)}${m.unnamed ? " (이름 모름)" : extra ? ` · ${esc(extra)}` : ""}</button>`;
+          const part = (kind, label, more) => {
+            const rows = list.filter((m) => m.kind === kind);
+            if (!rows.length)
+              return "";
+            const shown = kind === "member" && !open && rows.length > 6 ? rows.slice(0, 5) : rows;
+            const rest = rows.length - shown.length;
+            return `<div class="wt-grp">${label}${more || ""}</div><div class="wt-row">${shown.map((m) => cap(m, kind === "member" ? m.via ? shortVia(m.via, g) : "" : roleIn(byId.get(m.entityId), g))).join("")}${rest ? `<button class="cap ghost" type="button" data-act="roster-more" data-id="${esc(g.entityId)}">+ ${rest}명</button>` : ""}</div>`;
+          };
+          const c = r.counts || {};
+          const head = c.total ? ` · 이름 아는 사람 ${c.known}명 / 전체 ${c.total}명` : ` · ${list.filter((m) => m.kind === "member").length}명`;
+          const small = subs.length ? `<div class="wt-grp">작은 집단</div><div class="wt-row">${subs.map((x) => `<button class="cap" type="button" data-act="open" data-id="${esc(x.entityId)}" data-q="${esc(x.name.toLowerCase())}">${esc(x.name)}${x.fields?.size ? ` · ${esc(x.fields.size)}` : ""}</button>`).join("")}</div>` : "";
+          const body = list.length ? part("member", "구성원", head) + small + part("staff", "맡은 사람") + part("past", "지난 구성원") : small + `<p class="wt-empty">아직 이 집단에 소속된 인물이 없습니다.${c.total ? ` 전체 ${c.total}명` : ""}</p>`;
+          return `<div class="world-card" data-q="${esc([g.name, ...list.map((m) => m.name)].join(" ").toLowerCase())}"><h3><button type="button" data-act="open" data-id="${esc(g.entityId)}">${esc(g.name)}</button> <span class="pill">집단</span></h3>${body}</div>`;
+        }
+        function ttGrid(e) {
+          const cellsAll = Object.entries(e.timetable?.cells || {});
+          if (!cellsAll.length)
+            return '<p class="wt-empty">아직 칸이 없습니다.</p>';
+          const today = storyToday()?.weekday || (storyToday() ? dowOf(storyToday().date) : null);
+          const spread = (d) => d === "평일" ? ["월", "화", "수", "목", "금"] : d === "매일" ? WEEK : [d];
+          const at = new Map;
+          for (const [k, c] of cellsAll)
+            for (const d of spread(c.day))
+              if (!at.has(`${d}|${c.slot}`))
+                at.set(`${d}|${c.slot}`, [k, c]);
+          const days = WEEK.filter((d, i) => i < 5 || cellsAll.some(([, c]) => spread(c.day).includes(d)));
+          const slots = [...new Set(cellsAll.map(([, c]) => c.slot))].sort((a, b) => ttSlotRank(a) - ttSlotRank(b) || a.localeCompare(b, "ko"));
+          const tones = new Map;
+          const TONES = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"];
+          for (const s of slots)
+            for (const d of days) {
+              const c = at.get(`${d}|${s}`)?.[1];
+              const subj = c && (c.subject || c.value);
+              if (subj && !tones.has(subj))
+                tones.set(subj, TONES[tones.size % TONES.length]);
+            }
+          const night = (s) => /밤|자정|새벽/.test(s) || ttSlotRank(s) >= 1200 && ttSlotRank(s) < 2000;
+          const lesson = (s) => Number((String(s).match(/^(\d+)\s*교시/) || [])[1]) || null;
+          const HOURS = ["", "한", "두", "세", "네", "다섯"];
+          const covered = new Set;
+          const span = new Map;
+          for (const d of days)
+            for (let i = 0;i < slots.length; i++) {
+              const c = at.get(`${d}|${slots[i]}`)?.[1];
+              if (!c || !(c.hours > 1) || !lesson(slots[i]))
+                continue;
+              let n = 1;
+              while (n < c.hours && slots[i + n] && lesson(slots[i + n]) === lesson(slots[i]) + n && !at.has(`${d}|${slots[i + n]}`)) {
+                covered.add(`${d}|${slots[i + n]}`);
+                n++;
+              }
+              span.set(`${d}|${slots[i]}`, n);
+            }
+          const stars = '<i style="left:14%;top:22%"></i><i style="left:72%;top:18%"></i><i style="left:46%;top:76%"></i><i style="left:88%;top:62%"></i><i style="left:28%;top:58%"></i>';
+          const box = (d, s, tall) => {
+            const hit = at.get(`${d}|${s}`);
+            if (!hit)
+              return night(s) ? "" : '<div class="wt-free"></div>';
+            const [k, c] = hit;
+            const subj = c.subject || c.value;
+            const extra = c.value !== subj ? c.value.startsWith(subj) ? c.value.slice(subj.length).replace(/^[\s·,—–-]+/, "") : c.value : "";
+            const sub = [c.place, c.hours > 1 ? `${HOURS[c.hours] || c.hours} 시간` : "", extra].filter(Boolean).join(" · ");
+            const was = c.past?.[0] ? `<div class="wt-was">이전: ${esc(c.past[0].value)}</div>` : "";
+            const wait = c.pending ? `<div class="wt-was">대화에서는 「${esc(c.pending.value)}」</div>` : "";
+            const q = esc(`${c.value} ${c.place || ""}`.toLowerCase());
+            if (night(s))
+              return `<button class="wt-night" type="button" data-act="open" data-id="${esc(e.entityId)}" data-q="${q}" title="${esc(c.evidence || "")}">${stars}<b>${esc(subj)}</b><small>${esc(sub)}</small>${was}</button>`;
+            const cls = c.past?.[0] ? "changed" : tones.get(subj) || "s3";
+            return `<button class="wt-c ${cls}${(e.timetable.wide || []).includes(k) ? " wide" : ""}" type="button" data-act="open" data-id="${esc(e.entityId)}" data-q="${q}" title="${esc(c.evidence || "")}" ${tall ? `style="min-height:${58 * tall + 6 * (tall - 1)}px"` : ""}><b>${esc(subj)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}${was}${wait}</button>`;
+          };
+          const morning = (s) => ttSlotRank(s) < 720;
+          const lunchAt = slots.findIndex((s, i) => i > 0 && morning(slots[i - 1]) && !morning(s));
+          const mid = Math.floor((days.length - 1) / 2);
+          const lunchRow = `<tr class="wt-lunch"><td></td>${days.map((d, j) => `<td class="l${d === today ? " todaycol" : ""}">${j === mid ? "점 심" : ""}</td>`).join("")}</tr>`;
+          const cellTd = (d, s, i) => {
+            const n = span.get(`${d}|${s}`) || 1;
+            const cls = d === today ? `todaycol${i + n - 1 === slots.length - 1 ? " end" : ""}` : "";
+            return `<td ${n > 1 ? `rowspan="${n}"` : ""} class="${cls}">${box(d, s, n > 1 ? n : 0)}</td>`;
+          };
+          const rows = slots.map((s, i) => `${i === lunchAt ? lunchRow : ""}<tr><td class="t"><b>${esc(s)}</b></td>${days.map((d) => covered.has(`${d}|${s}`) ? "" : cellTd(d, s, i)).join("")}</tr>`).join("");
+          const table = `<table class="wt-tt"><thead><tr><th class="blank"></th>${days.map((d) => `<th class="${d === today ? "today" : ""}">${d}<small>${DAY_EN[d]}</small></th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
+          const pick = st.ttDay && days.includes(st.ttDay) ? st.ttDay : today && days.includes(today) ? today : days[0];
+          const dayRows = (d) => {
+            let out = "";
+            for (let i = 0;i < slots.length; i++) {
+              const s = slots[i];
+              if (covered.has(`${d}|${s}`))
+                continue;
+              if (i === lunchAt)
+                out += '<div class="wt-dlunch">점 심</div>';
+              const n = span.get(`${d}|${s}`) || 1;
+              const label = n > 1 && lesson(s) ? `${lesson(s)}–${lesson(s) + n - 1}교시` : s;
+              out += `<div class="wt-drow"><div class="t"><b>${esc(label)}</b></div>${box(d, s) || '<div class="wt-free"></div>'}</div>`;
+            }
+            return out;
+          };
+          const phone = `<div class="wt-dtab">${days.map((d) => `<button type="button" data-act="tt-day" data-day="${d}" class="${d === pick ? "on" : d === today ? "td" : ""}">${d}</button>`).join("")}</div>${days.map((d) => `<div class="wt-day ${d === pick ? "on" : ""}">${dayRows(d)}</div>`).join("")}`;
+          const clash = (e.timetable.overlaps || []).length ? `<p class="wt-clash">시간이 겹치는 칸이 ${e.timetable.overlaps.length}쌍 있어요 — 칸을 눌러 고르세요.</p>` : "";
+          return clash + table + phone;
+        }
+        const kindWord = (n) => /시험/.test(n) ? "시험" : /방학/.test(n) ? "방학" : /경기|시합|대회/.test(n) ? "경기" : /연회|축제|파티/.test(n) ? "연회" : "행사";
+        const kindTone = (k) => ({ 시험: "c3", 경기: "c1", 방학: "c2", 연회: "c2", 행사: "c2" })[k] || "c2";
+        function calList(e, year) {
+          const all = Object.values(e.calendar?.events || {});
+          const evs = all.filter((x) => year === "none" ? !hasYear(x.date) : schoolYearOf(x.date) === year).sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+          if (!evs.length)
+            return '<p class="wt-empty">이 학년도에는 일정이 없습니다.</p>';
+          const today = storyToday()?.date || null;
+          const next = today ? evs.find((x) => hasYear(x.date) && x.date >= today && !x.cancelled) : null;
+          let out = "";
+          let lastMonth = "";
+          let lastYear = "";
+          let todayShown = !today || year === "none";
+          for (const x of evs) {
+            if (hasYear(x.date)) {
+              const y = x.date.slice(0, 4);
+              const m = x.date.slice(5, 7);
+              if (!todayShown && x.date >= today) {
+                out += `<div class="wt-today">오늘 · ${esc(fmtKo(today))}</div>`;
+                todayShown = true;
+              }
+              if (lastYear && y !== lastYear)
+                out += `<div class="wt-newyear"><b>${y}</b></div>`;
+              if (`${y}-${m}` !== lastMonth)
+                out += `<div class="wt-mon"><b>${Number(m)}월</b><small>${MONTH_EN[Number(m) - 1]} ${y}</small></div>`;
+              lastYear = y;
+              lastMonth = `${y}-${m}`;
+            }
+            const left = today && hasYear(x.date) ? Math.round((utc(x.date) - utc(today)) / 86400000) : null;
+            const kw = kindWord(x.name);
+            const k = x.cancelled ? "취소" : left != null && left > 0 ? `${left}일 뒤` : left === 0 ? "오늘" : kw;
+            const sub = x.end ? `${fmtKo(x.date)} ~ ${fmtKo(x.end)}${x.place ? ` · ${x.place}` : ""}` : [x.place, x.who].filter(Boolean).join(" · ") || (x.cancelled ? "취소됨" : "");
+            const was = x.past?.[0]?.date ? `<span class="was">이전: ${esc(x.past[0].date.slice(5).replace("-", "/"))}</span>` : "";
+            const cls = ["wt-ev", x === next ? "next" : kindTone(kw), left != null && left < 0 ? "past" : "", x.cancelled ? "cancel" : "", hasYear(x.date) ? "" : "noyear"].filter(Boolean).join(" ");
+            const d = hasYear(x.date) ? `${Number(x.date.slice(8, 10))}<small>${dowOf(x.date)}</small>` : `${Number(String(x.date).slice(-2)) || "?"}<small>${Number(String(x.date).slice(2, 4)) || "?"}월</small>`;
+            out += `<button class="${cls}" type="button" data-act="open" data-id="${esc(e.entityId)}" data-q="${esc(`${x.name} ${x.place || ""}`.toLowerCase())}" title="${esc(x.evidence || "")}"><div class="d">${d}</div><div class="n"><b>${esc(x.name)}</b><small>${esc(sub)}${was}</small></div><span class="k">${esc(k)}</span></button>`;
+          }
+          if (!todayShown)
+            out += `<div class="wt-today">오늘 · ${esc(fmtKo(today))}</div>`;
+          return out;
+        }
+        function yearsOf(t) {
+          const set = new Set;
+          let none = 0;
+          for (const s of t.sheets)
+            if (s.timetable.year)
+              set.add(s.timetable.year);
+          for (const c of t.cals)
+            for (const x of Object.values(c.calendar.events || {})) {
+              const y = schoolYearOf(x.date);
+              if (y)
+                set.add(y);
+              else
+                none++;
+            }
+          const today = storyToday()?.date;
+          const years = [...set].sort();
+          const now = today ? schoolYearOf(today) : years.at(-1) || null;
+          if (now && !set.has(now) && years.length)
+            years.push(now), years.sort();
+          const chosen = st.year === "none" && none ? "none" : st.year && years.includes(st.year) ? st.year : now || years.at(-1) || (none ? "none" : null);
+          return { years, now, none, chosen };
+        }
+        function yearsHtml(y) {
+          if (!y.years.length && !y.none)
+            return "";
+          const cap = (v) => `<button class="wt-year ${v < y.now ? "past" : v === y.now ? "now" : "next"}${v === y.chosen ? " on" : ""}" type="button" data-act="year" data-year="${esc(v)}">${esc(v)}${v === y.now && storyToday() ? " · 지금" : ""}</button>`;
+          return `<div class="wt-years"><span>학년도</span>${y.years.map(cap).join("")}${y.none ? `<button class="wt-year none${y.chosen === "none" ? " on" : ""}" type="button" data-act="year" data-year="none">연도 모름 ${y.none}</button>` : ""}</div>`;
+        }
+        function subtabsHtml(m, sel) {
+          const t = (key, label, n) => `<button class="subtab${sel === key ? " selected" : ""}" type="button" data-act="tab" data-tab="${esc(key)}" role="tab" aria-selected="${sel === key}">${esc(label)}${n != null ? ` ${n}` : ""}</button>`;
+          const go2 = (view, label) => `<button class="subtab${st.view === view ? " selected" : ""}" type="button" data-act="go" data-view="${view}">${label}</button>`;
+          const w = m.everywhere;
+          const lostN = m.lost.rules.length + m.lost.groups.length + m.lost.places.length + m.lost.sheets.length + m.lost.cals.length;
+          return `<div class="subtabs" role="tablist">${t("world", "세계 전체", w.rules.length + w.cals.length)}${m.big.map((x) => t(x.key, x.place.name, m.size(x))).join("")}${lostN ? t("unknown", "모름", lostN) : ""}${world()?.scoreboard?.name ? go2("scores", "점수판") : ""}${go2("log", "기록")}${EMBEDDED ? `${go2("overview", "모든 설정")}${go2("world", "세계관 정보")}` : ""}</div>`;
+        }
+        function tabsHtml() {
+          const m = worldMap();
+          const keys = ["world", "unknown", ...m.big.map((x) => x.key)];
+          const lostN = m.lost.rules.length + m.lost.groups.length + m.lost.places.length + m.lost.sheets.length + m.lost.cals.length;
+          const sel = keys.includes(st.tab) ? st.tab : m.big[0]?.key || (m.everywhere.rules.length + m.everywhere.cals.length || !lostN ? "world" : "unknown");
+          const today = storyToday();
+          const todayLine = today ? ` · 이야기 속 오늘은 ${fmtKo(today.date)}(${today.weekday || dowOf(today.date)})` : "";
+          const find = `<input class="wt-find" id="tabq" type="search" placeholder="이 탭에서 찾기" value="${esc(st.tabQuery || "")}" aria-label="이 탭에서 찾기">`;
+          const timeParts = (t, y) => {
+            const sheets = t.sheets.filter((s) => !y.chosen || y.chosen === "none" || !s.timetable.year || s.timetable.year === y.chosen);
+            const ownerName = (s) => m.byId.get(s.timetable.ownerId)?.name || s.name;
+            return (y.chosen === "none" ? "" : sheets.map((s) => `<div class="wt-sec">시간표 · ${esc(ownerName(s))}${s.timetable.year ? ` <small class="sub">${esc(s.timetable.year)}</small>` : ""}</div>${ttGrid(s)}`).join("")) + t.cals.map((c) => `<div class="wt-sec">학사일정 · ${esc(m.byId.get(c.calendar.ownerId)?.name || "세계")}${y.chosen ? ` <small class="sub">${y.chosen === "none" ? "연도 모름" : `${esc(y.chosen)} 학년도`}</small>` : ""}</div>${calList(c, y.chosen)}`).join("");
+          };
+          let body;
+          if (sel === "world") {
+            const t = m.everywhere;
+            const y = yearsOf(t);
+            body = `${yearsHtml(y)}<p class="wt-eyebrow">세계 전체</p><h1 class="wt-h1">${esc(world().name)}</h1><p class="wt-lead">어디서나 통하는 규칙 · 시스템이에요. 장면과 상관없이 {{세계}}에 들어가요(장면 방식에서는 한도의 3분의 1까지)${todayLine}.</p>${find}
+        <div class="wt-sec">규칙 · 시스템</div>${t.rules.length ? rulesHtml(t.rules) : '<p class="wt-empty">아직 세계 전체에 통하는 규칙이 없습니다.</p>'}${timeParts(t, y)}`;
+          } else if (sel === "unknown") {
+            const t = m.lost;
+            body = `<p class="wt-eyebrow">모름</p><h1 class="wt-h1">어디 것인지 모름</h1><p class="wt-lead">아직 어느 장소에도 붙지 않은 것이에요. 카드에서 「적용되는 곳」 · 「본거지」 · 위치 관계를 정하면 그 장소 탭으로 옮겨 가요. 장면 방식에서는 맨 뒤에 들어가요.</p>${find}
+        ${t.rules.length ? `<div class="wt-sec">규칙 · 시스템</div>${rulesHtml(t.rules)}` : ""}${t.groups.length ? `<div class="wt-sec">본거지를 모르는 집단</div>${t.groups.map((g) => rosterCard(g)).join("")}` : ""}
+        ${t.places.length ? `<div class="wt-sec">따로 있는 장소</div>${caps(t.places)}` : ""}${t.sheets.length || t.cals.length ? timeParts(t, yearsOf(t)) : ""}`;
+          } else {
+            const t = m.big.find((x) => x.key === sel);
+            const y = yearsOf(t);
+            const p = t.place;
+            const based = t.groups.some((g) => g.base);
+            const lead = p.description || p.fields?.use || "";
+            const staying = st.entities.filter((e) => e.type === "person" && e.room && m.top(e.room) === p.entityId);
+            body = `${yearsHtml(y)}<p class="wt-eyebrow">${based ? "큰 장소 · 집단 본거지" : "큰 장소"}</p><h1 class="wt-h1">${esc(p.name)}</h1><p class="wt-lead">${esc(lead)}${lead ? /[.!?。」)]$/.test(lead.trim()) ? " " : ". " : ""}이 탭의 규칙은 장면이 여기일 때 모델에게 들어가요${todayLine}.</p>${find}
+        ${t.places.length ? `<div class="wt-sec">안의 장소</div>${caps(t.places.slice().sort((a, b) => m.pathOf(a).localeCompare(m.pathOf(b), "ko")), m.pathOf)}` : ""}
+        ${t.groups.length ? `<div class="wt-sec">집단 · 명단</div>${t.groups.filter((g) => !t.groups.some((x) => x.entityId === m.groupUp.get(g.entityId))).map((g) => rosterCard(g, t.groups.filter((x) => m.groupUp.get(x.entityId) === g.entityId))).join("")}` : ""}
+        ${staying.length ? `<div class="wt-sec">여기서 지내는 사람</div>${caps(staying, (e) => `${e.name} · ${m.byId.get(e.room)?.name || ""}`)}` : ""}
+        ${timeParts(t, y)}
+        ${t.rules.length ? `<div class="wt-sec">규칙 · 시스템</div>${rulesHtml(t.rules)}` : ""}
+        <p class="wt-empty" style="margin-top:18px"><button class="quiet" type="button" data-act="open" data-id="${esc(p.entityId)}">「${esc(p.name)}」 카드 열기</button></p>`;
+          }
+          return `${subtabsHtml(m, sel)}${body}<p class="sub" id="tabNoHit" hidden>이 탭에는 찾는 것이 없습니다.</p>`;
+        }
+        function filterTab() {
+          const q = String(st.tabQuery || "").trim().toLowerCase();
+          let shown = 0;
+          root.querySelectorAll("main [data-q]").forEach((x) => {
+            const hit = !q || x.dataset.q.includes(q);
+            x.hidden = !hit;
+            if (hit)
+              shown++;
+          });
+          const none = $("#tabNoHit");
+          if (none)
+            none.hidden = !q || shown > 0;
+        }
+        function worldRailHtml() {
+          const w = world();
+          if (!w)
+            return "";
+          const m = worldMap();
+          const people = st.entities.filter((e) => e.type === "person");
+          const animals = people.filter((e) => String(e.fields?.species || "").trim()).length;
+          const rules = st.entities.filter((e) => RULEISH.has(e.type));
+          const inside = m.big.reduce((n, t) => n + t.places.length, 0);
+          const p = st.preview;
+          const today = storyToday();
+          return `<div class="rail-title">이 세계관</div>
+      <div class="rail-stat"><b>${people.length}</b><span>인물<small>${animals ? `동물 ${animals} 포함` : "&nbsp;"}</small></span></div>
+      <div class="rail-stat"><b>${m.big.length}</b><span>큰 장소<small>안의 장소 ${inside}</small></span></div>
+      <div class="rail-stat"><b>${rules.length}</b><span>규칙 · 시스템<small>세계 전체 ${m.everywhere.rules.length}</small></span></div>
+      <div class="rail-divider"></div>
+      <div class="rail-note"><h3>이 방</h3><p>${roomState().kind === "this" ? `「${esc(w.name)}」 세계관을 읽는 중이에요.` : esc(roomLine())}${today ? `<br>이야기 속 오늘: ${esc(fmtKo(today.date))}` : ""}</p></div>
+      ${p && roomState().kind === "this" ? `<div class="rail-divider"></div><div class="rail-note"><h3>{{세계}}에 들어갈 내용</h3><p>${p.chars.toLocaleString()} / ${p.budget.toLocaleString()}자<br>설정 ${p.included.length}개${p.omitted.length ? ` · 한도 때문에 빠진 것 ${p.omitted.length}개` : ""}${p.skipped > 0 ? ` · 장면 밖 ${p.skipped}개` : ""}</p></div>` : ""}`;
+        }
+        function mainHtml() {
+          if (!st.loaded)
+            return st.bad ? "" : '<p class="sub">불러오는 중…</p>';
+          if (st.view === "new-world" || !world())
+            return newWorldHtml(!st.worlds.length);
+          if (st.view === "world")
+            return worldHtml();
+          if (st.view === "tabs")
+            return tabsHtml();
+          if (st.view === "log")
+            return historyHtml();
+          if (st.view === "scores")
+            return scoresHtml();
+          if (KIND[st.view]) {
+            if (st.editing === "new")
+              return formHtml(null, st.view);
+            const e = st.entities.find((x) => x.entityId === (st.editing || st.detail));
+            if (e && st.editing)
+              return formHtml(e, st.view);
+            if (e)
+              return detailHtml(e);
+            if (st.dupes)
+              return dupesHtml();
+            return listHtml(st.view);
+          }
+          return overviewHtml();
+        }
+        let lastScreen = "";
+        function render() {
+          host.setAttribute("data-theme", st.theme);
+          el.side.innerHTML = sideHtml();
+          el.top.innerHTML = topHtml();
+          el.rail.innerHTML = railHtml();
+          const screen = `${st.view}|${st.worldId}|${st.detail}|${st.editing}|${st.dupes}|${st.tab}|${st.year}`;
+          const keep = screen === lastScreen ? el.main.scrollTop : 0;
+          const skew = st.readOnly ? `<p class="msg bad" role="status">${esc(UPDATE_MSG)}</p>` : !target && st.serverVersion && st.serverVersion !== VERSION ? `<p class="msg bad" role="status">서버 쪽 World Archive(v${esc(st.serverVersion)})와 이 화면(v${esc(VERSION)})의 판이 달라요. 서버 쪽을 업데이트해 주세요 — 서버에서 설치 명령을 다시 실행하면 됩니다.</p>` : "";
+          const nav = EMBEDDED && st.loaded && world() && st.view !== "tabs" && !st.detail && !st.editing && (["log", "scores", "world", "overview"].includes(st.view) || KIND[st.view]) ? subtabsHtml(worldMap(), null) : "";
+          el.main.innerHTML = skew + (st.msg && !(st.readOnly && st.msg === UPDATE_MSG) ? `<p class="msg ${st.bad ? "bad" : ""}" role="status">${esc(st.msg)}</p>` : "") + nav + mainHtml();
+          el.main.scrollTop = keep;
+          lastScreen = screen;
+          if (st.query)
+            filterCards();
+          if (st.view === "tabs" && st.tabQuery)
+            filterTab();
+          if (st.busy)
+            root.querySelectorAll("main button, .rail button").forEach((b) => {
+              b.disabled = true;
+            });
+        }
+        let searchTimer = null;
+        let searchSeq = 0;
+        function runSearch() {
+          clearTimeout(searchTimer);
+          const q = st.query.trim();
+          if (!q || !st.worldId) {
+            st.hits = null;
+            filterCards();
+            return;
+          }
+          filterCards();
+          const seq = ++searchSeq;
+          searchTimer = setTimeout(async () => {
+            try {
+              const r = await api("GET", `/worlds/${st.worldId}/search?q=${encodeURIComponent(q)}&types=${encodeURIComponent(KIND[st.view] ? st.view : "")}`);
+              if (seq !== searchSeq)
+                return;
+              st.hits = new Map((r.results || []).map((x, i) => [x.entityId, { ...x, order: i }]));
+              filterCards();
+            } catch {}
+          }, 200);
+        }
+        const marked = (h) => `${h.label ? `${esc(h.label)} · ` : ""}${esc(h.text.slice(0, h.start))}<mark>${esc(h.text.slice(h.start, h.end))}</mark>${esc(h.text.slice(h.end))}`;
+        function filterCards() {
+          const q = st.query.trim().toLowerCase();
+          let shown = 0;
+          root.querySelectorAll(".card").forEach((c) => {
+            const found = q && st.hits ? st.hits.get(c.dataset.id) : null;
+            const hit = !q || (st.hits ? !!found : c.dataset.search.includes(q));
+            c.hidden = !hit;
+            c.style.order = found ? String(found.order) : "";
+            c.querySelector(".hit")?.remove();
+            const show = found?.hits.find((h) => h.where !== "name");
+            if (show)
+              c.querySelector(".nm")?.insertAdjacentHTML("afterend", `<p class="hit">${marked(show)}</p>`);
+            if (hit)
+              shown++;
+          });
+          const none = $("#noHit");
+          if (none)
+            none.hidden = shown > 0;
+        }
+        const val = (id) => root.getElementById(id)?.value ?? "";
+        function readForm() {
+          const fields = {};
+          root.querySelectorAll("[data-field]").forEach((x) => {
+            fields[x.dataset.field] = x.value;
+          });
+          const extra = [...root.querySelectorAll("[data-extra]")].map((r) => ({ label: r.querySelector("[data-x=label]").value, value: r.querySelector("[data-x=value]").value }));
+          return {
+            name: val("fd-name"),
+            type: val("fd-type"),
+            aliases: val("fd-aliases").split(/[,，、]/).map((x) => x.trim()).filter(Boolean),
+            fields,
+            extra,
+            description: val("fd-desc"),
+            pinned: !!root.getElementById("fd-pinned")?.checked
+          };
+        }
+        const go = (view) => {
+          st.view = view;
+          st.hits = null;
+          st.dupes = false;
+          st.detail = null;
+          st.editing = null;
+          st.draft = null;
+          st.ask = null;
+          st.query = "";
+          st.msg = "";
+          st.fromTabs = false;
+        };
+        const actions = {
+          go: (b) => {
+            go(b.dataset.view);
+            if (b.dataset.view === "log")
+              return run(loadHistory);
+            if (b.dataset.view === "scores")
+              return run(loadScores);
+            if (b.dataset.view === "world" && st.connections == null) {
+              render();
+              return run(loadConnections);
+            }
+            render();
+          },
+          "read-now": () => run(async () => {
+            st.auto = await api("POST", `/rooms/${encodeURIComponent(activeChatId())}/auto`, { all: true });
+            if (st.auto.job?.state !== "running") {
+              await loadEntities();
+              await loadRoom();
+            }
+            pollAuto();
+          }),
+          "read-restart": () => run(async () => {
+            st.ask = null;
+            st.auto = await api("POST", `/rooms/${encodeURIComponent(activeChatId())}/auto`, { all: true, restart: true });
+            if (st.auto.job?.state !== "running") {
+              await loadEntities();
+              await loadRoom();
+            }
+            pollAuto();
+          }),
+          undo: (b) => run(async () => {
+            await api("POST", `/worlds/${st.worldId}/history/${b.dataset.id}/undo`, {});
+            await loadHistory();
+            await loadEntities();
+            await loadRoom();
+          }, "되돌렸습니다."),
+          dupes: () => {
+            st.dupes = true;
+            st.detail = null;
+            st.editing = null;
+            st.ask = null;
+            st.msg = "";
+            render();
+          },
+          merge: (b) => run(async () => {
+            const keep = st.entities.find((x) => x.entityId === b.dataset.keep);
+            const drop = st.entities.find((x) => x.entityId === b.dataset.drop);
+            if (!keep || !drop)
+              throw Error("설정을 찾지 못했습니다. 새로 불러온 뒤 다시 해 주세요.");
+            st.ask = null;
+            await api("POST", `/worlds/${st.worldId}/merge`, { keepId: keep.entityId, dropId: drop.entityId, keepRevision: keep.revision, dropRevision: drop.revision });
+            await loadEntities();
+            await loadRoom();
+          }, "합쳤습니다. 잘못 합쳤다면 「기록」에서 되돌릴 수 있습니다."),
+          dismiss: (b) => run(async () => {
+            await api("POST", `/worlds/${st.worldId}/duplicates/dismiss`, { a: b.dataset.a, b: b.dataset.b });
+            await loadEntities();
+          }, "다른 사람으로 두었습니다. 이 두 사람은 다시 묻지 않습니다."),
+          "save-auto": () => run(async () => {
+            const w = world();
+            const enabled = !!root.getElementById("a-on")?.checked;
+            const connectionId = val("a-conn") || null;
+            if (enabled && !connectionId)
+              throw Error("자동 반영에 쓸 연결을 골라 주세요.");
+            await api("PATCH", `/worlds/${w.worldId}`, { auto: { enabled, connectionId, every: Number(val("a-every")) }, revision: w.revision });
+            await loadWorlds();
+            await loadRoom();
+          }, "저장했습니다."),
+          theme: () => {
+            st.theme = st.theme === "dark" ? "light" : "dark";
+            store.set("world-archive-theme", st.theme);
+            render();
+          },
+          close: () => toggle(false),
+          open: (b) => {
+            if (st.view === "tabs") {
+              st.fromTabs = true;
+              st.view = st.entities.find((x) => x.entityId === b.dataset.id)?.type || st.view;
+            }
+            st.detail = b.dataset.id;
+            st.editing = null;
+            st.ask = null;
+            st.msg = "";
+            render();
+          },
+          tab: (b) => {
+            st.tab = b.dataset.tab;
+            st.year = null;
+            st.tabQuery = "";
+            st.ttDay = null;
+            render();
+          },
+          year: (b) => {
+            st.year = b.dataset.year;
+            render();
+          },
+          "tt-day": (b) => {
+            st.ttDay = b.dataset.day;
+            render();
+          },
+          "roster-more": (b) => {
+            st.rosterOpen.add(b.dataset.id);
+            render();
+          },
+          new: (b) => {
+            st.view = b.dataset.type;
+            st.editing = "new";
+            st.detail = null;
+            st.draft = null;
+            st.msg = "";
+            render();
+          },
+          edit: (b) => {
+            st.editing = b.dataset.id;
+            st.detail = b.dataset.id;
+            st.draft = null;
+            st.msg = "";
+            render();
+          },
+          cancel: () => {
+            if (st.editing !== "new")
+              st.view = st.entities.find((x) => x.entityId === st.editing)?.type || st.view;
+            st.editing = null;
+            st.draft = null;
+            st.msg = "";
+            render();
+          },
+          ask: (b) => {
+            st.ask = b.dataset.key || null;
+            render();
+          },
+          "add-extra": () => {
+            root.getElementById("extras").insertAdjacentHTML("beforeend", extraRow());
+            root.querySelector("#extras [data-extra]:last-child input")?.focus();
+          },
+          "drop-extra": (b) => b.closest("[data-extra]").remove(),
+          save: () => run(async () => {
+            const v = readForm();
+            let e;
+            if (st.editing === "new")
+              e = await api("POST", `/worlds/${st.worldId}/entities`, v);
+            else {
+              const old = st.entities.find((x) => x.entityId === st.editing);
+              e = await api("PATCH", `/worlds/${st.worldId}/entities/${old.entityId}`, { ...v, revision: old.revision });
+            }
+            st.view = e.type;
+            st.detail = e.entityId;
+            st.editing = null;
+            st.draft = null;
+            await loadEntities();
+            await loadRoom();
+          }, "저장했습니다."),
+          "glossary-name": (b) => run(async () => {
+            const e = st.entities.find((x) => x.entityId === b.dataset.id);
+            if (!e?.glossaryName)
+              throw Error("설정을 찾지 못했습니다. 새로 불러온 뒤 다시 해 주세요.");
+            const name = e.glossaryName;
+            const aliases = [...e.aliases, e.name].filter((a, i, all) => a !== name && all.indexOf(a) === i).slice(0, 20);
+            await api("PATCH", `/worlds/${st.worldId}/entities/${e.entityId}`, { name, aliases, revision: e.revision });
+            await loadEntities();
+            await loadRoom();
+          }, "번역 단어장의 이름으로 바꿨습니다."),
+          "group-make": (b) => run(async () => {
+            await api("POST", `/worlds/${st.worldId}/group-suggestions`, { name: b.dataset.name });
+            await loadEntities();
+          }, "집단으로 만들었습니다. 소속 칸이 그 이름을 가리키는 인물은 명단에 들어갑니다."),
+          "member-add": (b) => run(async () => {
+            const personId = root.getElementById("rosterPick")?.value;
+            if (!personId)
+              return;
+            await api("POST", `/worlds/${st.worldId}/entities/${b.dataset.group}/members`, { personId, on: true });
+            await loadEntities();
+          }, "명단에 더했습니다. 그 인물의 소속 칸에도 적었습니다."),
+          "member-off": (b) => run(async () => {
+            await api("POST", `/worlds/${st.worldId}/entities/${b.dataset.group}/members`, { personId: b.dataset.id, on: false });
+            await loadEntities();
+          }, "명단에서 뺐습니다. 그 인물의 소속 칸에서도 지웠습니다(기록에서 되돌릴 수 있습니다)."),
+          pin: (b) => run(async () => {
+            const e = st.entities.find((x) => x.entityId === b.dataset.id);
+            await api("PATCH", `/worlds/${st.worldId}/entities/${e.entityId}`, { pinned: !e.pinned, revision: e.revision });
+            await loadEntities();
+            await loadRoom();
+          }),
+          delete: (b) => run(async () => {
+            const e = st.entities.find((x) => x.entityId === b.dataset.id);
+            await api("DELETE", `/worlds/${st.worldId}/entities/${e.entityId}`, { revision: e.revision });
+            go(e.type);
+            await loadEntities();
+            await loadRoom();
+          }, "지웠습니다."),
+          link: () => run(async () => {
+            await api("PUT", `/rooms/${encodeURIComponent(activeChatId())}`, { worldId: st.worldId });
+            await loadRoom();
+          }, "이제 이 방이 이 세계관을 읽습니다."),
+          unlink: () => run(async () => {
+            await api("PUT", `/rooms/${encodeURIComponent(activeChatId())}`, { worldId: null });
+            await loadRoom();
+          }, "연결을 끊었습니다."),
+          "create-world": () => run(async () => {
+            const w = await api("POST", "/worlds", { name: val("nw-name"), description: val("nw-desc") });
+            st.worldId = w.worldId;
+            store.set("world-archive-world", w.worldId);
+            go("overview");
+            await loadWorlds();
+            await loadEntities();
+          }, "세계관을 만들었습니다."),
+          "save-world": () => run(async () => {
+            const w = world();
+            await api("PATCH", `/worlds/${w.worldId}`, { name: val("w-name"), description: val("w-desc"), injectChars: Number(val("w-budget")), injectMode: val("w-mode") === "scene" ? "scene" : "all", scoreboard: { name: val("w-board"), unit: val("w-unit") }, yearStart: Number(val("w-year")) || 9, nameStyle: val("w-names") || "auto", tail: { cast: !!root.getElementById("w-tail-cast")?.checked, balance: !!root.getElementById("w-tail-bal")?.checked }, balance: val("w-balance").split(/[,，]/).map((x) => x.trim()).filter(Boolean).slice(0, 4), revision: w.revision });
+            await loadWorlds();
+            await loadRoom();
+          }, "저장했습니다."),
+          pending: (b) => run(async () => {
+            const e = st.entities.find((x) => x.entityId === b.dataset.id);
+            await api("POST", `/worlds/${st.worldId}/entities/${e.entityId}/pending/${encodeURIComponent(b.dataset.key)}`, { revision: e.revision });
+            await loadEntities();
+          }, "대화의 값으로 바꿨습니다. 기록에서 되돌릴 수 있습니다."),
+          "pending-drop": (b) => run(async () => {
+            const e = st.entities.find((x) => x.entityId === b.dataset.id);
+            await api("POST", `/worlds/${st.worldId}/entities/${e.entityId}/pending/${encodeURIComponent(b.dataset.key)}`, { revision: e.revision, discard: true });
+            await loadEntities();
+          }),
+          "past-prompt": (b) => run(async () => {
+            const e = st.entities.find((x) => x.entityId === b.dataset.id);
+            if (!e)
+              throw Error("설정을 찾지 못했습니다. 새로 불러온 뒤 다시 해 주세요.");
+            const k = b.dataset.key;
+            await api("PATCH", `/worlds/${st.worldId}/entities/${e.entityId}`, { pastInPrompt: { ...e.pastInPrompt || {}, [k]: !e.pastInPrompt?.[k] }, revision: e.revision });
+            await loadEntities();
+            await loadRoom();
+          }),
+          "score-add": () => run(async () => {
+            const delta = Number(val("sc-delta"));
+            if (!val("sc-target").trim() || !Number.isInteger(delta) || !delta)
+              throw Error("대상과 점수(0이 아닌 정수)를 적어 주세요.");
+            await api("POST", `/rooms/${encodeURIComponent(activeChatId())}/scores`, { target: val("sc-target"), delta, reason: val("sc-reason") || "손으로 고침" });
+            await loadScores();
+            await loadRoom();
+          }, "기록했습니다."),
+          "score-undo": (b) => run(async () => {
+            await api("POST", `/rooms/${encodeURIComponent(activeChatId())}/scores/${encodeURIComponent(b.dataset.id)}/undo`, { undo: b.dataset.undo === "1" });
+            await loadScores();
+            await loadRoom();
+          }),
+          "cell-save": (b) => run(async () => {
+            const e = st.entities.find((x) => x.entityId === b.dataset.id);
+            await api("PUT", `/worlds/${st.worldId}/timetable/cell`, { entityId: e.entityId, revision: e.revision, day: root.getElementById("ttDay")?.value, slot: root.getElementById("ttSlot")?.value, value: root.getElementById("ttValue")?.value || "" });
+            await loadEntities();
+          }, "칸을 저장했습니다. 직접 쓴 칸은 대화가 덮어쓰지 않습니다."),
+          "applies-set": (b) => run(async () => {
+            const v = root.getElementById("appliesPick")?.value || null;
+            await api("PUT", `/worlds/${st.worldId}/entities/${b.dataset.id}/applies-to`, { appliesTo: v });
+            await loadEntities();
+          }, "적용되는 곳을 바꿨습니다. 직접 정한 값은 대화가 덮어쓰지 않습니다."),
+          "cell-clear": (b) => run(async () => {
+            const e = st.entities.find((x) => x.entityId === b.dataset.id);
+            const [day, slot] = String(b.dataset.key).split("|");
+            await api("PUT", `/worlds/${st.worldId}/timetable/cell`, { entityId: e.entityId, revision: e.revision, day, slot, value: "" });
+            await loadEntities();
+          }, "그 칸을 지웠습니다. 기록에서 되돌릴 수 있습니다."),
+          "event-pending": (b) => run(async () => {
+            await api("POST", `/worlds/${st.worldId}/entities/${b.dataset.id}/calendar/pending`, { eventId: b.dataset.event, discard: b.dataset.discard === "1" });
+            await loadEntities();
+          }),
+          "cal-gather": () => run(async () => {
+            const r = await api("POST", `/worlds/${st.worldId}/calendar-gather`, {});
+            await loadEntities();
+            st.bad = false;
+            st.msg = r.moved.length ? `학사일정으로 옮겼습니다(${r.moved.length}개): ${r.moved.map((m) => m.name).join(", ")}. 기록에서 되돌릴 수 있습니다.` : "옮길 날짜 일정이 없습니다.";
+          }),
+          "cell-pending": (b) => run(async () => {
+            await api("POST", `/worlds/${st.worldId}/entities/${b.dataset.id}/timetable/pending`, { key: b.dataset.key, discard: b.dataset.discard === "1" });
+            await loadEntities();
+          }),
+          "tt-gather": () => run(async () => {
+            const r = await api("POST", `/worlds/${st.worldId}/timetable-gather`, {});
+            await loadEntities();
+            st.bad = false;
+            st.msg = r.moved.length ? `시간표로 옮겼습니다(${r.moved.length}개): ${r.moved.map((m) => m.name).join(", ")}${r.left.length ? ` · 못 옮긴 것 ${r.left.length}개: ${r.left.join(", ")}` : ""}. 기록에서 되돌릴 수 있습니다.` : `옮길 수업·일과 일정이 없습니다${r.left.length ? `(요일·시간이나 주인을 모르는 것 ${r.left.length}개: ${r.left.join(", ")})` : ""}.`;
+          }),
+          "applies-fill": () => run(async () => {
+            const r = await api("POST", `/worlds/${st.worldId}/applies-fill`, {});
+            await loadEntities();
+            st.bad = false;
+            st.msg = `적용되는 곳이 빈 규칙·시스템 ${r.asked}개 가운데 ${r.filled.length}개를 채웠습니다(호출 ${r.calls}번). 나머지는 모름으로 둡니다. 기록에서 되돌릴 수 있습니다.`;
+          }),
+          "location-fill": () => run(async () => {
+            const r = await api("POST", `/worlds/${st.worldId}/location-fill`, {});
+            await loadEntities();
+            st.bad = false;
+            st.msg = `장소를 이었습니다 — 위치 칸으로 ${r.byCode.length}개, 모델로 ${r.byModel.length}개(호출 ${r.calls}번). 큰 장소 ${r.big}개. 기록에서 되돌릴 수 있습니다.`;
+          }),
+          "room-set": (b) => run(async () => {
+            await api("PUT", `/worlds/${st.worldId}/entities/${b.dataset.id}/room`, { room: root.getElementById("roomPick")?.value || null });
+            await loadEntities();
+          }, "지내는 곳을 바꿨습니다."),
+          "base-set": (b) => run(async () => {
+            await api("PUT", `/worlds/${st.worldId}/entities/${b.dataset.id}/base`, { base: root.getElementById("basePick")?.value || null });
+            await loadEntities();
+          }, "본거지를 바꿨습니다."),
+          tidy: () => run(async () => {
+            st.tidy = await api("POST", `/worlds/${st.worldId}/tidy`, {});
+            st.bad = false;
+            st.msg = `후보 ${st.tidy.items.length + st.tidy.fields.length}개를 골랐습니다(호출 ${st.tidy.calls}번). 아래에서 하나씩 고르세요. 지운 것은 없습니다.`;
+          }),
+          "tidy-trash": (b) => run(async () => {
+            const e = st.entities.find((x) => x.entityId === b.dataset.id);
+            if (e)
+              await api("DELETE", `/worlds/${st.worldId}/entities/${e.entityId}`, { revision: e.revision });
+            await loadEntities();
+            st.tidy = await api("GET", `/worlds/${st.worldId}/tidy`);
+          }, "휴지통으로 보냈습니다. 기록에서 되돌릴 수 있습니다."),
+          "tidy-clear": (b) => run(async () => {
+            const e = st.entities.find((x) => x.entityId === b.dataset.id);
+            if (e)
+              await api("PATCH", `/worlds/${st.worldId}/entities/${e.entityId}`, b.dataset.key === "description" ? { description: "", revision: e.revision } : { fields: { ...e.fields, [b.dataset.key]: "" }, revision: e.revision });
+            await loadEntities();
+            st.tidy = await api("GET", `/worlds/${st.worldId}/tidy`);
+          }, "칸을 비웠습니다. 기록에서 되돌릴 수 있습니다."),
+          "tidy-keep": (b) => run(async () => {
+            st.tidy = await api("POST", `/worlds/${st.worldId}/tidy/keep`, { entityId: b.dataset.id, key: b.dataset.key || null });
+          }),
+          "species-fill": () => run(async () => {
+            const r = await api("POST", `/worlds/${st.worldId}/species-fill`);
+            await loadEntities();
+            st.bad = false;
+            st.msg = r.filled.length ? `종을 채웠습니다(${r.filled.length}명): ${r.filled.map((x) => `${x.name} — ${x.species}`).join(", ")}. 기록에서 되돌릴 수 있습니다.` : `종이 빈 인물 ${r.asked}명 가운데 사람이 아닌 존재를 찾지 못했습니다.`;
+          }),
+          backup: () => run(async () => {
+            const w = world();
+            const file = await api("GET", `/worlds/${w.worldId}/export`);
+            const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 1)], { type: "application/json" }));
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `세계관-${w.name.replace(/[\/:*?"<>|]+/g, "_")}-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+          }, "백업 파일을 내려받았습니다."),
+          "delete-world": () => run(async () => {
+            const w = world();
+            await api("DELETE", `/worlds/${w.worldId}`, { revision: w.revision });
+            st.worldId = null;
+            go("overview");
+            await loadWorlds();
+            await loadEntities();
+            await loadRoom();
+          }, "지웠습니다.")
+        };
+        root.addEventListener("click", (ev) => {
+          const b = ev.target.closest("button");
+          if (!b || b.disabled)
+            return;
+          if (b === el.launch)
+            return toggle();
+          const act = b.dataset.act;
+          if (act && actions[act])
+            actions[act](b);
+        });
+        root.addEventListener("change", (ev) => {
+          if (ev.target.id === "worldSelect") {
+            st.worldId = ev.target.value;
+            store.set("world-archive-world", st.worldId);
+            const keep = KIND[st.view] || st.view === "log" || st.view === "tabs" ? st.view : "overview";
+            st.tab = null;
+            st.year = null;
+            go(keep);
+            run(async () => {
+              await loadEntities();
+              if (keep === "log")
+                await loadHistory();
+            });
+            st.scores = null;
+          } else if (ev.target.id === "fd-type" && st.editing) {
+            const now = readForm();
+            st.draft = { ...now, fields: { ...st.draft?.fields || {}, ...now.fields } };
+            st.view = now.type;
+            render();
+          }
+        });
+        root.addEventListener("change", (ev) => {
+          if (ev.target.id !== "restore-file" || !ev.target.files?.[0])
+            return;
+          const f = ev.target.files[0];
+          ev.target.value = "";
+          run(async () => {
+            let file;
+            try {
+              file = JSON.parse(await f.text());
+            } catch {
+              throw Error("백업 파일을 읽지 못했습니다.");
+            }
+            const r = await api("POST", "/worlds/import", file);
+            await loadWorlds();
+            st.worldId = r.world.worldId;
+            go("overview");
+            await loadEntities();
+            await loadRoom();
+          }, "새 세계관으로 복원했습니다.");
+        });
+        root.addEventListener("input", (ev) => {
+          if (ev.target.id === "q") {
+            st.query = ev.target.value;
+            runSearch();
+          }
+          if (ev.target.id === "tabq") {
+            st.tabQuery = ev.target.value;
+            filterTab();
+          }
+        });
+        el.backdrop.addEventListener("click", () => toggle(false));
+        root.addEventListener("keydown", (ev) => {
+          if (!target && ev.key === "Escape" && !el.panel.hidden)
+            toggle(false);
+        });
+        let watch = null;
+        let lastChat = "";
+        function toggle(open = el.panel.hidden) {
+          el.panel.hidden = !open;
+          el.backdrop.hidden = !open;
+          el.launch.hidden = open || tabShown();
+          el.launch.setAttribute("aria-expanded", String(open));
+          clearInterval(watch);
+          clearTimeout(pollTimer);
+          if (!open)
+            return;
+          lastChat = activeChatId();
+          render();
+          run(() => loadAll(true));
+          watch = setInterval(() => {
+            const now = activeChatId();
+            if (now !== lastChat && !st.busy) {
+              lastChat = now;
+              run(loadRoom);
+            }
+          }, 1000);
+        }
+        function tabShown() {
+          return !target && document.documentElement.dataset.memoryWorldTab === "on";
+        }
+        if (!target)
+          setInterval(() => {
+            if (el.panel.hidden)
+              el.launch.hidden = tabShown();
+          }, 2000);
+        if (target)
+          toggle(true);
+        else
+          render();
+        return { host, setTheme(t) {
+          if (t === "dark" || t === "light") {
+            st.theme = t;
+            render();
+          }
+        }, railHtml: () => st.loaded ? worldRailHtml() : "" };
+      }
+      if (EMBEDDED)
+        globalThis.__memoryWorldPanel = { version: VERSION, contract: PANEL_CONTRACT, start: (target, opts) => boot(target, opts) };
+      else
+        boot(null);
+    })();
+  })();
   install();
   host.onCleanup?.(cleanup);
   return { toggle: () => LV.toggle(), open: () => {

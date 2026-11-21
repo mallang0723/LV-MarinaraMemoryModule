@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-edit-during-read.cjs
 // An old message edited or deleted while the ledger is still being read: the next reply must not get what the
 // message said before. The stored ledger is left for the read under way; the check after it saves as usual.

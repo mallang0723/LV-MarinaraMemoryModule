@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // Memory written in Chinese: the language is told apart from Korean and English, names in the glossary and the name
 // table are written in Korean, fixed headings have Chinese forms, feelings and scenes are compared by character pairs,

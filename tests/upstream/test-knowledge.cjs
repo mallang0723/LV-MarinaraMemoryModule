@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // 아는 사람·모르는 사람 (knowledge, built in): the scene prompt's small addition and its parsing, who knows a fact derived
 // from the scene's own unaware/heard-later data, later learning and undoing, hand edits that lock, the "(…는 모름)" marker for

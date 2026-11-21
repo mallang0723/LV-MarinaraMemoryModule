@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // OOC (talk outside the story): marked, left out of scenes, facts, quotes and notes; the plans decided there become
 // 작가 계획 (an author's plan: a secret no character knows, labelled as such in the reply). (Invented names.)

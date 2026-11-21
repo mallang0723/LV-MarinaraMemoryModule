@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 // node --test tests/test-recall-noise.cjs
 // The word searches of recall (a scene the message names, old passages): what is no reason for a match.
 // Greek and other alphabets by whole words, numbers whole, a chat's everyday words left out. (Invented story.)

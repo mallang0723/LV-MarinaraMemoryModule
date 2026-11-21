@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // The rename endpoints: preview, apply only with the preview's token, undo, and never while a job writes the room.
 const test = require('node:test');

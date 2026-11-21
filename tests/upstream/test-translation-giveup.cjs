@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // A line that cannot be translated even alone is given up on after two tries (not asked every few minutes) until the
 // user asks again; the cache is written once per run, not after every part. (Invented text.)

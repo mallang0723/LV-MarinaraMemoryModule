@@ -1,4 +1,4 @@
-// Upstream ab1f058, MIT tlsiddl; only import paths adapted for the Lumiverse port.
+// Upstream 32f72b9, MIT tlsiddl; only import paths adapted for the Lumiverse port.
 'use strict';
 // Bilingual dialogue (an original line with its Korean translation) is saved in one form: the original in `text`,
 // the translation in `translation`, shown together as `"original" (번역)`. Invented lines only.
