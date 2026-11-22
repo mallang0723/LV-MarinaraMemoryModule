@@ -7,6 +7,7 @@ import { createInjector } from './common/injector.js';
 import { registerHostRoutes } from './common/host-routes.js';
 import { createManager, MEMORY_MARKER } from './adapter/manager.js';
 import { createReference } from './adapter/reference.js';
+import { createWorldRoom } from './adapter/world-archive.js';
 import { VERSION } from './version.js';
 
 export const MACRO_NAME = 'memory_ledger';   // the macro lexer only knows [a-zA-Z0-9_-] names (src/macros/MacroLexer.ts:136), so no {{기억}}
@@ -26,9 +27,14 @@ export function start(api, options = {}) {
     const reference = createReference({ api, manager, host, log });
     reference.publish();   // `anon_memory_lv.rendered`: the ledger text for the anonymous community (see adapter/reference.js)
     disposers.push(() => reference.dispose());
+    const worldRoom = createWorldRoom({ api, manager, host, log });
+    worldRoom.publish();   // `anon_memory_lv.world-room`: enabled / story date / memory language for the 세계관 설정집 (see adapter/world-archive.js)
+    disposers.push(() => worldRoom.dispose());
     const timers = manager.timers;
 
     registerHostRoutes(router, host);
+    // The 세계관 tab asks the host for the room's name (the original's GET /api/chats/:id; only `name` is used).
+    router.add('GET', 'chats/:id', async ({ userId, params }) => { const c = await host.rawChat(userId, params.id); return { id: c.id, name: c.name || '' }; });
     manager.mount(router);
     router.add('GET', 'ext/info', async ({ userId }) => ({ version: VERSION, permissions: Object.fromEntries(['generation', 'chats', 'chat_mutation', 'characters', 'interceptor'].map(p => [p, api.permissions?.has ? api.permissions.has(p) : true])), userId: !!userId, saveFailures: userId && manager.users.has(userId) ? manager.users.get(userId).saveFailures() : [] }));
     router.add('POST', 'ext/settings', async ({ userId, body }) => {

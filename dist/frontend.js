@@ -382,7 +382,7 @@ function createShell(ctx, { link, getChatId, openMemory, doc = globalThis.docume
     const budgetOptions = [4, 6, 8, 10].map((s) => el("option", { value: String(s * 1000), text: `${s}초`, ...Number(ext?.interceptorBudgetMs || 6000) === s * 1000 ? { selected: true } : {} }));
     const budget = el("select", { "aria-label": "기억 주입 시간 한도" }, budgetOptions);
     budget.addEventListener("change", () => saveExt({ interceptorBudgetMs: Number(budget.value) }));
-    return el("div", { class: "am-tab" }, el("div", { class: "am-card" }, el("h2", { text: TITLE_MEMORY }), el("p", { text: "긴 RP를 장면·사실·미해결 장부로 정리해 두었다가 답변 직전에 프롬프트에 넣어 줘요." }), chatId ? c ? el("p", { class: "am-ok", text: c.enabled ? "이 방은 기억이 켜져 있어요." : "이 방은 기억이 꺼져 있어요." }) : el("p", { class: "am-hint", text: "이 방의 기억 상태를 읽지 못했어요. 권한을 확인해 주세요." }) : el("p", { class: "am-hint", text: "채팅을 열어 두면 그 방의 기억을 보여 줘요." }), stat, el("button", { class: "am-btn", type: "button", text: "기억 서재 열기", onclick: () => openMemory() }), chatId && c ? el("div", { class: "am-row" }, el("button", { class: "am-btn am-quiet", type: "button", text: c.enabled ? "이 방 끄기" : "이 방 켜기", onclick: () => toggleRoom() }), el("button", { class: "am-btn am-quiet", type: "button", text: "이어서 정리", onclick: () => continueRoom() })) : null), warn(), el("div", { class: "am-card" }, el("h2", { text: "설정" }), el("p", { class: "am-hint", text: ext?.windowInfo?.label || "창 크기 확인 중" }), switchRow("기억 서재 사용", ext ? ext.moduleMemory !== false : true, (v) => saveExt({ moduleMemory: v }), "끄면 어느 방에서도 기억을 넣지도, 갱신하지도 않아요."), switchRow("프롬프트에 자동으로 넣기", ext ? ext.autoInject !== false : true, (v) => saveExt({ autoInject: v }), `프리셋에 {{memory_ledger}} 매크로를 넣어 쓰면 이 칸을 꺼도 돼요. 매크로를 넣어 두면 그 자리의 내용이 최신으로 바뀌어요.`), el("label", { class: "am-field" }, "기억 주입에 쓸 수 있는 시간", budget), el("div", { class: "am-hint", text: "루미버스는 인터셉터를 기본 10초까지 기다려요. 회상은 이 시간을 넘기면 빠른 방식으로 대신해요." }), el("div", { class: "am-hint", text: "같은 {{memory_ledger}} 매크로를 쓰는 다른 기억 확장(예: LV-AnonMemory의 기억 서재)과 함께 켜지 마세요. 하나만 쓰거나 한쪽의 기억을 꺼 주세요." })));
+    return el("div", { class: "am-tab" }, el("div", { class: "am-card" }, el("h2", { text: TITLE_MEMORY }), el("p", { text: "긴 RP를 장면·사실·미해결 장부로 정리해 두었다가 답변 직전에 프롬프트에 넣어 줘요." }), chatId ? c ? el("p", { class: "am-ok", text: c.enabled ? "이 방은 기억이 켜져 있어요." : "이 방은 기억이 꺼져 있어요." }) : el("p", { class: "am-hint", text: "이 방의 기억 상태를 읽지 못했어요. 권한을 확인해 주세요." }) : el("p", { class: "am-hint", text: "채팅을 열어 두면 그 방의 기억을 보여 줘요." }), stat, el("button", { class: "am-btn", type: "button", text: "기억 서재 열기", onclick: () => openMemory() }), chatId && c ? el("div", { class: "am-row" }, el("button", { class: "am-btn am-quiet", type: "button", text: c.enabled ? "이 방 끄기" : "이 방 켜기", onclick: () => toggleRoom() }), el("button", { class: "am-btn am-quiet", type: "button", text: "이어서 정리", onclick: () => continueRoom() })) : null), warn(), el("div", { class: "am-card" }, el("h2", { text: "설정" }), el("p", { class: "am-hint", text: ext?.windowInfo?.label || "창 크기 확인 중" }), switchRow("기억 서재 사용", ext ? ext.moduleMemory !== false : true, (v) => saveExt({ moduleMemory: v }), "끄면 어느 방에서도 기억을 넣지도, 갱신하지도 않아요."), switchRow("프롬프트에 자동으로 넣기", ext ? ext.autoInject !== false : true, (v) => saveExt({ autoInject: v }), `프리셋에 {{memory_ledger}} 매크로를 넣어 쓰면 이 칸을 꺼도 돼요. 매크로를 넣어 두면 그 자리의 내용이 최신으로 바뀌어요.`), switchRow("기억 정리는 가볍게 생각(추론 low)", ext ? ext.lightReasoning !== false : true, (v) => saveExt({ lightReasoning: v }), "기억 정리·회상·점검 호출에 추론을 low로 요청해요. 연결에 추론 설정이 따로 있으면 그쪽을 따르고, 사이트가 거절하면 빼고 다시 보내요(DeepSeek는 생각 끄기). 끄면 아무 설정도 붙이지 않아요."), el("label", { class: "am-field" }, "기억 주입에 쓸 수 있는 시간", budget), el("div", { class: "am-hint", text: "루미버스는 인터셉터를 기본 10초까지 기다려요. 회상은 이 시간을 넘기면 빠른 방식으로 대신해요." }), el("div", { class: "am-hint", text: "같은 {{memory_ledger}} 매크로를 쓰는 다른 기억 확장(예: LV-AnonMemory의 기억 서재)과 함께 켜지 마세요. 하나만 쓰거나 한쪽의 기억을 꺼 주세요." })));
   }
   function paint() {
     if (!alive)
@@ -618,10 +618,13 @@ function attachSummarizationFrontend(ctx, { fetch: fetchSetting = globalThis.fet
         const list = await response.json();
         if (Array.isArray(list)) {
           const setting = list.find((row) => row?.key === "summarization")?.value ?? {};
+          const rs = list.find((row) => row?.key === "reasoningSettings")?.value;
+          const reasoning = rs && typeof rs === "object" ? { saved: true, apiReasoning: rs.apiReasoning === true ? true : rs.apiReasoning === false ? false : null, reasoningEffort: typeof rs.reasoningEffort === "string" ? rs.reasoningEffort : null } : { saved: false };
           if (setting && typeof setting === "object")
             value = {
               messageLimitEnabled: setting.messageLimitEnabled,
-              messageLimitCount: setting.messageLimitCount
+              messageLimitCount: setting.messageLimitCount,
+              reasoning
             };
         }
       }
@@ -646,7 +649,7 @@ function attachSummarizationFrontend(ctx, { fetch: fetchSetting = globalThis.fet
 
 // src/memory/ui/runtime.generated.js
 function mountMemory(marinara, LV) {
-  const VERSION = "1.5.0-lv.1";
+  const VERSION = "1.5.0-lv.2";
   const UI_CSS = `:host{all:initial;color:#34374b;font:14px/1.65 "Pretendard","Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--im-accent:#7777c8;--im-ink:#34374b;--im-muted:#8e91a6;--im-line:#e9e9f2;--im-paper:#fff;--im-canvas:#f5f5fb;--im-soft:#eeeefa}
 *{box-sizing:border-box}button,input,select,textarea{font:inherit}button{cursor:pointer;color:inherit;border:1px solid var(--im-line);background:var(--im-paper);padding:9px 14px;border-radius:11px;transition:background .15s,transform .15s,box-shadow .15s}button:hover{background:var(--im-soft)}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #aaa7e5;outline-offset:3px}.icon{width:19px;height:19px;flex:none;display:inline-block;vertical-align:middle}#launch{position:fixed;right:20px;bottom:126px;z-index:2147483600;display:flex;align-items:center;gap:8px;color:#fff;background:#7777c8;border:0;border-radius:24px;padding:11px 19px;box-shadow:0 7px 20px #7777c84d}#backdrop{position:fixed;inset:0;background:#20233654;z-index:2147483601}#panel{position:fixed;z-index:2147483602;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1320px,96vw);height:min(900px,91vh);display:grid;grid-template-columns:192px minmax(0,1fr) 224px;background:var(--im-paper);border-radius:26px;box-shadow:0 25px 100px #25254435;overflow:hidden}#panel[hidden],[hidden]{display:none!important}
 .sidebar{display:flex;flex-direction:column;padding:30px 18px 20px;border-right:1px solid var(--im-line);min-width:0}.brand{display:flex;align-items:center;gap:10px;padding:0 12px 30px;color:var(--im-accent);font-size:18px;font-weight:750;letter-spacing:-.8px}.brand .icon{width:27px;height:27px}.brand small{display:block;white-space:nowrap;font:7px/1.8 ui-monospace,monospace;letter-spacing:1.3px;color:#a8a6bd}.nav-label{font-size:9px;letter-spacing:1.8px;color:#b2b1c2;padding:13px 14px 9px}nav{display:flex;flex-direction:column;gap:6px}nav button{display:flex;gap:11px;align-items:center;border:0;background:transparent;text-align:left;font-size:12px;padding:11px 13px;border-radius:10px;color:#9291aa}nav button.selected{background:#eeeeFA;color:#6d69b4;font-weight:700}nav button .icon{width:17px;height:17px}.side-bottom{margin-top:auto;padding-top:26px;display:grid;gap:10px}.side-bottom button{font-size:11px;border:0;display:flex;align-items:center;gap:8px;background:#f7f7fb}.side-bottom small{font-size:9px;color:#b0aec0;padding-left:10px}
@@ -5670,6 +5673,13 @@ pre{font-size:12.5px!important;line-height:1.85!important}
   }
   (() => {
     const fetch = (input, init) => LV.fetch(input, init);
+    const localStorage2 = { getItem: (k) => k === "marinara-active-chat-id" ? LV.activeChatId() || null : globalThis.localStorage.getItem(k), setItem: (k, v) => {
+      if (k !== "marinara-active-chat-id")
+        globalThis.localStorage.setItem(k, v);
+    }, removeItem: (k) => {
+      if (k !== "marinara-active-chat-id")
+        globalThis.localStorage.removeItem(k);
+    } };
     const __WORLD_ARCHIVE_EMBEDDED__ = true;
     (() => {
       const EMBEDDED = typeof __WORLD_ARCHIVE_EMBEDDED__ !== "undefined" && __WORLD_ARCHIVE_EMBEDDED__ === true;
@@ -6038,14 +6048,14 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
         const store = {
           get(k, d = "") {
             try {
-              return localStorage.getItem(k) ?? d;
+              return localStorage2.getItem(k) ?? d;
             } catch {
               return d;
             }
           },
           set(k, v) {
             try {
-              localStorage.setItem(k, v);
+              localStorage2.setItem(k, v);
             } catch {}
           }
         };

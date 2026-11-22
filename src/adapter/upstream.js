@@ -7,7 +7,7 @@ import cores from './cores.cjs';
 import hideBlocks from './hide-blocks.cjs';
 import { createVfs, ROOT } from './vfs.js';
 import { createEngine } from './engine.js';
-import { aliasesFor, scenesFor, release, running } from './dispatch.js';
+import { aliasesFor, scenesFor, release, running, ownerUser } from './dispatch.js';
 
 // Lumiverse-only switch "하단 블록 빼고 읽기" joins the live feature registry (the pinned features.cjs is not edited; the upstream test harness never loads this file).
 hideBlocks.install(cores['./features.cjs']);
@@ -29,14 +29,15 @@ export function collectRoutes(register) {
     return { routes, hooks };
 }
 
-export function createUserService({ api, userId, log = () => {}, env = {}, version = '0', vfs: injectedVfs, fs: realFs, engine: injectedEngine, debounceMs, getMessageLimit, translator, meter = null }) {
+export function createUserService({ api, userId, log = () => {}, env = {}, version = '0', vfs: injectedVfs, fs: realFs, engine: injectedEngine, debounceMs, getMessageLimit, getGlobalReasoning, translator, meter = null }) {
     let svc = null;
     const vfs = realFs ? null : injectedVfs || createVfs({ storage: api.userStorage, userId, log, ...(debounceMs != null ? { debounceMs } : {}) });
-    const eng = injectedEngine || createEngine({ api, userId, log, getMessageLimit, translator, meter, getHideBlocks: chatId => { try { const all = svc?._test.settings(); return cores['./features.cjs'].resolve(all, chatId, 'hideBlocks').enabled ? hideBlocks.tagsOf(all.chats?.[chatId]?.hideBlocks) : null; } catch { return null; } }, getWindow: () => { try { return Number(svc?._test.settings().window) || null; } catch { return null; } } });
+    const eng = injectedEngine || createEngine({ api, userId, log, getMessageLimit, getGlobalReasoning, translator, meter, getLightReasoning: () => { try { return svc?._test.settings().lightReasoning !== false; } catch { return false; } }, getHideBlocks: chatId => { try { const all = svc?._test.settings(); return cores['./features.cjs'].resolve(all, chatId, 'hideBlocks').enabled ? hideBlocks.tagsOf(all.chats?.[chatId]?.hideBlocks) : null; } catch { return null; } }, getWindow: () => { try { return Number(svc?._test.settings().window) || null; } catch { return null; } } });
     const exits = [];
     const fakeProcess = { env: { DATA_DIR: DATA_ROOT, ...env }, pid: 0, argv: ['lumiverse-extension'], stderr: { write: s => log(String(s).trimEnd()) }, lvRecallBudgetMs: () => { try { return Number(svc?._test.settings().interceptorBudgetMs) || 0; } catch { return 0; } }, on: (ev, fn) => { if (ev === 'exit') exits.push(fn); } };
     const urlShim = { pathToFileURL: p => new URL('file://' + p) };
     const owner = {};
+    ownerUser.set(owner, userId);
     const mine = {};
     const req = name => {
         if (name === './aliases.cjs') return (mine[name] ??= aliasesFor(cores[name], owner));

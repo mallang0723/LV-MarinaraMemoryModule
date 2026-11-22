@@ -12,7 +12,40 @@ const TAIL = 30;
 const iso = t => { const n = Number(t); if (!Number.isFinite(n) || n <= 0) return null; return new Date(n < 1e12 ? n * 1000 : n).toISOString(); };
 const clone = v => (v == null ? v : structuredClone(v));
 
-export function createEngine({ api, userId, log = () => {}, translator = null, lean = !!api.host?.capabilities?.['chat-lean-messages-v1'], getMessageLimit = async () => null, getWindow = () => null, getHideBlocks = () => null, meter = null }) {
+
+/** Reasoning settings that say how to think: reasoning off, or an explicit effort (an effort of "auto" leaves it to the model, so nothing is said). */
+export const saysHow = r => !!r && typeof r === 'object' && (r.apiReasoning === false || (r.apiReasoning === true && typeof r.reasoningEffort === 'string' && r.reasoningEffort !== 'auto'));
+
+/**
+ * What the host shows of a connection's own reasoning: { how, marker }. `how` = the bound settings (`reasoning_bindings`, or the same blob under
+ * `metadata.reasoningBindings` when a host gives only that) or a thinking/reasoning key of the metadata say how to think; `bound` = the connection has
+ * a binding at all (then the user's global setting is not consulted by the host). `marker` is the text upstream's `memoryCallOptions` looks at
+ * (`conn.defaultParameters`), so a connection that says how keeps its own way for every model.
+ */
+export function ownReasoning(c) {
+    const meta = c?.metadata && typeof c.metadata === 'object' ? c.metadata : {};
+    const binding = c?.reasoning_bindings ?? (meta.reasoningBindings && typeof meta.reasoningBindings === 'object' ? meta.reasoningBindings : null);
+    const out = {};
+    if (binding && saysHow(binding.settings)) out.reasoningBindings = binding;
+    for (const [k, v] of Object.entries(meta)) if (/thinking|reasoning/i.test(k) && v != null && k !== 'reasoningBindings') out[k] = v;
+    return { how: Object.keys(out).length > 0, bound: !!binding, marker: Object.keys(out).length ? JSON.stringify(out) : undefined };
+}
+
+/** What upstream asked for in its call options, in words of the host's `reasoning` override: 'off' (DeepSeek thinking off) or 'low'. */
+export function reasoningIntent(opts) {
+    const cp = opts?.customParameters && typeof opts.customParameters === 'object' ? opts.customParameters : {};
+    if (cp.thinking?.type === 'disabled') return 'off';
+    const effort = opts?.reasoningEffort ?? cp.reasoning_effort ?? cp.reasoning?.effort;
+    return effort === 'low' ? 'low' : null;
+}
+export const hostReasoning = intent => (intent === 'off' ? { source: 'off' } : { source: 'custom', apiReasoning: true, effort: 'low' });
+/** A site refusing the reasoning request (not the JSON-mode one, which upstream handles itself). */
+export const REASONING_REFUSED = /reasoning|thinking|effort|budget|unrecognized|unknown (?:field|param|arg)|extra (?:field|input|param)|not permitted|unsupported (?:param|field)/i;
+const JSON_MODE = /response_format|json_object|responseFormat/i;
+
+export function createEngine({ api, userId, log = () => {}, translator = null, lean = !!api.host?.capabilities?.['chat-lean-messages-v1'], getMessageLimit = async () => null, getWindow = () => null, getHideBlocks = () => null, getLightReasoning = () => false, getGlobalReasoning = async () => undefined, meter = null }) {
+    const own = new Map();       // connection id -> ownReasoning(): does the connection say how to think, is it bound at all
+    const refused = new Set();   // connections whose site refused the reasoning request
     const call = async fn => { try { return await fn(); } catch (e) { throw wrapHostError(e); } };
     const stats = { fullReads: 0, pageReads: 0, tailReads: 0, events: 0 };
 
@@ -198,12 +231,29 @@ export function createEngine({ api, userId, log = () => {}, translator = null, l
             // connection's "embedding model" (upstream reads it off the connection).
             let primary = null;
             try { embedConns = await embeddingConnections(); primary = embedConns.find(c => c.is_primary) || embedConns[0] || null; } catch { embedConns = null; }
-            return list.map(c => ({ id: c.id, name: c.name, provider: c.provider, model: c.model, isDefault: !!c.is_default, embeddingModel: primary?.model || '', baseUrl: 'lumiverse://connection', maxContext: undefined }));
+            for (const c of list) own.set(c.id, ownReasoning(c));
+            return list.map(c => ({ id: c.id, name: c.name, provider: c.provider, model: c.model, isDefault: !!c.is_default, embeddingModel: primary?.model || '', baseUrl: 'lumiverse://connection', maxContext: undefined, defaultParameters: ownReasoning(c).marker }));
         },
         async getWithKey(id) { const row = (await this.list()).find(c => c.id === id); return row || null; },
         async unavailableReason() { return null; },
     };
     /** The provider the service gets for a connection: chat goes through generate.quiet, embeddings through the embeddings API. */
+    /**
+     * 'low' / 'off' / null. Null (nothing is sent) when: the switch is off; the site refused it before; the connection says how to think; or, with no
+     * binding on the connection, the user's saved global setting says how (the host would have used it) or could not be read. Only a user who has
+     * said nothing anywhere gets the light request.
+     */
+    async function lightIntent(opts, connectionId, defaultParameters, key) {
+        if (!getLightReasoning() || defaultParameters || refused.has(key)) return null;
+        const c = connectionId ? own.get(connectionId) : null;
+        if (c?.how) return null;
+        if (!c?.bound) {
+            let g;
+            try { g = await getGlobalReasoning(); } catch { g = undefined; }
+            if (g === undefined || (g?.saved && saysHow(g))) return null;
+        }
+        return reasoningIntent(opts) || 'low';
+    }
     function createLLMProvider(providerName, baseUrl, apiKey, maxContext, openrouter, x, y, z, defaultParameters, connectionId) {
         return {
             async chatComplete(messages, opts = {}) {
@@ -212,7 +262,19 @@ export function createEngine({ api, userId, log = () => {}, translator = null, l
                 if (opts.temperature != null) parameters.temperature = opts.temperature;
                 // upstream asks for JSON mode first and, when the host refuses it (an error naming response_format), asks again without
                 if (opts.responseFormat) parameters.response_format = opts.responseFormat;
-                const res = await call(() => api.generate.quiet({ messages, ...(connectionId ? { connection_id: connectionId } : {}), parameters, signal: opts.signal, userId }));
+                // Reasoning (1.5.0-lv.2): with the switch on, a memory call thinks lightly unless the connection says how it thinks. The host's per-request
+                // `reasoning` override says it in each provider's own words; a site that refuses it is asked again without, and not asked again.
+                const key = `${connectionId || providerName}\u0000${opts.model || ''}`;
+                const intent = await lightIntent(opts, connectionId, defaultParameters, key);
+                const send = withReasoning => call(() => api.generate.quiet({ messages, ...(connectionId ? { connection_id: connectionId } : {}), parameters, ...(withReasoning ? { reasoning: hostReasoning(intent) } : {}), signal: opts.signal, userId }));
+                let res;
+                try { res = await send(!!intent); } catch (e) {
+                    const text = String(e?.message || e);
+                    if (!intent || opts.signal?.aborted || JSON_MODE.test(text) || !REASONING_REFUSED.test(text)) throw e;
+                    refused.add(key);
+                    log(`connection ${connectionId || providerName}: reasoning request refused (${text.slice(0, 120)}), asking without it`);
+                    res = await send(false);
+                }
                 const content = typeof res === 'string' ? res : res?.content;
                 // numbers only: the host's usage when it came back, else the prompt and answer are counted (kept nowhere)
                 if (meter) { const chatId = inRoom.getStore()?.chatId; if (chatId) void meter.recordCall(chatId, opts.lvKind || 'organize', { usage: res?.usage || null, promptText: messages.map(m => (typeof m?.content === 'string' ? m.content : '')).join('\n'), answerText: typeof content === 'string' ? content : '' }); }

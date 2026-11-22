@@ -81,6 +81,7 @@ export function createShell(ctx, { link, getChatId, openMemory, doc = globalThis
                 el('p', { class: 'am-hint', text: ext?.windowInfo?.label || '창 크기 확인 중' }),
                 switchRow('기억 서재 사용', ext ? ext.moduleMemory !== false : true, v => saveExt({ moduleMemory: v }), '끄면 어느 방에서도 기억을 넣지도, 갱신하지도 않아요.'),
                 switchRow('프롬프트에 자동으로 넣기', ext ? ext.autoInject !== false : true, v => saveExt({ autoInject: v }), `프리셋에 {{memory_ledger}} 매크로를 넣어 쓰면 이 칸을 꺼도 돼요. 매크로를 넣어 두면 그 자리의 내용이 최신으로 바뀌어요.`),
+                switchRow('기억 정리는 가볍게 생각(추론 low)', ext ? ext.lightReasoning !== false : true, v => saveExt({ lightReasoning: v }), '기억 정리·회상·점검 호출에 추론을 low로 요청해요. 연결에 추론 설정이 따로 있으면 그쪽을 따르고, 사이트가 거절하면 빼고 다시 보내요(DeepSeek는 생각 끄기). 끄면 아무 설정도 붙이지 않아요.'),
                 el('label', { class: 'am-field' }, '기억 주입에 쓸 수 있는 시간', budget),
                 el('div', { class: 'am-hint', text: '루미버스는 인터셉터를 기본 10초까지 기다려요. 회상은 이 시간을 넘기면 빠른 방식으로 대신해요.' }),
                 el('div', { class: 'am-hint', text: '같은 {{memory_ledger}} 매크로를 쓰는 다른 기억 확장(예: LV-AnonMemory의 기억 서재)과 함께 켜지 마세요. 하나만 쓰거나 한쪽의 기억을 꺼 주세요.' })));

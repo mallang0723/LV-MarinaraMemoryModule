@@ -1653,7 +1653,7 @@ ${pairs.map((p) => `${p.from} = ${p.to}`).join(`
       const fixes = new Map(dateFixes(chatId).map((f) => [f.id, f]));
       const fromText = datesFromText(chatId);
       for (const [i, m] of messages.entries()) {
-        const written = L.dateInText(L.htmlToText(m.content), last?.date || null);
+        const written = L.dateInText(L.htmlToText(typeof m.rawContent === "string" ? m.rawContent : m.content), last?.date || null);
         const fix = fixes.get(m.id) || null;
         const own = fix ? { date: fix.date, time: fix.time || written?.time || null } : fromText ? written : null;
         if (fix || !fromText)
@@ -20950,6 +20950,23 @@ function createHostAdapter(api, { log = () => {} } = {}) {
     }
     return value?.messageLimitEnabled === true && typeof value.messageLimitCount === "number" && Number.isInteger(value.messageLimitCount) && value.messageLimitCount > 0 ? value.messageLimitCount : null;
   }
+  const reasoningAt = new Map;
+  async function globalReasoning(userId, now = Date.now()) {
+    need(userId);
+    const hit = reasoningAt.get(userId);
+    if (hit && now - hit.at < 30000)
+      return hit.value;
+    let value;
+    try {
+      const v = await summarization.read(userId);
+      value = v && typeof v.reasoning === "object" && v.reasoning ? v.reasoning : undefined;
+    } catch {
+      value = undefined;
+    }
+    if (value !== undefined)
+      reasoningAt.set(userId, { at: now, value });
+    return value;
+  }
   const need = (userId) => {
     if (typeof userId !== "string" || !userId)
       throw new Error("userId required");
@@ -21054,7 +21071,7 @@ function createHostAdapter(api, { log = () => {} } = {}) {
     const res = await call(() => api.embeddings.embed({ texts, ...connectionId ? { connection_id: connectionId } : {}, input_type: inputType === "query" ? "query" : "passage", userId }, { signal }));
     return res;
   }
-  return { connections, chatsList, rawChat, allMessages, character, characterName, generate, embeddingConnections, embed, has, contextMessageLimit, dispose: () => summarization.dispose() };
+  return { connections, chatsList, rawChat, allMessages, character, characterName, generate, embeddingConnections, embed, has, contextMessageLimit, globalReasoning, dispose: () => summarization.dispose() };
 }
 
 // src/common/router.js
@@ -21734,7 +21751,33 @@ var iso2 = (t) => {
     return null;
   return new Date(n < 1000000000000 ? n * 1000 : n).toISOString();
 };
-function createEngine({ api, userId, log = () => {}, translator = null, lean = !!api.host?.capabilities?.["chat-lean-messages-v1"], getMessageLimit = async () => null, getWindow = () => null, getHideBlocks = () => null, meter = null }) {
+var saysHow = (r) => !!r && typeof r === "object" && (r.apiReasoning === false || r.apiReasoning === true && typeof r.reasoningEffort === "string" && r.reasoningEffort !== "auto");
+function ownReasoning(c) {
+  const meta = c?.metadata && typeof c.metadata === "object" ? c.metadata : {};
+  const binding = c?.reasoning_bindings ?? (meta.reasoningBindings && typeof meta.reasoningBindings === "object" ? meta.reasoningBindings : null);
+  const out = {};
+  if (binding && saysHow(binding.settings))
+    out.reasoningBindings = binding;
+  for (const [k, v] of Object.entries(meta))
+    if (/thinking|reasoning/i.test(k) && v != null && k !== "reasoningBindings")
+      out[k] = v;
+  return { how: Object.keys(out).length > 0, bound: !!binding, marker: Object.keys(out).length ? JSON.stringify(out) : undefined };
+}
+function reasoningIntent(opts) {
+  const cp = opts?.customParameters && typeof opts.customParameters === "object" ? opts.customParameters : {};
+  if (cp.thinking?.type === "disabled")
+    return "off";
+  const effort = opts?.reasoningEffort ?? cp.reasoning_effort ?? cp.reasoning?.effort;
+  return effort === "low" ? "low" : null;
+}
+var hostReasoning = (intent) => intent === "off" ? { source: "off" } : { source: "custom", apiReasoning: true, effort: "low" };
+var REASONING_REFUSED = /reasoning|thinking|effort|budget|unrecognized|unknown (?:field|param|arg)|extra (?:field|input|param)|not permitted|unsupported (?:param|field)/i;
+var JSON_MODE = /response_format|json_object|responseFormat/i;
+function createEngine({ api, userId, log = () => {}, translator = null, lean = !!api.host?.capabilities?.["chat-lean-messages-v1"], getMessageLimit = async () => null, getWindow = () => null, getHideBlocks = () => null, getLightReasoning = () => false, getGlobalReasoning = async () => {
+  return;
+}, meter = null }) {
+  const own = new Map;
+  const refused = new Set;
   const call = async (fn) => {
     try {
       return await fn();
@@ -21976,7 +22019,9 @@ function createEngine({ api, userId, log = () => {}, translator = null, lean = !
       } catch {
         embedConns = null;
       }
-      return list.map((c) => ({ id: c.id, name: c.name, provider: c.provider, model: c.model, isDefault: !!c.is_default, embeddingModel: primary?.model || "", baseUrl: "lumiverse://connection", maxContext: undefined }));
+      for (const c of list)
+        own.set(c.id, ownReasoning(c));
+      return list.map((c) => ({ id: c.id, name: c.name, provider: c.provider, model: c.model, isDefault: !!c.is_default, embeddingModel: primary?.model || "", baseUrl: "lumiverse://connection", maxContext: undefined, defaultParameters: ownReasoning(c).marker }));
     },
     async getWithKey(id) {
       const row = (await this.list()).find((c) => c.id === id);
@@ -21986,6 +22031,24 @@ function createEngine({ api, userId, log = () => {}, translator = null, lean = !
       return null;
     }
   };
+  async function lightIntent(opts, connectionId, defaultParameters, key) {
+    if (!getLightReasoning() || defaultParameters || refused.has(key))
+      return null;
+    const c = connectionId ? own.get(connectionId) : null;
+    if (c?.how)
+      return null;
+    if (!c?.bound) {
+      let g;
+      try {
+        g = await getGlobalReasoning();
+      } catch {
+        g = undefined;
+      }
+      if (g === undefined || g?.saved && saysHow(g))
+        return null;
+    }
+    return reasoningIntent(opts) || "low";
+  }
   function createLLMProvider(providerName, baseUrl, apiKey, maxContext, openrouter, x, y, z, defaultParameters, connectionId) {
     return {
       async chatComplete(messages, opts = {}) {
@@ -21996,7 +22059,20 @@ function createEngine({ api, userId, log = () => {}, translator = null, lean = !
           parameters.temperature = opts.temperature;
         if (opts.responseFormat)
           parameters.response_format = opts.responseFormat;
-        const res = await call(() => api.generate.quiet({ messages, ...connectionId ? { connection_id: connectionId } : {}, parameters, signal: opts.signal, userId }));
+        const key = `${connectionId || providerName}\x00${opts.model || ""}`;
+        const intent = await lightIntent(opts, connectionId, defaultParameters, key);
+        const send = (withReasoning) => call(() => api.generate.quiet({ messages, ...connectionId ? { connection_id: connectionId } : {}, parameters, ...withReasoning ? { reasoning: hostReasoning(intent) } : {}, signal: opts.signal, userId }));
+        let res;
+        try {
+          res = await send(!!intent);
+        } catch (e) {
+          const text = String(e?.message || e);
+          if (!intent || opts.signal?.aborted || JSON_MODE.test(text) || !REASONING_REFUSED.test(text))
+            throw e;
+          refused.add(key);
+          log(`connection ${connectionId || providerName}: reasoning request refused (${text.slice(0, 120)}), asking without it`);
+          res = await send(false);
+        }
         const content = typeof res === "string" ? res : res?.content;
         if (meter) {
           const chatId = inRoom.getStore()?.chatId;
@@ -22034,6 +22110,7 @@ function createEngine({ api, userId, log = () => {}, translator = null, lean = !
 // src/adapter/dispatch.js
 import { AsyncLocalStorage as AsyncLocalStorage2 } from "async_hooks";
 var running = new AsyncLocalStorage2;
+var ownerUser = new WeakMap;
 var hooks = { loader: new Map, address: new Map, state: new Map };
 var installed = new Set;
 function dispatcher(kind) {
@@ -22094,10 +22171,16 @@ function collectRoutes(register) {
   register(make(""));
   return { routes, hooks };
 }
-function createUserService({ api, userId, log = () => {}, env = {}, version = "0", vfs: injectedVfs, fs: realFs, engine: injectedEngine, debounceMs, getMessageLimit, translator, meter = null }) {
+function createUserService({ api, userId, log = () => {}, env = {}, version = "0", vfs: injectedVfs, fs: realFs, engine: injectedEngine, debounceMs, getMessageLimit, getGlobalReasoning, translator, meter = null }) {
   let svc = null;
   const vfs = realFs ? null : injectedVfs || createVfs({ storage: api.userStorage, userId, log, ...debounceMs != null ? { debounceMs } : {} });
-  const eng = injectedEngine || createEngine({ api, userId, log, getMessageLimit, translator, meter, getHideBlocks: (chatId) => {
+  const eng = injectedEngine || createEngine({ api, userId, log, getMessageLimit, getGlobalReasoning, translator, meter, getLightReasoning: () => {
+    try {
+      return svc?._test.settings().lightReasoning !== false;
+    } catch {
+      return false;
+    }
+  }, getHideBlocks: (chatId) => {
     try {
       const all = svc?._test.settings();
       return import_cores.default["./features.cjs"].resolve(all, chatId, "hideBlocks").enabled ? import_hide_blocks2.default.tagsOf(all.chats?.[chatId]?.hideBlocks) : null;
@@ -22124,6 +22207,7 @@ function createUserService({ api, userId, log = () => {}, env = {}, version = "0
   } };
   const urlShim = { pathToFileURL: (p) => new URL("file://" + p) };
   const owner = {};
+  ownerUser.set(owner, userId);
   const mine = {};
   const req = (name) => {
     if (name === "./aliases.cjs")
@@ -22168,10 +22252,231 @@ function createUserService({ api, userId, log = () => {}, env = {}, version = "0
 
 // src/adapter/manager.js
 var import_hide_blocks3 = __toESM(require_hide_blocks(), 1);
+
+// src/adapter/world-archive.js
+var ARCHIVE_ID = "anon_world_lv";
+var API_ENDPOINT = `${ARCHIVE_ID}.api`;
+var REQUEST_CHANNEL = "wa-req";
+var ROOM_ENDPOINT = "world-room";
+var ARCHIVE_ROOM_REQUEST = `${ARCHIVE_ID}.mem-req`;
+var REQUIRES = ["chats", "chat_mutation"];
+var TTL_MS = 60000;
+var STALE_MS = 10 * 60000;
+var ABSENT_MS = 30000;
+var isObject2 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var squash = (s) => String(s ?? "").toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
+var uidDefault = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+var withTimeout = (p, ms, what) => new Promise((resolve, reject) => {
+  const t = setTimeout(() => reject(Object.assign(new Error(`${what} timed out`), { timeout: true })), ms);
+  p.then((v) => {
+    clearTimeout(t);
+    resolve(v);
+  }, (e) => {
+    clearTimeout(t);
+    reject(e);
+  });
+});
+function createWorldLink({ api, host, log = () => {}, now = () => Date.now(), uid = uidDefault, callTimeoutMs = 1e4, httpTimeoutMs = 120000 }) {
+  const pool = api?.rpcPool;
+  const usable = !!(pool?.read && pool?.sync);
+  let tail = Promise.resolve();
+  let absentUntil = 0;
+  const cache = new Map;
+  const inflight = new Map;
+  let installed = null;
+  function call(req, timeoutMs = callTimeoutMs) {
+    if (!usable)
+      return Promise.reject(Object.assign(new Error("no rpcPool"), { absent: true }));
+    if (now() < absentUntil)
+      return Promise.reject(Object.assign(new Error("archive absent"), { absent: true }));
+    const run = tail.then(async () => {
+      const nonce = uid();
+      try {
+        const r = await withTimeout((async () => {
+          pool.sync(REQUEST_CHANNEL, { v: 1, nonce, ...req }, { requires: [] });
+          return pool.read(API_ENDPOINT);
+        })(), timeoutMs, "world archive");
+        if (!isObject2(r) || r.v !== 1 || r.nonce !== nonce)
+          throw new Error("mismatched answer");
+        return r;
+      } catch (e) {
+        if (!e?.timeout)
+          absentUntil = now() + ABSENT_MS;
+        throw Object.assign(e instanceof Error ? e : new Error(String(e)), { absent: !e?.timeout });
+      }
+    });
+    tail = run.catch(() => {});
+    return run;
+  }
+  const keyOf = (userId, chatId) => `${userId}\x00${chatId}`;
+  async function refresh(userId, chatId) {
+    const k = keyOf(userId, chatId);
+    const ask = (op) => call({ userId, chatId, op });
+    try {
+      const e = await ask("roomEntities");
+      if (!e.ok || !isObject2(e.data)) {
+        cache.set(k, { at: now(), entities: { worldId: null, entities: [] }, relations: { worldId: null, relations: [] }, names: { names: [] } });
+        return;
+      }
+      let relations = { worldId: null, relations: [] }, names = { names: [] };
+      if (e.data.worldId) {
+        const r = await ask("roomRelations");
+        if (r.ok && isObject2(r.data))
+          relations = r.data;
+        const n = await ask("names");
+        if (n.ok && isObject2(n.data))
+          names = n.data;
+      }
+      cache.set(k, { at: now(), entities: e.data, relations, names });
+      install();
+    } catch (e) {
+      if (!e?.absent && !e?.timeout)
+        log(`world archive mirror: ${e?.message || e}`);
+      cache.delete(k);
+    }
+  }
+  async function ensure(userId, chatId, waitMs = 1500) {
+    try {
+      if (!usable || typeof userId !== "string" || typeof chatId !== "string" || !chatId)
+        return;
+      const k = keyOf(userId, chatId);
+      const hit = cache.get(k);
+      if (hit && now() - hit.at < TTL_MS)
+        return;
+      if (now() < absentUntil)
+        return;
+      if (hit && inflight.has(k))
+        return;
+      let p = inflight.get(k);
+      if (!p) {
+        p = refresh(userId, chatId).finally(() => inflight.delete(k));
+        inflight.set(k, p);
+      }
+      await Promise.race([p, new Promise((r) => setTimeout(r, waitMs))]);
+    } catch {}
+  }
+  const mine = () => {
+    const owner = running.getStore();
+    const userId = owner && ownerUser.get(owner);
+    return userId || null;
+  };
+  const entry = (chatId) => {
+    const userId = mine();
+    const hit = userId && cache.get(keyOf(userId, chatId));
+    return hit && now() - hit.at < STALE_MS ? hit : null;
+  };
+  const mirror = {
+    version: 1,
+    contract: 2,
+    roomEntities: (chatId) => entry(chatId)?.entities ?? { worldId: null, entities: [] },
+    roomRelations: (chatId) => entry(chatId)?.relations ?? { worldId: null, relations: [] },
+    names: (chatId) => entry(chatId)?.names ?? { names: [] },
+    lookup(chatId, name) {
+      const q = squash(name);
+      if (!q)
+        return null;
+      return (entry(chatId)?.entities?.entities || []).find((x) => [x.name, ...x.aliases || []].some((a) => squash(a) === q)) || null;
+    },
+    entity(chatId, entityId) {
+      return (entry(chatId)?.entities?.entities || []).find((x) => x.entityId === entityId) || null;
+    },
+    suggest() {
+      return { written: false, reason: "automatic updates off", changes: [] };
+    }
+  };
+  function install() {
+    if (installed || globalThis.__marinaraWorldArchive?.api)
+      return;
+    installed = { api: mirror };
+    globalThis.__marinaraWorldArchive = installed;
+  }
+  const ROOM_PATH = /^world-archive\/rooms\/([^/?]+)/;
+  async function http(userId, { method, path, query, body }) {
+    const gone = () => Object.assign(new Error("\uC138\uACC4\uAD00 \uC124\uC815\uC9D1\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."), { status: 404 });
+    const m = ROOM_PATH.exec(path);
+    let chatId;
+    if (m) {
+      try {
+        chatId = decodeURIComponent(m[1]);
+      } catch {
+        throw Object.assign(new Error("bad chat id"), { status: 400 });
+      }
+      await host.rawChat(userId, chatId);
+    }
+    const qs = query && Object.keys(query).length ? `?${new URLSearchParams(query)}` : "";
+    let r;
+    try {
+      r = await call({ userId, ...chatId ? { chatId } : {}, op: "http", http: { method, path: `/api/${path}${qs}`, ...body !== undefined && method !== "GET" ? { body } : {} } }, httpTimeoutMs);
+    } catch {
+      throw gone();
+    }
+    if (!r.ok)
+      throw Object.assign(new Error(String(r.error || "\uC694\uCCAD\uC744 \uCC98\uB9AC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.")), { status: r.status || 400 });
+    return r.data;
+  }
+  function dispose() {
+    if (installed && globalThis.__marinaraWorldArchive === installed)
+      delete globalThis.__marinaraWorldArchive;
+    installed = null;
+    cache.clear();
+    inflight.clear();
+  }
+  return { call, ensure, http, mirror, dispose, state: () => ({ cached: cache.size, absent: now() < absentUntil, installed: !!installed }) };
+}
+function createWorldRoom({ api, manager, host, log = () => {} }) {
+  const pool = api?.rpcPool;
+  let registered = false;
+  async function answer(ctx) {
+    if (ctx?.requesterExtensionId !== ARCHIVE_ID)
+      throw new Error("not allowed");
+    const req = await pool.read(ARCHIVE_ROOM_REQUEST);
+    if (!isObject2(req) || req.v !== 1 || typeof req.nonce !== "string" || typeof req.userId !== "string" || !req.userId || typeof req.chatId !== "string" || !req.chatId)
+      throw new Error("bad request");
+    const base = { v: 1, nonce: req.nonce, userId: req.userId, chatId: req.chatId };
+    await host.rawChat(req.userId, req.chatId);
+    const um = manager.forUser(req.userId);
+    await um.ready();
+    if (um.settings().moduleMemory === false)
+      return { ...base, enabled: false, storyDate: null, memoryLanguage: null };
+    await um.preloadRoom(req.chatId);
+    if (!um.chatEnabled(req.chatId))
+      return { ...base, enabled: false, storyDate: null, memoryLanguage: null };
+    const room = await um.handle({ method: "GET", path: `memory-module/chats/${encodeURIComponent(req.chatId)}` });
+    return { ...base, enabled: true, storyDate: room?.storyDate ?? null, memoryLanguage: room?.memoryLanguage ?? null };
+  }
+  function publish() {
+    if (registered || !pool?.handle)
+      return registered;
+    try {
+      pool.handle(ROOM_ENDPOINT, async (ctx) => {
+        try {
+          return await answer(ctx);
+        } catch (e) {
+          log(`world-room endpoint: ${e?.message || e}`);
+          throw e;
+        }
+      }, { requires: [...REQUIRES] });
+      registered = true;
+    } catch (e) {
+      log(`world-room endpoint: ${e?.message || e}`);
+    }
+    return registered;
+  }
+  function dispose() {
+    try {
+      if (registered)
+        pool?.unregister?.(ROOM_ENDPOINT);
+    } catch {}
+    registered = false;
+  }
+  return { publish, dispose, answer };
+}
+
+// src/adapter/manager.js
 var TRANSLATOR_GLOSSARY_SOURCE = "\uBC88\uC5ED \uD504\uB9AC\uC14B\xB7\uB2E8\uC5B4\uC7A5";
 var MEMORY_MARKER = "[Memory: what the characters remember from earlier in this story";
 var RECALL_BUDGET_MS = 6000;
-var LV_KEYS = ["moduleMemory", "autoInject", "interceptorBudgetMs", "window"];
+var LV_KEYS = ["moduleMemory", "autoInject", "interceptorBudgetMs", "window", "lightReasoning"];
 function sanitize(text, max = 60000) {
   let out = String(text).replace(/\{\{/g, "{\u200B{").replace(/\}\}/g, "}\u200B}");
   if (out.length > max) {
@@ -22192,14 +22497,14 @@ var replyShim = () => ({ code: 200, payload: undefined, status(n) {
 }, get statusCode() {
   return this.code;
 } });
-function createManager({ api, log = () => {}, tunables = {}, version = "0", host = createHostAdapter(api, { log }), translator = createTranslatorLink(api, { version, log }), afterReplyMs = 1500, debounceMs } = {}) {
+function createManager({ api, log = () => {}, tunables = {}, version = "0", host = createHostAdapter(api, { log }), translator = createTranslatorLink(api, { version, log }), worldLink = createWorldLink({ api, host, log }), afterReplyMs = 1500, debounceMs } = {}) {
   const users = new Map;
   const timers = new Set;
   function build(userId) {
     const env = { ...tunables.env || {} };
     env.MEMORY_MODULE_RECALL_TIMEOUT_MS ??= String(tunables.recallBudgetMs ?? RECALL_BUDGET_MS);
     const meter = createMeter({ api, userId, log });
-    const u = createUserService({ api, userId, log, env, version, debounceMs, getMessageLimit: () => host.contextMessageLimit(userId), translator, meter });
+    const u = createUserService({ api, userId, log, env, version, debounceMs, getMessageLimit: () => host.contextMessageLimit(userId), getGlobalReasoning: () => host.globalReasoning?.(userId), translator, meter });
     const inChat = (chatId, fn) => chatId ? inRoom.run({ chatId }, fn) : fn();
     const router = createRouter();
     for (const r of u.routes) {
@@ -22213,8 +22518,10 @@ function createManager({ api, log = () => {}, tunables = {}, version = "0", host
     const preloadRoom = (chatId, ...more) => u.vfs.preload(...[chatId, ...more].filter(Boolean).flatMap((id) => [`chats/${id}.`, `restore-undo/${id}/`]));
     async function invoke(route, ctx) {
       const chatId = ctx.params?.id;
-      if (chatId)
+      if (chatId) {
         await preloadRoom(chatId);
+        await worldLink.ensure(userId, chatId);
+      }
       if (/^memory-module\/orphans(\/|$)/.test(ctx.path) && (route.method === "DELETE" || /delete-all$/.test(ctx.path)) && ctx.body?.confirm !== true)
         throw Object.assign(new Error("\uC9C0\uC6B8 \uAE30\uC5B5\uC744 \uD655\uC778\uD574\uC57C \uD569\uB2C8\uB2E4(confirm: true)."), { status: 400 });
       let reply;
@@ -22246,7 +22553,7 @@ function createManager({ api, log = () => {}, tunables = {}, version = "0", host
       handle: (frame) => router.handle(frame, userId),
       lvSettings: () => {
         const s = settings();
-        return { moduleMemory: s.moduleMemory !== false, autoInject: s.autoInject !== false, interceptorBudgetMs: s.interceptorBudgetMs || RECALL_BUDGET_MS, window: s.window || 30 };
+        return { moduleMemory: s.moduleMemory !== false, autoInject: s.autoInject !== false, interceptorBudgetMs: s.interceptorBudgetMs || RECALL_BUDGET_MS, window: s.window || 30, lightReasoning: s.lightReasoning !== false };
       },
       saveLvSettings(body) {
         return u.run(() => {
@@ -22270,11 +22577,13 @@ function createManager({ api, log = () => {}, tunables = {}, version = "0", host
       },
       async syncBeforeReply(chatId, body) {
         await preloadRoom(chatId);
+        await worldLink.ensure(userId, chatId, 1000);
         await inChat(chatId, () => u.run(() => u.X.syncBeforeReply(chatId, body || {})));
         return inst.rendered(chatId);
       },
       async rendered(chatId) {
         await preloadRoom(chatId);
+        await worldLink.ensure(userId, chatId, 1000);
         const text = await u.run(() => u.svc.renderLedger(chatId));
         rendered.set(chatId, text || "");
         return text || "";
@@ -22291,6 +22600,7 @@ function createManager({ api, log = () => {}, tunables = {}, version = "0", host
       },
       async processChat(chatId, opts) {
         await preloadRoom(chatId);
+        await worldLink.ensure(userId, chatId, 3000);
         const r = await inChat(chatId, () => u.run(() => u.svc.processChat(chatId, opts)));
         await inst.rendered(chatId).catch(() => {});
         return r;
@@ -22340,6 +22650,7 @@ function createManager({ api, log = () => {}, tunables = {}, version = "0", host
   }
   function mount(router) {
     router.fallback("memory-module/", ({ userId, method, path, query, body }) => forUser(userId).ready().then(() => forUser(userId).handle({ method, path: Object.keys(query || {}).length ? `${path}?${new URLSearchParams(query)}` : path, body: body ?? {} })));
+    router.fallback("world-archive/", ({ userId, method, path, query, body }) => worldLink.http(userId, { method, path, query, body }));
     return router;
   }
   async function dispose() {
@@ -22354,8 +22665,9 @@ function createManager({ api, log = () => {}, tunables = {}, version = "0", host
     }
     host.dispose?.();
     translator.dispose();
+    worldLink.dispose();
   }
-  return { forUser, users, mount, host, translator, dispose, timers, afterReplyMs, MEMORY_MARKER, normalizePath, running };
+  return { forUser, users, mount, host, translator, worldLink, dispose, timers, afterReplyMs, MEMORY_MARKER, normalizePath, running };
 }
 
 // src/common/injector.js
@@ -22459,11 +22771,11 @@ function registerHostRoutes(router, host) {
 
 // src/adapter/reference.js
 var ENDPOINT = "rendered";
-var REQUEST_CHANNEL = "mem-req";
+var REQUEST_CHANNEL2 = "mem-req";
 var ALLOWED = ["anon_community_lv"];
-var REQUIRES = ["chats", "chat_mutation"];
+var REQUIRES2 = ["chats", "chat_mutation"];
 var REFERENCE_VERSION = 1;
-var isObject2 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var isObject3 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 function createReference({ api, manager, host, log = () => {}, allowed = ALLOWED }) {
   const pool = api?.rpcPool;
   let registered = false;
@@ -22471,8 +22783,8 @@ function createReference({ api, manager, host, log = () => {}, allowed = ALLOWED
     const requester = ctx?.requesterExtensionId;
     if (typeof requester !== "string" || !allowed.includes(requester))
       throw new Error("not allowed");
-    const req = await pool.read(`${requester}.${REQUEST_CHANNEL}`);
-    if (!isObject2(req) || req.v !== REFERENCE_VERSION || typeof req.userId !== "string" || !req.userId || typeof req.chatId !== "string" || !req.chatId || typeof req.nonce !== "string")
+    const req = await pool.read(`${requester}.${REQUEST_CHANNEL2}`);
+    if (!isObject3(req) || req.v !== REFERENCE_VERSION || typeof req.userId !== "string" || !req.userId || typeof req.chatId !== "string" || !req.chatId || typeof req.nonce !== "string")
       throw new Error("bad request");
     const base = { v: REFERENCE_VERSION, nonce: req.nonce, userId: req.userId, chatId: req.chatId };
     await host.rawChat(req.userId, req.chatId);
@@ -22496,7 +22808,7 @@ function createReference({ api, manager, host, log = () => {}, allowed = ALLOWED
           log(`rendered endpoint: ${e?.message || e}`);
           throw e;
         }
-      }, { requires: [...REQUIRES] });
+      }, { requires: [...REQUIRES2] });
       registered = true;
     } catch (e) {
       log(`rendered endpoint: ${e?.message || e}`);
@@ -22514,7 +22826,7 @@ function createReference({ api, manager, host, log = () => {}, allowed = ALLOWED
 }
 
 // src/version.js
-var VERSION = "1.5.0-lv.1";
+var VERSION = "1.5.0-lv.2";
 
 // src/backend.js
 var MACRO_NAME = "memory_ledger";
@@ -22537,8 +22849,15 @@ function start(api, options = {}) {
   const reference = createReference({ api, manager, host, log });
   reference.publish();
   disposers.push(() => reference.dispose());
+  const worldRoom = createWorldRoom({ api, manager, host, log });
+  worldRoom.publish();
+  disposers.push(() => worldRoom.dispose());
   const timers = manager.timers;
   registerHostRoutes(router, host);
+  router.add("GET", "chats/:id", async ({ userId, params }) => {
+    const c = await host.rawChat(userId, params.id);
+    return { id: c.id, name: c.name || "" };
+  });
   manager.mount(router);
   router.add("GET", "ext/info", async ({ userId }) => ({ version: VERSION, permissions: Object.fromEntries(["generation", "chats", "chat_mutation", "characters", "interceptor"].map((p) => [p, api.permissions?.has ? api.permissions.has(p) : true])), userId: !!userId, saveFailures: userId && manager.users.has(userId) ? manager.users.get(userId).saveFailures() : [] }));
   router.add("POST", "ext/settings", async ({ userId, body }) => {

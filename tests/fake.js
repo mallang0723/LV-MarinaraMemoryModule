@@ -132,7 +132,7 @@ export function fake(opts = {}) {
         generate: {
             quiet: async input => {
                 need('generation', input?.userId);
-                state.modelCalls.push({ messages: clone(input.messages), connection_id: input.connection_id, parameters: clone(input.parameters) });
+                state.modelCalls.push({ messages: clone(input.messages), connection_id: input.connection_id, parameters: clone(input.parameters), ...(input.reasoning ? { reasoning: clone(input.reasoning) } : {}) });
                 state.quietParamsSeen.push(clone(input.parameters));
                 if (state.modelFail) throw new Error(typeof state.modelFail === 'function' ? state.modelFail(input) : state.modelFail);
                 if (state.modelHang) return new Promise((_, reject) => { const err = Object.assign(new Error('Aborted'), { name: 'AbortError' }); if (input.signal?.aborted) reject(err); input.signal?.addEventListener('abort', () => reject(err), { once: true }); });
@@ -161,7 +161,7 @@ export function fake(opts = {}) {
         sendToFrontend(msg, user, o) {
             sent.push({ msg: clone(msg), user, o }); opts.onSend?.(clone(msg), user, o);
             if (msg.event === 'memory-read-summarization' && !opts.noSettingsFrontend) queueMicrotask(() => {
-                const value = state.summarization ?? null;
+                const value = state.summarization == null ? null : { ...state.summarization, reasoning: state.globalReasoning ?? { saved: false } };
                 f.frontendHandler?.({ type: 'memory-summarization-result', id: msg.id, ok: value !== null, value }, user);
             });
         },

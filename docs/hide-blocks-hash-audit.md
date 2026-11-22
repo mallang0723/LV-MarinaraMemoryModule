@@ -41,3 +41,17 @@
 | service.cjs `glossaryNote(chatId, messages[at].content)` / `withSetup` (0.35.3) | 정리 지시문에 단어장 이름 붙이기 | 이번에 읽는 호출 입력(이미 걸러진 글) | 모델이 읽는 글과 같은 글에서 이름을 찾음 | 조치 불요 |
 | service.cjs `addTrackerClock`의 `L.dateInText(L.htmlToText(m.content), …)` (0.38.2, 작중 날짜 바로잡기·메시지 글 날짜 읽기) | 메시지 글의 날짜 줄로 작중 시계를 잇기 | **걸러진 content** | 상태창 같은 `wi-exclude` 블록 안의 날짜 줄은 못 읽음 | **열린 항목(기존과 같은 종류)**: ledger.cjs의 `dateInText(m.content)` 세 곳도 1.4.0부터 걸러진 글을 읽어 옛 점검표(1.4.2-lv.2)가 놓쳤다. 새 판이 만든 문제가 아니라 같은 소비처가 한 곳 늘었다. 옵션을 켠 방에서 날짜가 블록 안에만 있으면 시계가 그 날짜를 못 잇는다(옵션을 꺼 둔 방은 영향 없음). 고치려면 서비스 앵커로 원문을 시계 읽기에만 넘겨야 한다(소유자 결정 후) |
 | service.cjs `redateScenes` 연결 (0.38.1) | 잘못된 날짜 장면 바로잡기 | 메시지의 `clock`(위에서 정해진 값) | 위의 시계 결과를 따름 | 위와 같음 |
+
+## 1.5.0-lv.2 날짜(시계) 읽기만 원문으로 (열린 항목 닫음)
+
+1.5.0-lv.1 점검의 열린 항목(옵션 켠 방에서 `wi-exclude` 블록 안의 날짜 줄을 시계가 못 읽음)을 고쳤다.
+
+| 위치 | 하는 일 | 읽는 값 (1.5.0-lv.2) | 처리 |
+|---|---|---|---|
+| service.cjs `addTrackerClock` `L.dateInText(L.htmlToText(m.content), …)` | 메시지 글 날짜 줄로 시계 잇기(`m.clock`을 정함) | `m.rawContent`(저장된 글)가 있으면 그것, 없으면 `m.content` | 서비스 앵커 `service clock reads stored text` (유일한 패치) |
+| ledger.cjs `storyDate` / `storyTime` `dateInText(m.content, …)` | 작중 날짜·시각 | 걸러진 `content`에서 못 찾으면 `m.clock`(위에서 정해짐)으로 넘어감 | **패치 없음.** 시험: 원본 `ledger.cjs`가 옵션 켠 방에서 `2024-10-18`·`2024-10-18T11:15`를 얻음 |
+| ledger.cjs `clockNote` `dateInText(message.content, …)` | 메시지 글에 날짜 줄이 없으면 트래커·시계 날짜를 「작중 …」 꼬리표로 붙임 | 걸러진 `content` 그대로 | **패치 없음(패치하면 안 됨).** 원문을 보게 하면 걸러진 글을 읽는 모델에게 꼬리표가 사라져 날짜를 잃음 |
+
+- 나머지(기억 추출·장면·검색·회상·지문 `m.h`)는 `content`(걸러진 글)만 읽는다. 시험: 정리 작업 전체를 돌려 블록 글(`ZQX-…`)이 모델 호출 입력 어디에도, 저장된 파일 어디에도 없고, 방의 작중 날짜가 블록 안 날짜(`2024-10-18`)다.
+- 처음에는 `ledger.cjs`의 세 곳도 원문 기준(`dateText`)으로 패치하는 안을 구현했으나, `clockNote`가 위 이유로 퇴행하고 나머지 둘은 서비스 패치가 만든 `m.clock`만으로 이미 맞아서 되돌렸다.
+- 점검 일자 2026-11-22.

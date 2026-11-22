@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { makeEnv, story } from './env.js';
+import { makeEnv, story, waitUntil } from './env.js';
 import { fake } from './fake.js';
 import { createEngine } from '../src/adapter/engine.js';
 import { createTranslatorLink, hashText as fnv } from '../src/adapter/translator.js';
@@ -154,4 +154,35 @@ test('translator: pub hash is checked against the stored text and the translatio
     assert.ok(!on.content.includes('status'));
     assert.equal(on.extra.translationSource, on.content, 'translationSource is what the library reads (service compares it to content)');
     assert.equal(on.rawContent, content);
+});
+
+// 1.5.0-lv.2: the story clock reads the date from the text as stored; nothing else does.
+const MARK = 'ZQX-status-secret';
+const DATE_ST = `<status wi-exclude>\n<summary>§RP | 24-10-18 (금) | 11:15 | ${MARK}§</summary>\n</status>`;
+const dateRows = n => Array.from({ length: n }, (_, i) => (i % 2 === 0
+    ? { role: 'user', name: '서아', content: i === 2 ? '"내일 같이 달빛호수 가자, 약속할게." 서아가 말했다.' : `서아가 하루에게 말을 걸었다. ${i}번째 이야기.` }
+    : { role: 'assistant', name: '하루', content: `${P}\n\n${DATE_ST}` }));
+test('option on: a date line inside a hidden block still sets the story clock; the block never reaches the memory model or storage', async () => {
+    const e = makeEnv({ fakeOpts: { lean: true }, tunables: { SCENE_MIN_PENDING: 1 } });
+    e.f.addMessages('chat-a', dateRows(15));
+    await e.um.ready(); await e.um.preloadRoom('chat-a');
+    const off = await msgs(e);
+    assert.equal(L.storyDate(off), '2024-10-18', 'off: the whole text is read, as before');
+    setMode(e, 'on');
+    const on = await msgs(e);
+    assert.ok(on.every(m => !m.content.includes(MARK) && !m.content.includes('24-10-18')), 'the block is not in the content');
+    assert.equal(L.storyDate(on), '2024-10-18');
+    assert.equal(L.storyTime(on), '2024-10-18T11:15');
+    assert.equal(on[2].clock?.date, '2024-10-18', 'the next message carries the date on');
+    assert.ok(L.clockNote(on[1]).includes('작중 24-10-18'), 'the model is told the date by the clock note, not by the hidden block');
+    assert.ok(on.every(m => !('rawContent' in m)));
+    // the whole job: what the memory model is asked and what is stored carry no block text, and the ledger's story date is the hidden one
+    await e.um.saveLvSettings({ window: 4 });
+    await e.rpc('POST', 'settings', { connection: 'conn-a' });
+    await e.rpc('POST', 'chats/chat-a/start', {});
+    await waitUntil(async () => (await e.rpc('GET', 'chats/chat-a')).sceneJob.state === 'done');
+    assert.ok(e.f.state.modelCalls.length > 0);
+    assert.ok(!JSON.stringify(e.f.state.modelCalls.map(c => c.messages)).includes(MARK), 'block text never reached the model');
+    assert.ok(![...e.f.files.values()].some(v => v.includes(MARK)), 'block text is stored nowhere');
+    assert.equal((await e.rpc('GET', 'chats/chat-a')).dates.today, '2024-10-18');
 });

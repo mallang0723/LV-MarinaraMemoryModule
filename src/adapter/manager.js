@@ -8,12 +8,13 @@ import { createHostAdapter } from '../common/host-adapter.js';
 import { createTranslatorLink } from './translator.js';
 import hideBlocks from './hide-blocks.cjs';
 import { createMeter, inRoom } from '../common/meter.js';
+import { createWorldLink } from './world-archive.js';
 
 const TRANSLATOR_GLOSSARY_SOURCE = '번역 프리셋·단어장';
 
 export const MEMORY_MARKER = '[Memory: what the characters remember from earlier in this story';
 export const RECALL_BUDGET_MS = 6000;
-const LV_KEYS = ['moduleMemory', 'autoInject', 'interceptorBudgetMs', 'window'];   // Lumiverse-only settings kept in the same settings.json
+const LV_KEYS = ['moduleMemory', 'autoInject', 'interceptorBudgetMs', 'window', 'lightReasoning'];   // Lumiverse-only settings kept in the same settings.json
 
 export function sanitize(text, max = 60000) {
     let out = String(text).replace(/\{\{/g, '{​{').replace(/\}\}/g, '}​}');
@@ -23,7 +24,7 @@ export function sanitize(text, max = 60000) {
 
 const replyShim = () => ({ code: 200, payload: undefined, status(n) { this.code = n; return this; }, send(x) { this.payload = x; return x; }, header() { return this; }, get statusCode() { return this.code; } });
 
-export function createManager({ api, log = () => {}, tunables = {}, version = '0', host = createHostAdapter(api, { log }), translator = createTranslatorLink(api, { version, log }), afterReplyMs = 1500, debounceMs } = {}) {
+export function createManager({ api, log = () => {}, tunables = {}, version = '0', host = createHostAdapter(api, { log }), translator = createTranslatorLink(api, { version, log }), worldLink = createWorldLink({ api, host, log }), afterReplyMs = 1500, debounceMs } = {}) {
     const users = new Map();
     const timers = new Set();
 
@@ -31,7 +32,7 @@ export function createManager({ api, log = () => {}, tunables = {}, version = '0
         const env = { ...(tunables.env || {}) };
         env.MEMORY_MODULE_RECALL_TIMEOUT_MS ??= String(tunables.recallBudgetMs ?? RECALL_BUDGET_MS);
         const meter = createMeter({ api, userId, log });
-        const u = createUserService({ api, userId, log, env, version, debounceMs, getMessageLimit: () => host.contextMessageLimit(userId), translator, meter });
+        const u = createUserService({ api, userId, log, env, version, debounceMs, getMessageLimit: () => host.contextMessageLimit(userId), getGlobalReasoning: () => host.globalReasoning?.(userId), translator, meter });
         /** Model calls made inside fn are counted for this room (src/common/meter.js). */
         const inChat = (chatId, fn) => (chatId ? inRoom.run({ chatId }, fn) : fn());
         const router = createRouter();
@@ -46,7 +47,7 @@ export function createManager({ api, log = () => {}, tunables = {}, version = '0
         const preloadRoom = (chatId, ...more) => u.vfs.preload(...[chatId, ...more].filter(Boolean).flatMap(id => [`chats/${id}.`, `restore-undo/${id}/`]));
         async function invoke(route, ctx) {
             const chatId = ctx.params?.id;
-            if (chatId) await preloadRoom(chatId);
+            if (chatId) { await preloadRoom(chatId); await worldLink.ensure(userId, chatId); }   // the 세계관 설정집 mirror (sync reads below); a missing archive costs nothing
             // Deleting remembered rooms is destructive: the screen must say so explicitly (not a guess of the server).
             if (/^memory-module\/orphans(\/|$)/.test(ctx.path) && (route.method === 'DELETE' || /delete-all$/.test(ctx.path)) && ctx.body?.confirm !== true) throw Object.assign(new Error('지울 기억을 확인해야 합니다(confirm: true).'), { status: 400 });
             // The request and reply objects are made per attempt: vfs.run may run the handler again after loading a file it missed,
@@ -71,7 +72,7 @@ export function createManager({ api, log = () => {}, tunables = {}, version = '0
             settings, chatEnabled, preloadRoom,
             handle: frame => router.handle(frame, userId),
             /** Settings of the extension itself (Lumiverse-only keys) next to the upstream ones, in the same file. */
-            lvSettings: () => { const s = settings(); return { moduleMemory: s.moduleMemory !== false, autoInject: s.autoInject !== false, interceptorBudgetMs: s.interceptorBudgetMs || RECALL_BUDGET_MS, window: s.window || 30 }; },
+            lvSettings: () => { const s = settings(); return { moduleMemory: s.moduleMemory !== false, autoInject: s.autoInject !== false, interceptorBudgetMs: s.interceptorBudgetMs || RECALL_BUDGET_MS, window: s.window || 30, lightReasoning: s.lightReasoning !== false }; },
             saveLvSettings(body) { return u.run(() => { const next = { ...settings() }; for (const k of LV_KEYS) if (k in (body || {})) next[k] = body[k]; u.X.saveSettings(next); return Object.fromEntries(LV_KEYS.filter(k => next[k] !== undefined).map(k => [k, next[k]])); }); },
             /** The room's two tag lists of \"하단 블록 빼고 읽기\" (settings.chats[id].hideBlocks). */
             saveHideBlocks(chatId, body) {
@@ -81,18 +82,20 @@ export function createManager({ api, log = () => {}, tunables = {}, version = '0
             /** The memory text for the next reply (called by the interceptor after the sync). */
             async syncBeforeReply(chatId, body) {
                 await preloadRoom(chatId);
+                await worldLink.ensure(userId, chatId, 1000);
                 await inChat(chatId, () => u.run(() => u.X.syncBeforeReply(chatId, body || {})));
                 return inst.rendered(chatId);
             },
             async rendered(chatId) {
                 await preloadRoom(chatId);
+                await worldLink.ensure(userId, chatId, 1000);
                 const text = await u.run(() => u.svc.renderLedger(chatId));
                 rendered.set(chatId, text || '');
                 return text || '';
             },
             /** Sync, from files already in memory (the macro must answer at once). A room not loaded yet gives the last known text. */
             cachedRendered: chatId => { try { const t = running.run(u.owner, () => u.svc.renderLedger(chatId)); if (typeof t === 'string') { rendered.set(chatId, t); return t; } } catch { /* not loaded: last known */ } return rendered.get(chatId); },
-            async processChat(chatId, opts) { await preloadRoom(chatId); const r = await inChat(chatId, () => u.run(() => u.svc.processChat(chatId, opts))); await inst.rendered(chatId).catch(() => {}); return r; },
+            async processChat(chatId, opts) { await preloadRoom(chatId); await worldLink.ensure(userId, chatId, 3000); const r = await inChat(chatId, () => u.run(() => u.svc.processChat(chatId, opts))); await inst.rendered(chatId).catch(() => {}); return r; },
             async inherit(source, target) { await preloadRoom(target, source); return u.run(() => u.X.inheritBranch(source, target)); },
             flush: () => u.vfs.flush(),
             saveFailures: () => { const f = u.vfs.failures(); return [...f.keys()].map(k => k.slice(k.indexOf('memory-module/') + 14)); },
@@ -129,6 +132,8 @@ export function createManager({ api, log = () => {}, tunables = {}, version = '0
     /** Everything under memory-module/ goes to the user's own instance. */
     function mount(router) {
         router.fallback('memory-module/', ({ userId, method, path, query, body }) => forUser(userId).ready().then(() => forUser(userId).handle({ method, path: Object.keys(query || {}).length ? `${path}?${new URLSearchParams(query)}` : path, body: body ?? {} })));
+        // The 세계관 tab's requests (/api/world-archive/*) go to the 세계관 설정집 extension when it is installed, else 404 (the tab stays hidden).
+        router.fallback('world-archive/', ({ userId, method, path, query, body }) => worldLink.http(userId, { method, path, query, body }));
         return router;
     }
     async function dispose() {
@@ -136,6 +141,7 @@ export function createManager({ api, log = () => {}, tunables = {}, version = '0
         for (const inst of users.values()) { try { await inst.flush(); await inst.meter.flush(); } catch { /* reported by flush callers */ } inst.u.dispose(); }
         host.dispose?.();
         translator.dispose();
+        worldLink.dispose();
     }
-    return { forUser, users, mount, host, translator, dispose, timers, afterReplyMs, MEMORY_MARKER, normalizePath, running };
+    return { forUser, users, mount, host, translator, worldLink, dispose, timers, afterReplyMs, MEMORY_MARKER, normalizePath, running };
 }

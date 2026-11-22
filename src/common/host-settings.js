@@ -54,9 +54,13 @@ export function attachSummarizationFrontend(ctx, { fetch: fetchSetting = globalT
                 if (Array.isArray(list)) {
                     // key never saved = Lumiverse defaults (message limit off), not a failure
                     const setting = list.find(row => row?.key === 'summarization')?.value ?? {};
+                    // The user's global reasoning setting (1.5.0-lv.2): only whether one is saved and how it says to think. Two fixed fields cross, nothing else.
+                    const rs = list.find(row => row?.key === 'reasoningSettings')?.value;
+                    const reasoning = rs && typeof rs === 'object' ? { saved: true, apiReasoning: rs.apiReasoning === true ? true : rs.apiReasoning === false ? false : null, reasoningEffort: typeof rs.reasoningEffort === 'string' ? rs.reasoningEffort : null } : { saved: false };
                     if (setting && typeof setting === 'object') value = {
                         messageLimitEnabled: setting.messageLimitEnabled,
                         messageLimitCount: setting.messageLimitCount,
+                        reasoning,
                     };
                 }
             }

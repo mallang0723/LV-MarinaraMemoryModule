@@ -5,6 +5,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 export const running = new AsyncLocalStorage();
+/** instance owner token -> user id (for the process-wide 세계관 설정집 mirror, which must answer for the user that is running). */
+export const ownerUser = new WeakMap();
 
 const hooks = { loader: new Map(), address: new Map(), state: new Map() };
 const installed = new Set();

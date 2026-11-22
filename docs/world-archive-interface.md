@@ -1,6 +1,6 @@
 # 기억 서재 ↔ 세계관 설정집 접점 (원작 `bfafb3f` 기준)
 
-나중에 Lumiverse판 설정집을 만들 때 **무엇을 내주면 기억 서재가 켜지는지**를 적은 목록입니다. 근거는 전부 원작 파일 줄 번호입니다(바이트 고정이라 줄이 바뀌지 않음): `runtime.orig.js`(`src/memory/ui/`, 화면), `world-panel.orig.js`(설정집 화면, 설정집 v0.7.6), `service.cjs`·`worldlink.cjs`(`src/memory/core/`, 서버쪽). 현재 이식판에는 설정집이 없어 아래 접점이 전부 「없음」으로 응답하고, 칸은 숨고 지시문은 연동 없을 때와 같습니다.
+나중에 Lumiverse판 설정집을 만들 때 **무엇을 내주면 기억 서재가 켜지는지**를 적은 목록입니다. 근거는 전부 원작 파일 줄 번호입니다(바이트 고정이라 줄이 바뀌지 않음): `runtime.orig.js`(`src/memory/ui/`, 화면), `world-panel.orig.js`(설정집 화면, 설정집 v0.7.6), `service.cjs`·`worldlink.cjs`(`src/memory/core/`, 서버쪽). **1.5.0-lv.2부터** Lumiverse판 설정집(`anon_world_lv`, 비공개 저장소 `lv-world-archive`)이 설치돼 있으면 아래 접점이 `src/adapter/world-archive.js`로 연결됩니다(§5). 설정집이 없으면 접점은 전부 「없음」으로 응답하고, 칸은 숨고 지시문은 연동 없을 때와 같습니다.
 
 요약: 서버쪽 JS 접점 **1개 객체(`globalThis.__marinaraWorldArchive.api`) · 필드 1 + 함수 3**, 기억 서재 화면이 부르는 HTTP 경로 **5개(메서드 포함 7쌍)**, 칸 화면(설정집 화면 원본)이 부르는 HTTP **54쌍**(설정집 서버) + 호스트 1쌍, 화면↔칸 접점 **전역 1개 + 인스턴스 함수 2 + DOM 표시 1**.
 
@@ -45,7 +45,7 @@
 - 화면이 심는 전역: `globalThis.__memoryWorldPanel = { version, contract: 2, start(target, opts) }`(`world-panel.orig.js:2297`, 판 번호 `PANEL_CONTRACT = 2` `:13`). 기억 서재가 부름: `start(#worldMount, { theme })`(`runtime.orig.js:3607`).
 - `start()`가 돌려주는 인스턴스: `setTheme('dark'|'light')`(`world-panel.orig.js:2294`, 호출 `runtime.orig.js:3608`), `railHtml(): string`(`:2294`; 화면이 불러온 뒤에만 값, 오른쪽 칸에 이 세계관·이 방·`{{세계}}` 설명을 채움. 호출 `runtime.orig.js:1982-1985`, 1.5초 주기 갱신 `3610-3615`).
 - DOM 표시: 칸이 보이면 `document.documentElement.dataset.memoryWorldTab = 'on'` (설정집 자체 떠다니는 버튼을 숨김. `runtime.orig.js:3560`, 읽는 곳 `world-panel.orig.js:2290` `tabShown`).
-- 현재 방 id는 `localStorage['marinara-active-chat-id']`(`world-panel.orig.js:426`). 이식판은 기억 서재 쪽에서만 `LV.activeChatId()`로 바꿔 둠(`patch.mjs` `active chat id`)이지만 **칸 화면 쪽은 원본 그대로 `localStorage`를 읽으므로**, 설정집을 붙일 때는 이 키를 호스트의 현재 방 id로 채워 주거나(어댑터), 칸 화면 쪽 앵커를 하나 더 걸어야 합니다(미작업).
+- 현재 방 id는 `localStorage['marinara-active-chat-id']`(`world-panel.orig.js:426`). 이식판은 기억 서재 쪽에서만 `LV.activeChatId()`로 바꿔 둠(`patch.mjs` `active chat id`). 칸 화면 원본은 그대로 `localStorage`를 읽으므로 **1.5.0-lv.2에서 래퍼(`world panel embed`)가 `localStorage`를 가려**, 이 키만 `LV.activeChatId()`로 답하고 나머지 키는 브라우저 저장소로 넘깁니다(화면 바이트 불변, 처리됨).
 - 칸 화면은 `status.contract !== 2`이면 **읽기 전용**(`:531`)이라, 설정집 서버 `/status`의 `contract`는 2여야 합니다.
 
 ### 칸 화면이 설정집 서버(`/api/world-archive`, BASE `:15`)에 부르는 경로
@@ -58,7 +58,7 @@
 - 설정(entities): `GET|POST /worlds/:w/entities`(477, 1801), `PATCH|DELETE /worlds/:w/entities/:e`(1804, 1999), `GET|POST /worlds/:w/entities/:e/members`(787, 1984), `POST /worlds/:w/entities/:e/pending/:key`(2028), `PUT .../:e/applies-to`(2065), `PUT .../:e/base`(2151), `PUT .../:e/room`(2147), `POST .../:e/calendar/pending`(2076), `POST .../:e/timetable/pending`(2086)
 - 관계: `GET|POST /worlds/:w/relations`(478, 2117), `PATCH|DELETE /worlds/:w/relations/:r`(2127, 2121)
 - 일정·채움: `PUT /worlds/:w/timetable/cell`(2059), `PUT /worlds/:w/calendar/event`(2143), `POST /worlds/:w/calendar-gather`(2080), `POST /worlds/:w/timetable-gather`(2090), `POST /worlds/:w/applies-fill`(2099), `POST /worlds/:w/location-fill`(2105), `POST /worlds/:w/topic-fill`(2179), `POST /worlds/:w/hair-fill`(2191), `POST /worlds/:w/species-fill`(2197)
-- 호스트 쪽 경로(설정집 서버가 아니라 **Marinara 호스트**): `GET /api/chats/:chat`(490; 응답 `.name`만 사용, 실패해도 됨). Lumiverse판에서는 이 한 줄이 호스트 채팅 이름 조회로 바뀌어야 함(shim에서 처리 가능).
+- 호스트 쪽 경로(설정집 서버가 아니라 **Marinara 호스트**): `GET /api/chats/:chat`(490; 응답 `.name`만 사용, 실패해도 됨). Lumiverse판에서는 이 한 줄이 호스트 채팅 이름 조회로 바뀌어야 함 → **1.5.0-lv.2에서 백엔드 `GET chats/:id`(내 채팅만, `{ id, name }`)가 답함(처리됨).**
 
 ## 5. 정리: Lumiverse판 설정집이 해야 할 일
 
@@ -67,8 +67,13 @@
 3. `globalThis.__memoryWorldPanel`(§4)을 설정집 화면 번들이 제공(원작처럼 `extension/vendor/world-panel.js`를 그대로 두면 됨). 칸 화면의 54쌍 HTTP 경로와 현재 방 id 조회(`marinara-active-chat-id`)를 호스트에 맞춰 연결.
 4. `contract`는 서버·화면 모두 **2**(다르면 칸 화면이 읽기 전용).
 
+## 6. 1.5.0-lv.2 구현 (기억 서재 쪽)
+
+`src/adapter/world-archive.js`. 설정집 `docs/memory-library-interop.md`의 세 변경을 그대로 구현: 서버 거울(`__marinaraWorldArchive.api`, 설정집이 한 번 답한 뒤에야 생성·사용자별 60초 캐시), 화면 `world-archive/` 길(`op:'http'`, 방 경로는 채팅 소유를 이쪽에서 확인), 거꾸로 끝점 `world-room`. 설정집이 없거나 응답이 없으면 칸 숨김·연동 없음. 시험 `tests/world-archive.test.js`.
+
 ## 리비전 이력
 
 | 날짜 | 변경 |
 |------|------|
 | 2026-11-22 | 최초 작성 — 원작 `bfafb3f`(설정집 칸 패널 v0.7.6) 기준 접점 목록 |
+| 2026-11-22 | 1.5.0-lv.2 — 접점 구현(§6), 미작업 2건(칸 화면 방 id·방 이름 조회) 처리 |

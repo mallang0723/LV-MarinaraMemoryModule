@@ -1,5 +1,25 @@
 # 변경 내역
 
+## 1.5.0-lv.2
+
+이식판 전용 변경 셋입니다. 원작 파일(코어 24개·화면 원본 4개)은 **바이트 그대로**이고(`verify:original` 통과), 모두 어댑터·이식판 설정·앵커 패치로만 구현했습니다.
+
+**A. 기억 정리 호출은 모든 모델에서 기본 추론 low** (스위치 「기억 정리는 가볍게 생각(추론 low)」, 서랍 설정 탭, 기본 켬)
+- 1.5.0-lv.1에서 「결정 대기」였던 젬4 추론 low와 1.4.0부터 안 가던 DeepSeek 생각 끄기가 이제 실제로 호스트까지 갑니다. 어댑터의 `chatComplete`가 호스트 `generate.quiet`의 요청별 `reasoning` 덮어쓰기(`{ source: 'custom', apiReasoning: true, effort: 'low' }`, DeepSeek 생각 끄기는 `{ source: 'off' }`)를 붙이고, 연결 종류별 파라미터(OpenAI식 `reasoning_effort`, OpenRouter·NanoGPT `reasoning.effort`, Google `thinkingConfig`, Anthropic …)는 호스트가 자기 방식으로 씁니다(`prompt-assembly.service.ts` `injectReasoningParams`). 원작 `memoryCallOptions`(젬4 low·DeepSeek 끄기)는 그대로 두고, 이식판이 그 위에서 모든 모델로 넓힙니다.
+- 사용자가 이미 정한 값은 덮지 않습니다. 아무것도 붙이지 않는 경우: 연결이 추론을 어떻게 할지 말하고 있을 때(호스트가 보여 주는 `reasoning_bindings`의 꺼짐·세기 지정, 또는 연결 메타데이터의 thinking/reasoning 값), 연결에 묶음이 없는데 **사용자 전역 추론 설정**(`/api/v1/settings`의 `reasoningSettings`, 열린 화면을 통해 읽음. 꺼짐 또는 세기 지정)이 저장돼 있을 때, 전역 설정을 **읽지 못했을 때**(화면이 안 열려 있음 — 보수적으로 아무것도 안 보냄). 세기가 「자동」이거나 아무 데도 정해 둔 것이 없으면 low를 요청합니다. 전역 설정은 30초 기억합니다.
+- 한계: 호스트가 연결 주소를 확장에 주지 않아 DeepSeek는 연결 종류(provider)가 `deepseek`일 때만 알아봅니다(원작의 주소 검사는 이 환경에서 쓸 수 없음). 주소만 DeepSeek인 사용자 지정 연결은 끄기가 아니라 low로 갑니다. 호스트의 종류별 low 변환에서 DeepSeek low는 high로, Kimi K3는 max로 바뀌고, Anthropic·Z.AI·Moonshot은 기본이 추론 없음이어도 low를 요청하면 추론이 켜집니다(`injectReasoningParams`). 거부되면 위 재호출로 빠집니다.
+- 사이트가 추론 요청을 거절하면(오류 글에 reasoning·thinking·effort·budget·unrecognized 등) 빼고 같은 호출을 다시 보내고, 그 연결에는 이후 보내지 않습니다(확장 실행 중 기억; JSON 모드 거절은 구분해 원작 방식 그대로). 스위치를 끄면 어떤 파라미터도 붙이지 않습니다(1.5.0-lv.1과 같은 호출).
+- 시험 `tests/reasoning.test.js`(연결 종류별·연결 설정 우선·DeepSeek·거절 후 재호출과 기억·JSON 모드 구분·스위치 끔).
+
+**B. 세계관 설정집(`anon_world_lv`) 연동 끝점** (설정집이 없으면 이전과 같음: 칸 숨김, 오류 없음)
+- 설정집의 `docs/memory-library-interop.md` 세 가지를 `src/adapter/world-archive.js`로 구현했습니다. (1) 서버 `globalThis.__marinaraWorldArchive.api` 거울: 설정집이 한 번 답한 뒤에야 만들어지고, 방별 캐시(60초)를 rpcPool(`anon_world_lv.api`, 요청 통로 `wa-req`, nonce 악수, 한 줄 직렬화)로 채우며, 읽기는 실행 중인 사용자 기준입니다. (2) 화면 `/api/world-archive/*` → `router.fallback('world-archive/')` → `op:'http'`(방 경로는 채팅 소유를 이쪽에서 먼저 확인하고 봉투에 `chatId`도 실음, 설정집이 없으면 404). (3) 거꾸로 끝점 `anon_memory_lv.world-room`(요청 통로 `anon_world_lv.mem-req`)이 enabled·storyDate·memoryLanguage를 사용자·채팅·nonce 그대로 돌려줍니다(채팅 소유 확인 포함).
+- `docs/world-archive-interface.md`의 미작업 2건 처리: 칸 화면이 읽는 `localStorage['marinara-active-chat-id']`는 칸 화면 원본을 건드리지 않고 래퍼에서 `localStorage`를 가려 호스트의 현재 방으로 대신하고, 칸이 방 이름을 묻는 `/api/chats/:id`는 백엔드 `GET chats/:id`(내 채팅만)가 답합니다.
+- 시험 `tests/world-archive.test.js`(가짜 설정집 왕복·설정집 없음/rpcPool 없음/틀린 nonce·다른 사용자 채팅 거부·`world-room`·칸 화면 방 id).
+
+**C. 「하단 블록 빼고 읽기」 켠 방에서도 작중 날짜(시계)는 원문에서 읽음**
+- 상태창 같은 `wi-exclude` 블록 안에만 날짜 줄이 있으면 옵션을 켠 방에서 시계가 날짜를 못 잇던 문제(점검표 `docs/hide-blocks-hash-audit.md` 1.5절의 열린 항목)를 고쳤습니다. 서비스 `addTrackerClock`이 날짜 줄을 **저장된 원문**(`rawContent`)에서 읽도록 앵커 패치 1개를 걸었습니다. 그 결과 메시지의 시계(`m.clock`)에 날짜가 실리고, `ledger.cjs`의 소비처 3곳(`storyDate`·`storyTime`·`clockNote`)은 걸러진 글에서 날짜 줄을 못 찾으면 이 시계로 넘어가므로 **원본 `ledger.cjs`는 그대로 두고 패치하지 않았습니다**(`clockNote`를 원문 기준으로 바꾸면 걸러진 글을 읽는 모델에게 「작중 …」 꼬리표가 사라져 오히려 날짜를 잃기 때문입니다). 기억 추출·지문·검색 등 나머지는 지금처럼 걸러진 글입니다. 옵션을 끄면 이전과 같습니다.
+- 시험 `tests/hide-blocks.test.js`: 옵션 켠 방에서 블록 안 날짜 줄을 읽음(시계·작중 날짜), 정리 작업 전체를 돌려 그 블록 글이 모델 호출 어디에도·저장 파일 어디에도 없음.
+
 ## 1.5.0-lv.1
 
 원작 기억 서재 **0.35.2 이후 42커밋(0.35.3 ~ 0.38.3 + 세계관 칸 패널 v0.7.6·설치기 수정, `bfafb3f`)** 을 통이식으로 반영했습니다. 모듈 판은 0.38.3 그대로이고 뒤의 8커밋은 세계관 칸 화면(`world-panel.orig.js`) 교체 3번과 Marinara 설치기뿐입니다. 원작 파일(코어 24개·화면 원본 3개·세계관 칸 화면 1개)은 **바이트 그대로**이고 고정 SHA-256을 새로 잡았습니다(`npm run verify:original`, `UPSTREAM_MEMORY`로 원작 체크아웃 비교). 이식판 전용 기능(토큰 계량·하단 블록 빼고 읽기·참고용 본문 내주기·사용자별 격리·6초 주입 예산·메시지 제한 기반 기억 창 등)은 그대로 얹혀 있습니다.
