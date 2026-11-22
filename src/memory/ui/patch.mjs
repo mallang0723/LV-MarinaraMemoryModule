@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { replaceAnchor, replaceRange } from '../../patch-util.mjs';
 
 export const RUNTIME_SHA256 = '66845fe9d3bf3e6e6ada7b7cdc3ab6933b4b7dceab05bd70f3739b7f4e0afba6';
-export const WORLD_PANEL_SHA256 = '655caf69eadb9efbf725b5fb9ffaf37f7150df4152091916fe6fc78c54d3d832';
+export const WORLD_PANEL_SHA256 = '9faa158884e4459a60bc0bec3194090413cf0aed4fc75c0b0b5674f27e0cda72';
 
 export function patchMemory({ runtime, uiCss, themeCss, version, worldPanel = '' }) {
     const sha = createHash('sha256').update(runtime).digest('hex');

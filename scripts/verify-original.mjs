@@ -29,7 +29,7 @@ export const PINS = {
     'src/memory/core/petnotes.cjs': 'd102dfcebc439b6062ba9ecc923d26456bbb87931782d114ba97aab5dd5f551e',
     'src/memory/core/simulator.cjs': 'bf67920641f6df8e767c68ee095ab23960752fe44db8702836908f8c9eaaf9c3',
     'src/memory/core/worldlink.cjs': 'a82fdc7b0378f856204ea66868f0a6ec7d671acd65a644f932d105663368fa8a',
-    'src/memory/ui/world-panel.orig.js': '655caf69eadb9efbf725b5fb9ffaf37f7150df4152091916fe6fc78c54d3d832',
+    'src/memory/ui/world-panel.orig.js': '9faa158884e4459a60bc0bec3194090413cf0aed4fc75c0b0b5674f27e0cda72',
     'src/memory/ui/runtime.orig.js': '66845fe9d3bf3e6e6ada7b7cdc3ab6933b4b7dceab05bd70f3739b7f4e0afba6',
     'src/memory/ui/ui.orig.css': 'd362c7bbc20673156e00637b06e884fd5270925f72e1fca5f54a5c79aecc236a',
     'src/memory/ui/theme.orig.css': 'd1a961b80fb2459a721151270943609f498161d8917edc7bcae42464b52049d8',

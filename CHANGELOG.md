@@ -2,13 +2,13 @@
 
 ## 1.5.0-lv.1
 
-원작 기억 서재 **0.35.2 이후 34커밋(0.35.3 ~ 0.38.3, `32f72b9`)** 을 통이식으로 반영했습니다. 원작 파일(코어 23개·`service.cjs`·화면 원본 3개·세계관 칸 화면 1개)은 **바이트 그대로**이고 고정 SHA-256을 새로 잡았습니다(`npm run verify:original`, `UPSTREAM_MEMORY`로 원작 체크아웃 비교). 이식판 전용 기능(토큰 계량·하단 블록 빼고 읽기·참고용 본문 내주기·사용자별 격리·6초 주입 예산·메시지 제한 기반 기억 창 등)은 그대로 얹혀 있습니다.
+원작 기억 서재 **0.35.2 이후 42커밋(0.35.3 ~ 0.38.3 + 세계관 칸 패널 v0.7.6·설치기 수정, `bfafb3f`)** 을 통이식으로 반영했습니다. 모듈 판은 0.38.3 그대로이고 뒤의 8커밋은 세계관 칸 화면(`world-panel.orig.js`) 교체 3번과 Marinara 설치기뿐입니다. 원작 파일(코어 24개·화면 원본 3개·세계관 칸 화면 1개)은 **바이트 그대로**이고 고정 SHA-256을 새로 잡았습니다(`npm run verify:original`, `UPSTREAM_MEMORY`로 원작 체크아웃 비교). 이식판 전용 기능(토큰 계량·하단 블록 빼고 읽기·참고용 본문 내주기·사용자별 격리·6초 주입 예산·메시지 제한 기반 기억 창 등)은 그대로 얹혀 있습니다.
 
 **새로 들어온 원작 기능**: 세계 시뮬레이터 모드(방마다), 반려동물 수첩(방마다), 이름 자동 합치기(0.35.4), 영어 기억 한국어 검색·번역 단어장 표기(0.35.3), 작중 날짜 직접 바로잡기·「메시지 글에서도 날짜 읽기」 스위치·트래커 날짜 개선(0.38.x), 인물별 두 구역 카드(0.38.0), 새로 그려도 펼친 항목 유지(0.38.3), 지운 호칭 되살리기, 답이 장면 정리 뒤에서 멈추지 않게 하는 수정(0.37.2).
 
 **루미버스에서 동작하지 않거나 대신하는 것 (보고)**
 
-- **세계관 설정집 연동(0.37.0~0.38.0): 대역(꺼짐).** 「세계관」 칸·「설정집 연동」 스위치·처음부터 아는 사이·설정집 종·이름 쌍은 Marinara 전용 확장 *세계관 설정집*이 있어야 켜집니다. 루미버스에는 그 확장이 없어, 원작이 설정집이 없는 Marinara에서 하는 그대로 칸이 숨고 지시문이 연동 없을 때와 같습니다. 코드는 전부 들어 있습니다: `worldlink.cjs`, 서비스의 `globalThis.__marinaraWorldArchive?.api` 조회, `world-panel.orig.js`(원작이 `vendor/world-panel.js`로 빌드에 붙이는 화면, 바이트 고정)를 원작과 같은 래퍼로 화면에 붙임. 화면의 `/api/world-archive/*` 요청은 네트워크로 나가지 않고 기존 셈 대로 shim을 거쳐 백엔드가 404로 답합니다(앵커 패치 3개). 루미버스용 설정집이 `__marinaraWorldArchive.api`를 내주면 그대로 켜집니다.
+- **세계관 설정집 연동(0.37.0~0.38.0): 대역(꺼짐).** 「세계관」 칸·「설정집 연동」 스위치·처음부터 아는 사이·설정집 종·이름 쌍은 Marinara 전용 확장 *세계관 설정집*이 있어야 켜집니다. 루미버스에는 그 확장이 없어, 원작이 설정집이 없는 Marinara에서 하는 그대로 칸이 숨고 지시문이 연동 없을 때와 같습니다. 코드는 전부 들어 있습니다: `worldlink.cjs`, 서비스의 `globalThis.__marinaraWorldArchive?.api` 조회, `world-panel.orig.js`(원작이 `vendor/world-panel.js`로 빌드에 붙이는 화면, 바이트 고정)를 원작과 같은 래퍼로 화면에 붙임. 화면의 `/api/world-archive/*` 요청은 네트워크로 나가지 않고 기존 셈 대로 shim을 거쳐 백엔드가 404로 답합니다(앵커 패치 3개). 루미버스용 설정집이 `__marinaraWorldArchive.api`를 내주면 그대로 켜집니다. 연결에 필요한 접점은 [docs/world-archive-interface.md](docs/world-archive-interface.md)에 정리했습니다.
 - **젬4(Gemma 4) 추론 low(0.38.2): 미적용 — 결정 대기.** 원작은 연결의 추론 설정이 없는 Gemma 4 연결에 추론 low를 붙여 보냅니다(`memoryCallOptions`의 `light`, 사이트가 거절하면 빼고 재호출). 이식판의 모델 호출 어댑터(`generate.quiet`)는 연결별 모델 옵션(`customParameters`·`reasoningEffort`)을 넘기지 않아(DeepSeek 생각 끄기도 1.4.0부터 같음) 호출은 정상이고 값만 가지 않습니다. 호스트(소스 확인)에는 요청별 `reasoning` 덮어쓰기가 있지만, 연결·프리셋에 사용자가 정한 추론 설정을 확장이 볼 수 없어 보내면 그 설정을 덮을 수 있고, 구버전 호스트(최소 1.2.5)에서의 동작은 미확인이라 임의로 연결하지 않았습니다.
 - 원작 설치 스크립트·`marinara-memory-runtime.cjs`·빌드 스크립트·`deliverable/`·스크린샷은 Marinara 전용이라 가져오지 않았습니다. `tests/test-library-folds.mjs`(happy-dom 필요, 원작 번들 `deliverable/extension.js`를 읽음)와 `tests/measure-simulator-tokens.cjs`(측정 스크립트)는 시험에 넣지 않았습니다.
 
@@ -18,7 +18,7 @@
 
 **시험·QA 쪽 변경(원작 파일 아님)**: `tests/dist-frontend.test.js`의 「맨 `fetch('/api/…')` 금지」 검사가 `LV.fetch('/api/…')`(shim 경유)는 통과시키도록 느슨해졌고, 세계관 칸 전용 시험 `tests/world-tab.test.js`를 더했습니다. 브라우저 QA 하네스(`qa/`, `scripts/`)는 1.3.0 때 화면을 기준으로 남아 있어 **1.4.2에서도 「missing tab scenes」로 실패하던 상태**였습니다(기준 커밋 `7098f25`를 같은 명령으로 돌려 확인): 7개 탭(그룹 버튼 `data-group-tab` → 하위 탭)과 1.4+의 저장소 목록(고아 방 시드는 사용자 트리를 처음 읽기 전에 넣어야 보임)에 맞게 고쳤습니다. 그 뒤 드러난 22px 선택 상자(`input.pick-fact`, `.pick-row>input`)는 이식판의 44px 터치 규칙에 맞게 `src/overrides.memory.css`에서 키웠습니다(원작 CSS 원본은 그대로).
 
-**원작 커밋별 PORT / SKIP** (`165d488` 이후 34커밋)
+**원작 커밋별 PORT / SKIP** (`165d488` 이후 42커밋)
 
 | 원작 커밋 | 내용 | 판정 |
 |---|---|---|
@@ -39,8 +39,11 @@
 | 8f99b84, 22fff16 | 0.38.3 펼침 상태 유지 | PORT (화면). 전용 시험 `test-library-folds.mjs`는 SKIP(happy-dom) |
 | 32f72b9 | 0.38.3 지운 호칭 | PORT |
 | 4c7e778, 7edd097, 6404247 | 병합 커밋 | 내용은 위 커밋에 포함 |
+| 7aaab88, 3916a19, ed8a03f | 세계관 칸 패널을 설정집 v0.7.1 → v0.7.5 → v0.7.6으로 다시 복사(`extension/vendor/world-panel.js`; v0.7.6은 인물 카드 네 칸·「보기: 원문 · 한국어」) | PORT (`world-panel.orig.js`를 `bfafb3f` 것으로 바이트 교체·핀 갱신, 앵커 패치 4개 그대로 맞음). 칸은 설정집이 없어 숨음 = **대역** |
+| cd614e9 | 설치기 mm 컨테이너 수정(`install.sh`) | SKIP (Marinara 설치기) |
+| 5a40ab9, 1ef32ea, 999d70b, bfafb3f | 병합 커밋 | 내용은 위 커밋에 포함 |
 
-커밋 34개 = 반영 30 + 병합 4(52e647a 포함). 커밋 전체를 건너뛴 것은 없고 파일 단위 SKIP만 위 표에 적었습니다(설치기·`marinara-memory-runtime.cjs` 버전 줄·`build.py`·`deliverable/`·스크린샷·`test-library-folds.mjs`). 시험: 원작 시험 9개 추가(`test-date-fixes`·`glossary-merge`·`glossary-names`·`pet-notebook`·`reply-wait`·`routine-skip`·`simulator-mode`·`tracker-days`·`world-link`)와 기존 원작 시험 갱신.
+커밋 42개 = 반영 33 + SKIP 1(cd614e9 전체) + 병합 8(52e647a 포함). 병합 4개는 첫 34커밋, 4개는 뒤 8커밋에 있음. 커밋 전체를 건너뛴 것은 없고 파일 단위 SKIP만 위 표에 적었습니다(설치기·`marinara-memory-runtime.cjs` 버전 줄·`build.py`·`deliverable/`·스크린샷·`test-library-folds.mjs`). 시험: 원작 시험 9개 추가(`test-date-fixes`·`glossary-merge`·`glossary-names`·`pet-notebook`·`reply-wait`·`routine-skip`·`simulator-mode`·`tracker-days`·`world-link`)와 기존 원작 시험 갱신.
 
 ## 1.4.2-lv.3
 
