@@ -43,7 +43,7 @@
 | cd614e9 | 설치기 mm 컨테이너 수정(`install.sh`) | SKIP (Marinara 설치기) |
 | 5a40ab9, 1ef32ea, 999d70b, bfafb3f | 병합 커밋 | 내용은 위 커밋에 포함 |
 
-커밋 42개 = 반영 33 + SKIP 1(cd614e9 전체) + 병합 8(52e647a 포함). 병합 4개는 첫 34커밋, 4개는 뒤 8커밋에 있음. 커밋 전체를 건너뛴 것은 없고 파일 단위 SKIP만 위 표에 적었습니다(설치기·`marinara-memory-runtime.cjs` 버전 줄·`build.py`·`deliverable/`·스크린샷·`test-library-folds.mjs`). 시험: 원작 시험 9개 추가(`test-date-fixes`·`glossary-merge`·`glossary-names`·`pet-notebook`·`reply-wait`·`routine-skip`·`simulator-mode`·`tracker-days`·`world-link`)와 기존 원작 시험 갱신.
+커밋 42개 = 반영 33 + SKIP 1(cd614e9 전체) + 병합 8(52e647a 포함). 병합 4개는 첫 34커밋, 4개는 뒤 8커밋에 있음. 커밋 전체를 건너뛴 것은 설치기 수정 `cd614e9` 하나뿐이고, 나머지는 파일 단위 SKIP만 위 표에 적었습니다(설치기·`marinara-memory-runtime.cjs` 버전 줄·`build.py`·`deliverable/`·스크린샷·`test-library-folds.mjs`). 시험: 원작 시험 9개 추가(`test-date-fixes`·`glossary-merge`·`glossary-names`·`pet-notebook`·`reply-wait`·`routine-skip`·`simulator-mode`·`tracker-days`·`world-link`)와 기존 원작 시험 갱신.
 
 ## 1.4.2-lv.3
 

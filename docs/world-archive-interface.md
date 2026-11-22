@@ -2,7 +2,7 @@
 
 나중에 Lumiverse판 설정집을 만들 때 **무엇을 내주면 기억 서재가 켜지는지**를 적은 목록입니다. 근거는 전부 원작 파일 줄 번호입니다(바이트 고정이라 줄이 바뀌지 않음): `runtime.orig.js`(`src/memory/ui/`, 화면), `world-panel.orig.js`(설정집 화면, 설정집 v0.7.6), `service.cjs`·`worldlink.cjs`(`src/memory/core/`, 서버쪽). 현재 이식판에는 설정집이 없어 아래 접점이 전부 「없음」으로 응답하고, 칸은 숨고 지시문은 연동 없을 때와 같습니다.
 
-요약: 서버쪽 JS 접점 **1개 객체(`globalThis.__marinaraWorldArchive.api`) · 필드 1 + 함수 3**, 기억 서재 화면이 부르는 HTTP 경로 **6개(메서드 포함 7쌍)**, 칸 화면(설정집 화면 원본)이 부르는 HTTP 경로 **55쌍**, 화면↔칸 접점 **전역 1개 + 인스턴스 함수 2 + DOM 표시 1**.
+요약: 서버쪽 JS 접점 **1개 객체(`globalThis.__marinaraWorldArchive.api`) · 필드 1 + 함수 3**, 기억 서재 화면이 부르는 HTTP 경로 **5개(메서드 포함 7쌍)**, 칸 화면(설정집 화면 원본)이 부르는 HTTP **54쌍**(설정집 서버) + 호스트 1쌍, 화면↔칸 접점 **전역 1개 + 인스턴스 함수 2 + DOM 표시 1**.
 
 ## 1. 서버쪽: `globalThis.__marinaraWorldArchive.api` (같은 프로세스, 동기 호출)
 
@@ -10,14 +10,14 @@
 
 | 항목 | 모양 | 쓰는 곳 | 없을 때 |
 |---|---|---|---|
-| `api.contract` | 숫자. **2 이상**이어야 연동 | `service.cjs:1258-1260` `worldLinked()` | 연동 꺼짐 |
-| `api.roomEntities(chatId)` | `{ worldId, entities: [{ entityId, type, name, aliases: string[], fields: { species? } }] }`. 세계관에 연결된 방이 아니면 `worldId` 없음/falsy | 연동 판정 `service.cjs:1261`(`?.worldId`), 관계 끝 이름 보강 `1287-1288`, 종 `1300`, 인물 목록(시뮬레이터 방) `1316-1322`, 관계 줄 `1288` | `worldId` 없으면 연동 없음 |
-| `api.roomRelations(chatId)` | `{ relations: [{ from, to, fromName, toName, type, note?, previous?: string[] }] }`. `from`/`to`는 `entityId`. `type`은 `가족·친구·연인·스승·제자(`'스승·제자'`)·적대` 중 하나가 현재 관계, `previous`는 과거 관계 문구 | 존재 확인 `service.cjs:1258-1260`(함수여야 함), 읽기 `1286`, 줄 만들기 `worldlink.cjs:63-81` | 함수가 없으면 연동 없음 |
-| `api.names(chatId)` | `{ names: [{ original: 영문 로마자, translation: 한글 }] }`. **선택**(`?.` 호출, 없어도 됨) | `service.cjs:3394`, 합치기 `worldlink.cjs:95-102` | 이름 쌍 없음 |
+| `api.contract` | 숫자. **2 이상**이어야 연동 | `service.cjs:1256-1260` `worldLinked()` | 연동 꺼짐 |
+| `api.roomEntities(chatId)` | `{ worldId, entities: [{ entityId, type, name, aliases: string[], fields: { species? } }] }`. 세계관에 연결된 방이 아니면 `worldId` 없음/falsy | 연동 판정 `service.cjs:1260`(`?.worldId`), 관계 끝 이름 보강 `1289`, 종 `1300`, 인물 목록(시뮬레이터 방) `1316-1322` | `worldId` 없으면 연동 없음 |
+| `api.roomRelations(chatId)` | `{ relations: [{ from, to, fromName, toName, type, note?, previous?: string[] }] }`. `from`/`to`는 `entityId`. `type`은 `가족·친구·연인·스승·제자(`'스승·제자'`)·적대` 중 하나가 현재 관계, `previous`는 과거 관계 문구 | 존재 확인 `service.cjs:1259`(함수여야 함), 읽기 `1287`, 줄 만들기 `worldlink.cjs:51-70` | 함수가 없으면 연동 없음 |
+| `api.names(chatId)` | `{ names: [{ original: 영문 로마자, translation: 한글 }] }`. **선택**(`?.` 호출, 없어도 됨) | `service.cjs:3394`, 합치기 `worldlink.cjs:83-89` | 이름 쌍 없음 |
 
 - 연동 조건 = `contract >= 2` ∧ `roomRelations`가 함수 ∧ `roomEntities(chatId).worldId` 있음(`service.cjs:1256-1264`). 거기에 방마다 「설정집 연동」 스위치(`worldLink !== 'off'`, `1266-1270`)가 켜져 있어야 관계·종·이름 쌍을 씁니다. **인물 목록만은 스위치와 무관**하게 `roomEntities`를 직접 읽습니다(`1316`, 시뮬레이터 방, `type==='person'`, 이름 설명형(`isDescribedName`)은 제외).
-- 호출 결과는 1분(관계·인물)까지 캐시됩니다(`service.cjs:1280-1283`, `1313`). 예외는 모두 삼켜 연동 없음처럼 동작합니다.
-- 파생: 관계는 두 사람이 모두 그 정리 묶음에 나올 때만 줄이 됩니다(최대 20줄, `worldlink.cjs:13`). `fields.species`가 있는 `type:'person'`은 사람이 아닌 존재(반려동물 수첩 대상 제외, `worldlink.cjs:84-92`, `service.cjs:2138`). 종이 하나도 없는 세계관이면 종 정보 없음으로 봅니다(`service.cjs:1300`).
+- 호출 결과는 1분(관계·인물)까지 캐시됩니다(`service.cjs:1280-1283`, `1310-1312`). 예외는 모두 삼켜 연동 없음처럼 동작합니다.
+- 파생: 관계는 두 사람이 모두 그 정리 묶음에 나올 때만 줄이 됩니다(최대 20줄, `worldlink.cjs:16`). `fields.species`가 있는 `type:'person'`은 사람이 아닌 존재(반려동물 수첩 대상 제외, `worldlink.cjs:72-80`, `service.cjs:2138`). 종이 하나도 없는 세계관이면 종 정보 없음으로 봅니다(`service.cjs:1300`).
 
 ## 2. 기억 서재 서버가 화면에 내놓는 것 (설정집 쪽 요구 없음, 참고)
 
@@ -26,16 +26,16 @@
 
 ## 3. 기억 서재 화면이 직접 부르는 HTTP (브라우저 → 설정집 서버, 같은 출처)
 
-공통: `credentials: 'same-origin'`, `cache: 'no-store'`, 헤더 `x-marinara-csrf: 1`, POST/PUT은 `content-type: application/json`. 이식판은 이 `fetch` 3곳을 앵커 패치로 shim(`LV.fetch`)에 연결하고(`patch.mjs` `world status/get/send fetch`), shim이 설정집 경로를 404로 돌려줍니다.
+공통: `credentials: 'same-origin'`, `cache: 'no-store'`, 헤더 `x-marinara-csrf: 1`, POST/PUT은 `content-type: application/json`. 이 중 `status`·`rooms/:chatId`(GET)·`worlds`(GET/POST)·`rooms/:chatId`(PUT)는 `runtime.orig.js`의 직접 `fetch` 3곳(`3553`, `3571`, `3593`)을 지나고 이식판은 이를 앵커 패치로 shim(`LV.fetch`)에 연결합니다(`patch.mjs` `world status/get/send fetch`). `rooms/:chatId/entities|relations`는 기억 서재 화면 자체 `api()`(`runtime.orig.js:186-195`, 같은 헤더 구성)를 지나며, 이식판은 그 `fetch`를 기존 앵커(`patch.mjs:31`)로 `LV.fetch`에 연결합니다. 모두 shim이 설정집 경로를 404로 돌려줍니다.
 
 | 메서드 · 경로 | 응답에서 읽는 것 | 근거 |
 |---|---|---|
-| `GET /api/world-archive/status` | `res.ok` ∧ `.version`(값 있음) → 칸 표시. **404·실패는 이 페이지를 다시 열기 전까지 다시 묻지 않음** | `runtime.orig.js:3553-3556`. 추가로 칸 화면 전역 `__memoryWorldPanel.start`가 있어야 함(`3559`) |
+| `GET /api/world-archive/status` | `res.ok` ∧ `.version`(값 있음) → 칸 표시. **404·실패는 이 페이지를 다시 열기 전까지 다시 묻지 않음** | `runtime.orig.js:3553-3555`. 추가로 칸 화면 전역 `__memoryWorldPanel.start`가 있어야 함(`3556`) |
 | `GET /api/world-archive/rooms/:chatId` | `.worldId`(연결 여부) | `3571-3573` |
 | `GET /api/world-archive/worlds` | `.worlds: [{ worldId, name }]` (연결 안 된 방의 선택 목록) | `3574`, 선택 상자 `3582-3586` |
 | `POST /api/world-archive/worlds` `{ name }` | `.worldId` (새 세계관 만들기) | `3593` |
 | `PUT /api/world-archive/rooms/:chatId` `{ worldId }` | 성공 여부만 | `3594` |
-| `GET /api/world-archive/rooms/:chatId/entities` | `.worldId`, `.entities`(`type==='person'`만 사용: `entityId, name, aliases`) — 「인물별」 카드의 「설정집에서」 구역 | `2276`, 사용 `2277-2285`(30초 캐시), 매칭 `waPersonOf` `runtime.orig.js:2288` |
+| `GET /api/world-archive/rooms/:chatId/entities` (기억 서재 화면 자체 `api()`, `runtime.orig.js:186`) | `.worldId`, `.entities`(`type==='person'`만 사용: `entityId, name, aliases`) — 「인물별」 카드의 「설정집에서」 구역 | `2276`, 사용 `2277-2285`(30초 캐시), 매칭 `waPersonOf` `runtime.orig.js:2288` |
 | `GET /api/world-archive/rooms/:chatId/relations` | `.relations: [{ from, to, fromName, toName, type, note }]` (`worldId`가 있을 때만 호출, 실패하면 빈 목록) | `2277` |
 
 ## 4. 칸 화면(설정집 화면 원본)과의 접점
@@ -50,7 +50,7 @@
 
 ### 칸 화면이 설정집 서버(`/api/world-archive`, BASE `:15`)에 부르는 경로
 
-호출 함수 `api(method, path, body)`(`world-panel.orig.js:429-445`)는 기억 서재 §3과 같은 헤더이며, `/api/`로 시작하는 경로는 BASE 없이 그대로 보냅니다. 아래는 서로 다른 (메서드 경로) **55쌍**(줄은 첫 호출 위치).
+호출 함수 `api(method, path, body)`(`world-panel.orig.js:429-445`)는 기억 서재 §3과 같은 헤더이며, `/api/`로 시작하는 경로는 BASE 없이 그대로 보냅니다. 아래는 서로 다른 (메서드 경로) **54쌍**(줄은 첫 호출 위치).
 
 - 상태: `GET /status`(527; 응답 `version, contract, fields, topics, ...`), `GET /connections`(504)
 - 방: `GET|PUT /rooms/:chat`(488, 2005), `GET /rooms/:chat/preview`(489), `GET|POST /rooms/:chat/auto`(492, 1840), `GET|POST /rooms/:chat/scores`(501, 2047), `POST /rooms/:chat/scores/:id/undo`(2052)
@@ -64,7 +64,7 @@
 
 1. 서버(백엔드)에서 `globalThis.__marinaraWorldArchive = { api: { contract: 2, roomEntities, roomRelations, names } }`를 기억 서재와 **같은 프로세스·같은 `globalThis`**에 심기(§1). Lumiverse 확장은 확장마다 프로세스/격리가 다를 수 있어 **미확인** — 안 되면 기억 서재 어댑터가 rpc/이벤트로 같은 모양을 내주는 대역이 필요.
 2. 기억 서재 화면의 HTTP 7쌍(§3)을 shim에서 설정집 쪽으로 연결(지금은 404 응답). `status`에 `version`이 있어야 칸이 나타남.
-3. `globalThis.__memoryWorldPanel`(§4)을 설정집 화면 번들이 제공(원작처럼 `extension/vendor/world-panel.js`를 그대로 두면 됨). 칸 화면의 55쌍 HTTP 경로와 현재 방 id 조회(`marinara-active-chat-id`)를 호스트에 맞춰 연결.
+3. `globalThis.__memoryWorldPanel`(§4)을 설정집 화면 번들이 제공(원작처럼 `extension/vendor/world-panel.js`를 그대로 두면 됨). 칸 화면의 54쌍 HTTP 경로와 현재 방 id 조회(`marinara-active-chat-id`)를 호스트에 맞춰 연결.
 4. `contract`는 서버·화면 모두 **2**(다르면 칸 화면이 읽기 전용).
 
 ## 리비전 이력
