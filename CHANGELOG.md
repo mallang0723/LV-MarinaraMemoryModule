@@ -2,14 +2,9 @@
 
 ## 1.5.0-lv.2
 
-이식판 전용 변경 셋입니다. 원작 파일(코어 24개·화면 원본 4개)은 **바이트 그대로**이고(`verify:original` 통과), 모두 어댑터·이식판 설정·앵커 패치로만 구현했습니다.
+이식판 전용 변경 둘(B·C)입니다. 원작 파일(코어 24개·화면 원본 4개)은 **바이트 그대로**이고(`verify:original` 통과), 모두 어댑터·이식판 설정·앵커 패치로만 구현했습니다.
 
-**A. 기억 정리 호출은 모든 모델에서 기본 추론 low** (스위치 「기억 정리는 가볍게 생각(추론 low)」, 서랍 설정 탭, 기본 켬)
-- 1.5.0-lv.1에서 「결정 대기」였던 젬4 추론 low와 1.4.0부터 안 가던 DeepSeek 생각 끄기가 이제 실제로 호스트까지 갑니다. 어댑터의 `chatComplete`가 호스트 `generate.quiet`의 요청별 `reasoning` 덮어쓰기(`{ source: 'custom', apiReasoning: true, effort: 'low' }`, DeepSeek 생각 끄기는 `{ source: 'off' }`)를 붙이고, 연결 종류별 파라미터(OpenAI식 `reasoning_effort`, OpenRouter·NanoGPT `reasoning.effort`, Google `thinkingConfig`, Anthropic …)는 호스트가 자기 방식으로 씁니다(`prompt-assembly.service.ts` `injectReasoningParams`). 원작 `memoryCallOptions`(젬4 low·DeepSeek 끄기)는 그대로 두고, 이식판이 그 위에서 모든 모델로 넓힙니다.
-- 사용자가 이미 정한 값은 덮지 않습니다. 아무것도 붙이지 않는 경우: 연결이 추론을 어떻게 할지 말하고 있을 때(호스트가 보여 주는 `reasoning_bindings`의 꺼짐·세기 지정, 또는 연결 메타데이터의 thinking/reasoning 값), 연결에 묶음이 없는데 **사용자 전역 추론 설정**(`/api/v1/settings`의 `reasoningSettings`, 열린 화면을 통해 읽음. 꺼짐 또는 세기 지정)이 저장돼 있을 때, 전역 설정을 **읽지 못했을 때**(화면이 안 열려 있음 — 보수적으로 아무것도 안 보냄). 세기가 「자동」이거나 아무 데도 정해 둔 것이 없으면 low를 요청합니다. 전역 설정은 30초 기억합니다.
-- 한계: 호스트가 연결 주소를 확장에 주지 않아 DeepSeek는 연결 종류(provider)가 `deepseek`일 때만 알아봅니다(원작의 주소 검사는 이 환경에서 쓸 수 없음). 주소만 DeepSeek인 사용자 지정 연결은 끄기가 아니라 low로 갑니다. 호스트의 종류별 low 변환에서 DeepSeek low는 high로, Kimi K3는 max로 바뀌고, Anthropic·Z.AI·Moonshot은 기본이 추론 없음이어도 low를 요청하면 추론이 켜집니다(`injectReasoningParams`). 거부되면 위 재호출로 빠집니다.
-- 사이트가 추론 요청을 거절하면(오류 글에 reasoning·thinking·effort·budget·unrecognized 등) 빼고 같은 호출을 다시 보내고, 그 연결에는 이후 보내지 않습니다(확장 실행 중 기억; JSON 모드 거절은 구분해 원작 방식 그대로). 스위치를 끄면 어떤 파라미터도 붙이지 않습니다(1.5.0-lv.1과 같은 호출).
-- 시험 `tests/reasoning.test.js`(연결 종류별·연결 설정 우선·DeepSeek·거절 후 재호출과 기억·JSON 모드 구분·스위치 끔).
+**추론 세기: 기억 서재는 덮어쓰지 않습니다.** 기억 정리·회상·점검 호출의 추론 세기는 Lumiverse 연결·프리셋 설정에서 정하고, 기억 서재는 호출에 `reasoning`을 붙이지 않습니다(1.5.0-lv.1과 같은 호출). 검토했던 「기억 정리는 low」 덮어쓰기는 호스트가 연결 종류별로 low를 바꿔(DeepSeek는 high, Kimi K3는 max, Anthropic·Z.AI·Moonshot은 추론 켜짐) 오히려 나빠져 넣지 않기로 했습니다(관리자 결정: 「루미버스에 기본적으로 있으면 그냥 두자」).
 
 **B. 세계관 설정집(`anon_world_lv`) 연동 끝점** (설정집이 없으면 이전과 같음: 칸 숨김, 오류 없음)
 - 설정집의 `docs/memory-library-interop.md` 세 가지를 `src/adapter/world-archive.js`로 구현했습니다. (1) 서버 `globalThis.__marinaraWorldArchive.api` 거울: 설정집이 한 번 답한 뒤에야 만들어지고, 방별 캐시(60초)를 rpcPool(`anon_world_lv.api`, 요청 통로 `wa-req`, nonce 악수, 한 줄 직렬화)로 채우며, 읽기는 실행 중인 사용자 기준입니다. (2) 화면 `/api/world-archive/*` → `router.fallback('world-archive/')` → `op:'http'`(방 경로는 채팅 소유를 이쪽에서 먼저 확인하고 봉투에 `chatId`도 실음, 설정집이 없으면 404). (3) 거꾸로 끝점 `anon_memory_lv.world-room`(요청 통로 `anon_world_lv.mem-req`)이 enabled·storyDate·memoryLanguage를 사용자·채팅·nonce 그대로 돌려줍니다(채팅 소유 확인 포함).
@@ -29,7 +24,7 @@
 **루미버스에서 동작하지 않거나 대신하는 것 (보고)**
 
 - **세계관 설정집 연동(0.37.0~0.38.0): 대역(꺼짐).** 「세계관」 칸·「설정집 연동」 스위치·처음부터 아는 사이·설정집 종·이름 쌍은 Marinara 전용 확장 *세계관 설정집*이 있어야 켜집니다. 루미버스에는 그 확장이 없어, 원작이 설정집이 없는 Marinara에서 하는 그대로 칸이 숨고 지시문이 연동 없을 때와 같습니다. 코드는 전부 들어 있습니다: `worldlink.cjs`, 서비스의 `globalThis.__marinaraWorldArchive?.api` 조회, `world-panel.orig.js`(원작이 `vendor/world-panel.js`로 빌드에 붙이는 화면, 바이트 고정)를 원작과 같은 래퍼로 화면에 붙임. 화면의 `/api/world-archive/*` 요청은 네트워크로 나가지 않고 기존 셈 대로 shim을 거쳐 백엔드가 404로 답합니다(앵커 패치 3개). 루미버스용 설정집이 `__marinaraWorldArchive.api`를 내주면 그대로 켜집니다. 연결에 필요한 접점은 [docs/world-archive-interface.md](docs/world-archive-interface.md)에 정리했습니다.
-- **젬4(Gemma 4) 추론 low(0.38.2): 미적용 — 결정 대기.** 원작은 연결의 추론 설정이 없는 Gemma 4 연결에 추론 low를 붙여 보냅니다(`memoryCallOptions`의 `light`, 사이트가 거절하면 빼고 재호출). 이식판의 모델 호출 어댑터(`generate.quiet`)는 연결별 모델 옵션(`customParameters`·`reasoningEffort`)을 넘기지 않아(DeepSeek 생각 끄기도 1.4.0부터 같음) 호출은 정상이고 값만 가지 않습니다. 호스트(소스 확인)에는 요청별 `reasoning` 덮어쓰기가 있지만, 연결·프리셋에 사용자가 정한 추론 설정을 확장이 볼 수 없어 보내면 그 설정을 덮을 수 있고, 구버전 호스트(최소 1.2.5)에서의 동작은 미확인이라 임의로 연결하지 않았습니다.
+- **젬4(Gemma 4) 추론 low(0.38.2): 없음(관리자 결정: 호스트 설정에 맡김).** 원작의 `memoryCallOptions`(젬4 low·DeepSeek 끄기) 계산은 vendor에 그대로 남아 있으나, 이식판은 그 결과를 호스트로 넘기지 않습니다. 추론 세기는 Lumiverse 연결/프리셋에서 정하고 기억 서재는 덮어쓰지 않습니다(1.5.0-lv.2 항목).
 - 원작 설치 스크립트·`marinara-memory-runtime.cjs`·빌드 스크립트·`deliverable/`·스크린샷은 Marinara 전용이라 가져오지 않았습니다. `tests/test-library-folds.mjs`(happy-dom 필요, 원작 번들 `deliverable/extension.js`를 읽음)와 `tests/measure-simulator-tokens.cjs`(측정 스크립트)는 시험에 넣지 않았습니다.
 
 **원작이 같은 걸 새로 구현해 이식판 쪽을 접은 것**: 영어·중국어 기억을 한국어 번역으로도 찾는 기능(이식판 1.2.0-lv.2의 「검색의 한국어 번역」)을 원작 0.35.3이 새로 넣었습니다. 이식판의 `searchableText`·번역 우선 비교 패치(`searchableText` 범위 교체)를 빼고 원작 것을 그대로 씁니다. 원작에 없는 부분인 **이름 표기 확장 검색**(이름 표·호칭 사전 짝·번역 캐시로 같은 사람의 다른 표기까지 찾기, 검색 탭의 이름 표 읽기)만 이식판 전용으로 남겼습니다(`search variants`·`search loop` 패치). 같은 기록의 한국어 번역이 원문 뒤에 붙어 검색 발췌에 보이는 모양은 원작을 따릅니다.
@@ -54,7 +49,7 @@
 | 1eb058d | 0.37.2 답 멈춤 고침 | PORT |
 | 8d29e7d | 0.38.0 인물별 두 구역·세계관 칸 v0.6.1 | PORT (화면). 스크린샷 SKIP |
 | e2777bf, a920d17, ac311d9 | 0.38.1 트래커 날짜 | PORT |
-| 8a310e0 | 0.38.2 작중 날짜 바로잡기 등 | PORT. 젬4 추론 low는 **미적용**(위) |
+| 8a310e0 | 0.38.2 작중 날짜 바로잡기 등 | PORT. 젬4 추론 low는 **없음**(호스트 설정에 맡김, 위) |
 | a29feb8 | 0.38.3 여덟 자리 숫자 | PORT |
 | 8f99b84, 22fff16 | 0.38.3 펼침 상태 유지 | PORT (화면). 전용 시험 `test-library-folds.mjs`는 SKIP(happy-dom) |
 | 32f72b9 | 0.38.3 지운 호칭 | PORT |

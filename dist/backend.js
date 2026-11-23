@@ -20950,23 +20950,6 @@ function createHostAdapter(api, { log = () => {} } = {}) {
     }
     return value?.messageLimitEnabled === true && typeof value.messageLimitCount === "number" && Number.isInteger(value.messageLimitCount) && value.messageLimitCount > 0 ? value.messageLimitCount : null;
   }
-  const reasoningAt = new Map;
-  async function globalReasoning(userId, now = Date.now()) {
-    need(userId);
-    const hit = reasoningAt.get(userId);
-    if (hit && now - hit.at < 30000)
-      return hit.value;
-    let value;
-    try {
-      const v = await summarization.read(userId);
-      value = v && typeof v.reasoning === "object" && v.reasoning ? v.reasoning : undefined;
-    } catch {
-      value = undefined;
-    }
-    if (value !== undefined)
-      reasoningAt.set(userId, { at: now, value });
-    return value;
-  }
   const need = (userId) => {
     if (typeof userId !== "string" || !userId)
       throw new Error("userId required");
@@ -21071,7 +21054,7 @@ function createHostAdapter(api, { log = () => {} } = {}) {
     const res = await call(() => api.embeddings.embed({ texts, ...connectionId ? { connection_id: connectionId } : {}, input_type: inputType === "query" ? "query" : "passage", userId }, { signal }));
     return res;
   }
-  return { connections, chatsList, rawChat, allMessages, character, characterName, generate, embeddingConnections, embed, has, contextMessageLimit, globalReasoning, dispose: () => summarization.dispose() };
+  return { connections, chatsList, rawChat, allMessages, character, characterName, generate, embeddingConnections, embed, has, contextMessageLimit, dispose: () => summarization.dispose() };
 }
 
 // src/common/router.js
@@ -21751,33 +21734,7 @@ var iso2 = (t) => {
     return null;
   return new Date(n < 1000000000000 ? n * 1000 : n).toISOString();
 };
-var saysHow = (r) => !!r && typeof r === "object" && (r.apiReasoning === false || r.apiReasoning === true && typeof r.reasoningEffort === "string" && r.reasoningEffort !== "auto");
-function ownReasoning(c) {
-  const meta = c?.metadata && typeof c.metadata === "object" ? c.metadata : {};
-  const binding = c?.reasoning_bindings ?? (meta.reasoningBindings && typeof meta.reasoningBindings === "object" ? meta.reasoningBindings : null);
-  const out = {};
-  if (binding && saysHow(binding.settings))
-    out.reasoningBindings = binding;
-  for (const [k, v] of Object.entries(meta))
-    if (/thinking|reasoning/i.test(k) && v != null && k !== "reasoningBindings")
-      out[k] = v;
-  return { how: Object.keys(out).length > 0, bound: !!binding, marker: Object.keys(out).length ? JSON.stringify(out) : undefined };
-}
-function reasoningIntent(opts) {
-  const cp = opts?.customParameters && typeof opts.customParameters === "object" ? opts.customParameters : {};
-  if (cp.thinking?.type === "disabled")
-    return "off";
-  const effort = opts?.reasoningEffort ?? cp.reasoning_effort ?? cp.reasoning?.effort;
-  return effort === "low" ? "low" : null;
-}
-var hostReasoning = (intent) => intent === "off" ? { source: "off" } : { source: "custom", apiReasoning: true, effort: "low" };
-var REASONING_REFUSED = /reasoning|thinking|effort|budget|unrecognized|unknown (?:field|param|arg)|extra (?:field|input|param)|not permitted|unsupported (?:param|field)/i;
-var JSON_MODE = /response_format|json_object|responseFormat/i;
-function createEngine({ api, userId, log = () => {}, translator = null, lean = !!api.host?.capabilities?.["chat-lean-messages-v1"], getMessageLimit = async () => null, getWindow = () => null, getHideBlocks = () => null, getLightReasoning = () => false, getGlobalReasoning = async () => {
-  return;
-}, meter = null }) {
-  const own = new Map;
-  const refused = new Set;
+function createEngine({ api, userId, log = () => {}, translator = null, lean = !!api.host?.capabilities?.["chat-lean-messages-v1"], getMessageLimit = async () => null, getWindow = () => null, getHideBlocks = () => null, meter = null }) {
   const call = async (fn) => {
     try {
       return await fn();
@@ -22019,9 +21976,7 @@ function createEngine({ api, userId, log = () => {}, translator = null, lean = !
       } catch {
         embedConns = null;
       }
-      for (const c of list)
-        own.set(c.id, ownReasoning(c));
-      return list.map((c) => ({ id: c.id, name: c.name, provider: c.provider, model: c.model, isDefault: !!c.is_default, embeddingModel: primary?.model || "", baseUrl: "lumiverse://connection", maxContext: undefined, defaultParameters: ownReasoning(c).marker }));
+      return list.map((c) => ({ id: c.id, name: c.name, provider: c.provider, model: c.model, isDefault: !!c.is_default, embeddingModel: primary?.model || "", baseUrl: "lumiverse://connection", maxContext: undefined }));
     },
     async getWithKey(id) {
       const row = (await this.list()).find((c) => c.id === id);
@@ -22031,24 +21986,6 @@ function createEngine({ api, userId, log = () => {}, translator = null, lean = !
       return null;
     }
   };
-  async function lightIntent(opts, connectionId, defaultParameters, key) {
-    if (!getLightReasoning() || defaultParameters || refused.has(key))
-      return null;
-    const c = connectionId ? own.get(connectionId) : null;
-    if (c?.how)
-      return null;
-    if (!c?.bound) {
-      let g;
-      try {
-        g = await getGlobalReasoning();
-      } catch {
-        g = undefined;
-      }
-      if (g === undefined || g?.saved && saysHow(g))
-        return null;
-    }
-    return reasoningIntent(opts) || "low";
-  }
   function createLLMProvider(providerName, baseUrl, apiKey, maxContext, openrouter, x, y, z, defaultParameters, connectionId) {
     return {
       async chatComplete(messages, opts = {}) {
@@ -22059,20 +21996,7 @@ function createEngine({ api, userId, log = () => {}, translator = null, lean = !
           parameters.temperature = opts.temperature;
         if (opts.responseFormat)
           parameters.response_format = opts.responseFormat;
-        const key = `${connectionId || providerName}\x00${opts.model || ""}`;
-        const intent = await lightIntent(opts, connectionId, defaultParameters, key);
-        const send = (withReasoning) => call(() => api.generate.quiet({ messages, ...connectionId ? { connection_id: connectionId } : {}, parameters, ...withReasoning ? { reasoning: hostReasoning(intent) } : {}, signal: opts.signal, userId }));
-        let res;
-        try {
-          res = await send(!!intent);
-        } catch (e) {
-          const text = String(e?.message || e);
-          if (!intent || opts.signal?.aborted || JSON_MODE.test(text) || !REASONING_REFUSED.test(text))
-            throw e;
-          refused.add(key);
-          log(`connection ${connectionId || providerName}: reasoning request refused (${text.slice(0, 120)}), asking without it`);
-          res = await send(false);
-        }
+        const res = await call(() => api.generate.quiet({ messages, ...connectionId ? { connection_id: connectionId } : {}, parameters, signal: opts.signal, userId }));
         const content = typeof res === "string" ? res : res?.content;
         if (meter) {
           const chatId = inRoom.getStore()?.chatId;
@@ -22171,16 +22095,10 @@ function collectRoutes(register) {
   register(make(""));
   return { routes, hooks };
 }
-function createUserService({ api, userId, log = () => {}, env = {}, version = "0", vfs: injectedVfs, fs: realFs, engine: injectedEngine, debounceMs, getMessageLimit, getGlobalReasoning, translator, meter = null }) {
+function createUserService({ api, userId, log = () => {}, env = {}, version = "0", vfs: injectedVfs, fs: realFs, engine: injectedEngine, debounceMs, getMessageLimit, translator, meter = null }) {
   let svc = null;
   const vfs = realFs ? null : injectedVfs || createVfs({ storage: api.userStorage, userId, log, ...debounceMs != null ? { debounceMs } : {} });
-  const eng = injectedEngine || createEngine({ api, userId, log, getMessageLimit, getGlobalReasoning, translator, meter, getLightReasoning: () => {
-    try {
-      return svc?._test.settings().lightReasoning !== false;
-    } catch {
-      return false;
-    }
-  }, getHideBlocks: (chatId) => {
+  const eng = injectedEngine || createEngine({ api, userId, log, getMessageLimit, translator, meter, getHideBlocks: (chatId) => {
     try {
       const all = svc?._test.settings();
       return import_cores.default["./features.cjs"].resolve(all, chatId, "hideBlocks").enabled ? import_hide_blocks2.default.tagsOf(all.chats?.[chatId]?.hideBlocks) : null;
@@ -22476,7 +22394,7 @@ function createWorldRoom({ api, manager, host, log = () => {} }) {
 var TRANSLATOR_GLOSSARY_SOURCE = "\uBC88\uC5ED \uD504\uB9AC\uC14B\xB7\uB2E8\uC5B4\uC7A5";
 var MEMORY_MARKER = "[Memory: what the characters remember from earlier in this story";
 var RECALL_BUDGET_MS = 6000;
-var LV_KEYS = ["moduleMemory", "autoInject", "interceptorBudgetMs", "window", "lightReasoning"];
+var LV_KEYS = ["moduleMemory", "autoInject", "interceptorBudgetMs", "window"];
 function sanitize(text, max = 60000) {
   let out = String(text).replace(/\{\{/g, "{\u200B{").replace(/\}\}/g, "}\u200B}");
   if (out.length > max) {
@@ -22504,7 +22422,7 @@ function createManager({ api, log = () => {}, tunables = {}, version = "0", host
     const env = { ...tunables.env || {} };
     env.MEMORY_MODULE_RECALL_TIMEOUT_MS ??= String(tunables.recallBudgetMs ?? RECALL_BUDGET_MS);
     const meter = createMeter({ api, userId, log });
-    const u = createUserService({ api, userId, log, env, version, debounceMs, getMessageLimit: () => host.contextMessageLimit(userId), getGlobalReasoning: () => host.globalReasoning?.(userId), translator, meter });
+    const u = createUserService({ api, userId, log, env, version, debounceMs, getMessageLimit: () => host.contextMessageLimit(userId), translator, meter });
     const inChat = (chatId, fn) => chatId ? inRoom.run({ chatId }, fn) : fn();
     const router = createRouter();
     for (const r of u.routes) {
@@ -22553,7 +22471,7 @@ function createManager({ api, log = () => {}, tunables = {}, version = "0", host
       handle: (frame) => router.handle(frame, userId),
       lvSettings: () => {
         const s = settings();
-        return { moduleMemory: s.moduleMemory !== false, autoInject: s.autoInject !== false, interceptorBudgetMs: s.interceptorBudgetMs || RECALL_BUDGET_MS, window: s.window || 30, lightReasoning: s.lightReasoning !== false };
+        return { moduleMemory: s.moduleMemory !== false, autoInject: s.autoInject !== false, interceptorBudgetMs: s.interceptorBudgetMs || RECALL_BUDGET_MS, window: s.window || 30 };
       },
       saveLvSettings(body) {
         return u.run(() => {

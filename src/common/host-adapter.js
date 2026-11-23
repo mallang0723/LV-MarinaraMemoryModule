@@ -33,17 +33,6 @@ export function createHostAdapter(api, { log = () => {} } = {}) {
         return value?.messageLimitEnabled === true && typeof value.messageLimitCount === 'number'
             && Number.isInteger(value.messageLimitCount) && value.messageLimitCount > 0 ? value.messageLimitCount : null;
     }
-    /** The user's saved global reasoning setting as { saved, apiReasoning, reasoningEffort }, or undefined when it could not be read (the frontend is not there). Kept 30 s. */
-    const reasoningAt = new Map();
-    async function globalReasoning(userId, now = Date.now()) {
-        need(userId);
-        const hit = reasoningAt.get(userId);
-        if (hit && now - hit.at < 30_000) return hit.value;
-        let value;
-        try { const v = await summarization.read(userId); value = v && typeof v.reasoning === 'object' && v.reasoning ? v.reasoning : undefined; } catch { value = undefined; }
-        if (value !== undefined) reasoningAt.set(userId, { at: now, value });
-        return value;
-    }
     const need = userId => { if (typeof userId !== 'string' || !userId) throw new Error('userId required'); return userId; };
     const call = async fn => { try { return await fn(); } catch (e) { throw wrapHostError(e); } };
 
@@ -135,5 +124,5 @@ export function createHostAdapter(api, { log = () => {} } = {}) {
         return res;
     }
 
-    return { connections, chatsList, rawChat, allMessages, character, characterName, generate, embeddingConnections, embed, has, contextMessageLimit, globalReasoning, dispose: () => summarization.dispose() };
+    return { connections, chatsList, rawChat, allMessages, character, characterName, generate, embeddingConnections, embed, has, contextMessageLimit, dispose: () => summarization.dispose() };
 }
