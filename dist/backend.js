@@ -22308,23 +22308,34 @@ function createWorldLink({ api, host, log = () => {}, now = () => Date.now(), ui
     installed = { api: mirror };
     globalThis.__marinaraWorldArchive = installed;
   }
-  const ROOM_PATH = /^world-archive\/rooms\/([^/?]+)/;
+  function readPath(path) {
+    const bad = (status, msg) => Object.assign(new Error(msg), { status });
+    const segs = String(path || "").split("?")[0].split("/").filter(Boolean);
+    const dec = segs.map((x) => {
+      try {
+        return decodeURIComponent(x);
+      } catch {
+        throw bad(400, "bad chat id");
+      }
+    });
+    if (dec.some((x) => x === "." || x === ".."))
+      throw bad(404, "\uCC44\uD305\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
+    const i = dec.indexOf("rooms");
+    if (i < 0)
+      return { sent: segs.join("/"), chatId: undefined };
+    if (i + 1 >= dec.length || !dec[i + 1])
+      throw bad(404, "\uCC44\uD305\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
+    return { sent: segs.join("/"), chatId: dec[i + 1] };
+  }
   async function http(userId, { method, path, query, body }) {
     const gone = () => Object.assign(new Error("\uC138\uACC4\uAD00 \uC124\uC815\uC9D1\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."), { status: 404 });
-    const m = ROOM_PATH.exec(path);
-    let chatId;
-    if (m) {
-      try {
-        chatId = decodeURIComponent(m[1]);
-      } catch {
-        throw Object.assign(new Error("bad chat id"), { status: 400 });
-      }
+    const { sent, chatId } = readPath(path);
+    if (chatId)
       await host.rawChat(userId, chatId);
-    }
     const qs = query && Object.keys(query).length ? `?${new URLSearchParams(query)}` : "";
     let r;
     try {
-      r = await call({ userId, ...chatId ? { chatId } : {}, op: "http", http: { method, path: `/api/${path}${qs}`, ...body !== undefined && method !== "GET" ? { body } : {} } }, httpTimeoutMs);
+      r = await call({ userId, ...chatId ? { chatId } : {}, op: "http", http: { method, path: `/api/${sent}${qs}`, ...body !== undefined && method !== "GET" ? { body } : {} } }, httpTimeoutMs);
     } catch {
       throw gone();
     }

@@ -9,6 +9,7 @@
 **B. 세계관 설정집(`anon_world_lv`) 연동 끝점** (설정집이 없으면 이전과 같음: 칸 숨김, 오류 없음)
 - 설정집의 `docs/memory-library-interop.md` 세 가지를 `src/adapter/world-archive.js`로 구현했습니다. (1) 서버 `globalThis.__marinaraWorldArchive.api` 거울: 설정집이 한 번 답한 뒤에야 만들어지고, 방별 캐시(60초)를 rpcPool(`anon_world_lv.api`, 요청 통로 `wa-req`, nonce 악수, 한 줄 직렬화)로 채우며, 읽기는 실행 중인 사용자 기준입니다. (2) 화면 `/api/world-archive/*` → `router.fallback('world-archive/')` → `op:'http'`(방 경로는 채팅 소유를 이쪽에서 먼저 확인하고 봉투에 `chatId`도 실음, 설정집이 없으면 404). (3) 거꾸로 끝점 `anon_memory_lv.world-room`(요청 통로 `anon_world_lv.mem-req`)이 enabled·storyDate·memoryLanguage를 사용자·채팅·nonce 그대로 돌려줍니다(채팅 소유 확인 포함).
 - `docs/world-archive-interface.md`의 미작업 2건 처리: 칸 화면이 읽는 `localStorage['marinara-active-chat-id']`는 칸 화면 원본을 건드리지 않고 래퍼에서 `localStorage`를 가려 호스트의 현재 방으로 대신하고, 칸이 방 이름을 묻는 `/api/chats/:id`는 백엔드 `GET chats/:id`(내 채팅만)가 답합니다.
+- 설정집으로 넘기는 `/api/world-archive/*` 경로는 먼저 라우터와 같은 방식으로 읽습니다(빈 마디 제거·인코딩 풀기·`.`/`..` 거부). `rooms//<id>`·끝 슬래시·`%`인코딩으로 채팅 소유 확인을 건너뛸 수 없고, 확인할 수 없는 방 경로(`rooms`만 있고 id 없음)는 거부합니다. 설정집에는 마디를 정리한 경로가 갑니다.
 - 시험 `tests/world-archive.test.js`(가짜 설정집 왕복·설정집 없음/rpcPool 없음/틀린 nonce·다른 사용자 채팅 거부·`world-room`·칸 화면 방 id).
 
 **C. 「하단 블록 빼고 읽기」 켠 방에서도 작중 날짜(시계)는 원문에서 읽음**

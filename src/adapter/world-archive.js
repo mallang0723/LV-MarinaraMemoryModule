@@ -111,19 +111,27 @@ export function createWorldLink({ api, host, log = () => {}, now = () => Date.no
     }
 
     // ---- 2. the screen's /api/world-archive/* ----
-    const ROOM_PATH = /^world-archive\/rooms\/([^/?]+)/;
+    /** The path read the way both routers read it: the query cut off, empty parts dropped (`rooms//id`, a trailing slash), every part decoded once
+     *  for the checks while the sent path keeps the parts as they came, so the archive routes exactly what was checked. A part that decodes to `.`/`..`
+     *  or does not decode is refused, and so is a `rooms` part with no id after it: a room path that cannot be checked is not passed on. */
+    function readPath(path) {
+        const bad = (status, msg) => Object.assign(new Error(msg), { status });
+        const segs = String(path || '').split('?')[0].split('/').filter(Boolean);
+        const dec = segs.map(x => { try { return decodeURIComponent(x); } catch { throw bad(400, 'bad chat id'); } });
+        if (dec.some(x => x === '.' || x === '..')) throw bad(404, '채팅을 찾지 못했습니다.');
+        const i = dec.indexOf('rooms');
+        if (i < 0) return { sent: segs.join('/'), chatId: undefined };
+        if (i + 1 >= dec.length || !dec[i + 1]) throw bad(404, '채팅을 찾지 못했습니다.');
+        return { sent: segs.join('/'), chatId: dec[i + 1] };
+    }
     /** The frame the screen sent (router fallback). 404 when the archive is not there, so the tab stays hidden. */
     async function http(userId, { method, path, query, body }) {
         const gone = () => Object.assign(new Error('세계관 설정집이 없습니다.'), { status: 404 });
-        const m = ROOM_PATH.exec(path);
-        let chatId;
-        if (m) {
-            try { chatId = decodeURIComponent(m[1]); } catch { throw Object.assign(new Error('bad chat id'), { status: 400 }); }
-            await host.rawChat(userId, chatId);   // a chat that is not this user's is refused here, whatever the archive would say
-        }
+        const { sent, chatId } = readPath(path);
+        if (chatId) await host.rawChat(userId, chatId);   // a chat that is not this user's is refused here, whatever the archive would say
         const qs = query && Object.keys(query).length ? `?${new URLSearchParams(query)}` : '';
         let r;
-        try { r = await call({ userId, ...(chatId ? { chatId } : {}), op: 'http', http: { method, path: `/api/${path}${qs}`, ...(body !== undefined && method !== 'GET' ? { body } : {}) } }, httpTimeoutMs); } catch { throw gone(); }
+        try { r = await call({ userId, ...(chatId ? { chatId } : {}), op: 'http', http: { method, path: `/api/${sent}${qs}`, ...(body !== undefined && method !== 'GET' ? { body } : {}) } }, httpTimeoutMs); } catch { throw gone(); }
         if (!r.ok) throw Object.assign(new Error(String(r.error || '요청을 처리하지 못했습니다.')), { status: r.status || 400 });
         return r.data;
     }

@@ -5,37 +5,41 @@ Original: 기억 서재 (memory library) / marinara-memory-module by tlsiddl, MI
 
   원 공유글   : https://gall.dcinside.com/mini/board/view/?id=aichatfrontend&no=305
   Repository : https://github.com/tlsiddl/marinara-memory-module
-  Commit     : 165d4880781ef06d24a1abdffd7785e4f607d0e8  (runtime 0.35.2 + unreleased fix)
+  Commit     : bfafb3f3ad55bfa9024ad8730a3d541e980c8963  (0.38.3 + 세계관 칸 패널 v0.7.6)
   License    : MIT, Copyright (c) 2026 tlsiddl  (LICENSE)
 
 이 이식은 원작자의 허락을 받아, 원 공유글을 링크하는 조건으로 공개합니다.
 This port is published with the original author's permission, on the condition that the original post is linked.
 
-Used files (byte-identical MIT originals from the commit above; SHA-256 checked by npm run verify:original):
-  memory-module/lib/address.cjs  sha256 ba9f520f0093c9849c7af92cd1eb791da57fe03307dcda365422ee193603cc4c
+Used files (28, byte-identical MIT originals from the commit above; SHA-256 checked by npm run verify:original, the same pins):
+  memory-module/lib/address.cjs  sha256 0645aaae29c7bbd91d7301eac9d41a5908665c52fb1f2c136a4327399b47bf79
   memory-module/lib/aliases.cjs  sha256 02a5781536a12a3f5dbd63400452137a7b62ab95601edcb2d7cb736bacbfc9c7
   memory-module/lib/backup.cjs  sha256 176157b371c76c504b8c1d406e993b94ec7c34e33dedc6acbd41513800767a29
   memory-module/lib/conflicts.cjs  sha256 3201188ff2c2204d17edeff092b4a8dba7a6e4d06adf804c39ae48651c7d8e5d
-  memory-module/lib/features.cjs  sha256 6b70016da998f21721b64003aa402b6edd6fdcd8924aef643a4b55e155519ab6
+  memory-module/lib/features.cjs  sha256 f061d272a1856409d20cb06903142663909d00dbb49c368c59d770e3e2fbfe95
   memory-module/lib/keepsakes.cjs  sha256 919e3de8e9af816a5661e15e6eb6e091b88c7a386aad697feee161a3e481e46a
   memory-module/lib/knowledge.cjs  sha256 42e170be29dfa403fe37233e15a27ea50f888b8514bcfa463875dfc7ca796172
-  memory-module/lib/ledger.cjs  sha256 856c49875915f9207938572310378ca88d75cdbe5651f70e55f5015b0f990582
-  memory-module/lib/names.cjs  sha256 1cc982d12c5ff7be450949da6720a11e3ea84ece8ec3e944a58bdb4f7a5054cf
+  memory-module/lib/ledger.cjs  sha256 873da4ada8e52c6d4bd8c7fb8d13b1890ebdce3a855e74a2310c61a36e9c308e
+  memory-module/lib/names.cjs  sha256 6aec5667bc235b12e95748a1f7553a48694061429ce604500f4896a8b0049a7c
   memory-module/lib/notebook.cjs  sha256 91496f89506cc1756fbc6f7925324447a88aa75718772992a7fc9b53b4cd76a9
+  memory-module/lib/petnotes.cjs  sha256 d102dfcebc439b6062ba9ecc923d26456bbb87931782d114ba97aab5dd5f551e
   memory-module/lib/places.cjs  sha256 d72e470557d45990c80b5e3c031f6159b76d3793c71bbee8e7107e06ddadf438
   memory-module/lib/reasons.cjs  sha256 a9ff699a1ab6944ef1bb58d24e761757f9c17a950937c0e2a8ddaba7e91f4c9e
   memory-module/lib/recall.cjs  sha256 01570f40dc105c88de6341f9b30277b44c291b47b61794d59a25d7239a57b889
-  memory-module/lib/scenes.cjs  sha256 14d3b9da7b8fa74dca270f9d52950ff11d420dfb62eaf828196b97770f44da40
+  memory-module/lib/scenes.cjs  sha256 eed786b044a6a5088e858800cee86d41e8e0769e7a07d644588803f1e7c13fba
   memory-module/lib/selected.cjs  sha256 2b1892128785279e49a310c372a6635b2202f76ad591d8ffaee17ca5f3005747
-  memory-module/lib/service.cjs  sha256 cf49ad323768d35cbc643674b07220f503378fd503526197404a4298e561952d
+  memory-module/lib/service.cjs  sha256 f88828340a902c6333ae8acf66392b1b4e5c421b975cf5500e89978ad085ea16
+  memory-module/lib/simulator.cjs  sha256 bf67920641f6df8e767c68ee095ab23960752fe44db8702836908f8c9eaaf9c3
   memory-module/lib/speakers.cjs  sha256 74ded6367848f9f52ed372f50000175598e82c6bfbe70ed6b893bf6ecf9f3b89
   memory-module/lib/state.cjs  sha256 558ca86c39ce355b5cc8bababf440541269ad23fd56e23d31da69976cceef5db
-  memory-module/lib/trackers.cjs  sha256 6765612649a9dc18544f1be5200d820ff2633f7316601e2eb61c9bf8b367b5da
-  memory-module/lib/translate.cjs  sha256 44b1fc88bff9db05ff01704f9ebf48b8f663ed787406421c7b1e1e759c7c0936
+  memory-module/lib/trackers.cjs  sha256 3701d0806474d1381c77d575dee78c5f06917d07efc894be79de1be831750ee3
+  memory-module/lib/translate.cjs  sha256 0f9940908c04b53aa2c528803af5832b8644005d59e89815f113add6c88cc00a
   memory-module/lib/vectors.cjs  sha256 e8e8cd7cd1430c9679427e912ef6356f8ce561731e7f689d0c8903fac3d238a9
-  extension/runtime.js  sha256 2eaf1e63c77ad831f0c34876a2f746ddb97765da6254b3cbd361f7c19c581c0f
+  memory-module/lib/worldlink.cjs  sha256 a82fdc7b0378f856204ea66868f0a6ec7d671acd65a644f932d105663368fa8a
+  extension/vendor/world-panel.js  sha256 9faa158884e4459a60bc0bec3194090413cf0aed4fc75c0b0b5674f27e0cda72
+  extension/runtime.js  sha256 66845fe9d3bf3e6e6ada7b7cdc3ab6933b4b7dceab05bd70f3739b7f4e0afba6
   extension/ui.css  sha256 d362c7bbc20673156e00637b06e884fd5270925f72e1fca5f54a5c79aecc236a
-  extension/theme.css  sha256 a858619ca380b78719be8a0465bb49add07f26b79a51caf51ebf5a7b246eeb97
+  extension/theme.css  sha256 d1a961b80fb2459a721151270943609f498161d8917edc7bcae42464b52049d8
 Generated scene/recall/names/address/conflicts/backup modules use checked import/field-limit patches; originals are never edited.
 Tests under tests/upstream/ are the upstream tests of that commit with only their import paths changed (the service is loaded through
 tests/upstream-service.cjs, the same wrapper the extension uses). Marinara-only tests (installers, server-patch, speaker hooks,

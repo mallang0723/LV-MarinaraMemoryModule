@@ -124,6 +124,27 @@ test('a chat of another user is refused on both sides (the screen path), and no 
     assert.equal((await e.manager.worldLink.ensure(U, 'chat-x'), e.manager.worldLink.mirror.roomEntities('chat-x').worldId), null);
 });
 
+test('a chat of another user is refused whatever the spelling of the path: empty parts, a trailing slash, encodings, dot parts, a room with no id (SYHO-251 condition 2)', async () => {
+    const e = makeEnv();
+    story(e.f, 'chat-a', 3);
+    e.f.chats.set('victim', { id: 'victim', name: '남의 방', metadata: {} });
+    const get = e.f.api.chats.get;
+    e.f.api.chats.get = async (id, user) => (id === 'victim' && user !== 'u2' ? null : get(id, user));
+    const a = archive(e.f, { owners: { 'chat-a': U, victim: 'u2' } });
+    const router = createRouter(); e.manager.mount(router);
+    const bad = ['world-archive/rooms//victim', 'world-archive/rooms///victim', 'world-archive//rooms/victim', 'world-archive//rooms//victim/entities', 'world-archive/rooms/victim/', 'world-archive/rooms//victim?x=1', 'world-archive/rooms/vict%69m', 'world-archive//rooms//vict%69m/preview', 'world-archive/%72ooms//victim', 'world-archive/rooms/chat-a%2F..%2Fvictim', 'world-archive/rooms/%2E%2E/victim', 'world-archive/rooms/chat-a/../victim', 'world-archive/rooms/chat-a/%2e%2e/victim', 'world-archive/rooms', 'world-archive/rooms/%zz'];
+    for (const path of bad) for (const method of ['GET', 'PUT']) {
+        await assert.rejects(router.handle({ method, path: `/api/${path}`, body: { worldId: 'w1' } }, U), e2 => [400, 404].includes(e2.status), `${method} ${path}`);
+    }
+    assert.equal(a.reads, 0, 'nothing left for the archive');
+    // the http function itself, called with a path that is not normalised yet, reads it the same way
+    await assert.rejects(e.manager.worldLink.http(U, { method: 'GET', path: 'world-archive/rooms//victim', query: {} }), e2 => e2.status === 404);
+    // an own chat in the same spellings still goes through, as one canonical path
+    const ok = await e.manager.worldLink.http(U, { method: 'GET', path: 'world-archive/rooms//chat-a/', query: {} });
+    assert.equal(ok.echo.path, '/api/world-archive/rooms/chat-a');
+    assert.equal(a.requests.at(-1).chatId, 'chat-a');
+});
+
 test('world-room: answers enabled / storyDate / memoryLanguage with user and chat echoed; refuses others', async () => {
     const f = fake();
     const stop = start(f.api, { afterReplyMs: 5, store: { debounceMs: 0 } });
