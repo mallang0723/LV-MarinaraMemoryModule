@@ -50,7 +50,7 @@ test('mirror: the room is linked through the archive, the sync api answers for t
     assert.equal(api.roomEntities('chat-a').worldId, null, 'outside any user\'s run there is no answer');
     assert.deepEqual(a.requests.map(r => r.op), ['roomEntities', 'roomRelations', 'names']);
     assert.ok(a.requests.every(r => r.v === 1 && r.userId === U && r.chatId === 'chat-a' && typeof r.nonce === 'string'));
-    assert.deepEqual(e.f.rpcPool.policies.get('wa-req'), { requires: [] });
+    assert.deepEqual(e.f.rpcPool.policies.get('wa-req'), { requires: [...REQUIRES] });
     // cached for a minute: no new request
     await linked(e);
     assert.equal(a.requests.length, 3);
@@ -200,3 +200,20 @@ test('the world panel reads the open chat from the host (localStorage key shadow
     assert.equal(store.get('theme'), 'light'); assert.ok(!store.has('marinara-active-chat-id'));
     assert.equal(new Function('LV', 'globalThis', `${line}\nreturn localStorage.getItem('marinara-active-chat-id');`)({ activeChatId: () => '' }, globalThisFake), null);
 });
+
+// R1 (SYHO-252): the host's assertRequesterCanReadEndpoint — no `requires` means any extension may read; otherwise requester AND owner both hold every permission.
+const hostCanRead = (policy, requesterPerms, ownerPerms) => !(policy?.requires || []).length || policy.requires.every(p => requesterPerms.includes(p) && ownerPerms.includes(p));
+
+test('request channel wa-req: an extension without chats/chat_mutation cannot read it; the archive (with both) still can', async () => {
+    const e = makeEnv();
+    story(e.f, 'chat-a', 3);
+    archive(e.f);
+    await linked(e);
+    const policy = e.f.rpcPool.policies.get('wa-req');
+    assert.ok(policy, 'the request channel was published');
+    assert.equal(hostCanRead(policy, [], ['chats', 'chat_mutation']), false, 'a bystander without permissions');
+    assert.equal(hostCanRead(policy, ['chats'], ['chats', 'chat_mutation']), false, 'a bystander with one permission');
+    assert.equal(hostCanRead(policy, ['chats', 'chat_mutation'], ['chats', 'chat_mutation']), true, 'the archive keeps working');
+    assert.equal(linkedWorks(await linked(e)), true);
+});
+const linkedWorks = r => r.linked === true;

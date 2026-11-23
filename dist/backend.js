@@ -22211,7 +22211,7 @@ function createWorldLink({ api, host, log = () => {}, now = () => Date.now(), ui
       const nonce = uid();
       try {
         const r = await withTimeout((async () => {
-          pool.sync(REQUEST_CHANNEL, { v: 1, nonce, ...req }, { requires: [] });
+          pool.sync(REQUEST_CHANNEL, { v: 1, nonce, ...req }, { requires: [...REQUIRES] });
           return pool.read(API_ENDPOINT);
         })(), timeoutMs, "world archive");
         if (!isObject2(r) || r.v !== 1 || r.nonce !== nonce)
