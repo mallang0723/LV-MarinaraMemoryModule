@@ -646,7 +646,7 @@ function attachSummarizationFrontend(ctx, { fetch: fetchSetting = globalThis.fet
 
 // src/memory/ui/runtime.generated.js
 function mountMemory(marinara, LV) {
-  const VERSION = "1.5.0-lv.2";
+  const VERSION = "1.6.0-lv.1";
   const UI_CSS = `:host{all:initial;color:#34374b;font:14px/1.65 "Pretendard","Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--im-accent:#7777c8;--im-ink:#34374b;--im-muted:#8e91a6;--im-line:#e9e9f2;--im-paper:#fff;--im-canvas:#f5f5fb;--im-soft:#eeeefa}
 *{box-sizing:border-box}button,input,select,textarea{font:inherit}button{cursor:pointer;color:inherit;border:1px solid var(--im-line);background:var(--im-paper);padding:9px 14px;border-radius:11px;transition:background .15s,transform .15s,box-shadow .15s}button:hover{background:var(--im-soft)}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #aaa7e5;outline-offset:3px}.icon{width:19px;height:19px;flex:none;display:inline-block;vertical-align:middle}#launch{position:fixed;right:20px;bottom:126px;z-index:2147483600;display:flex;align-items:center;gap:8px;color:#fff;background:#7777c8;border:0;border-radius:24px;padding:11px 19px;box-shadow:0 7px 20px #7777c84d}#backdrop{position:fixed;inset:0;background:#20233654;z-index:2147483601}#panel{position:fixed;z-index:2147483602;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1320px,96vw);height:min(900px,91vh);display:grid;grid-template-columns:192px minmax(0,1fr) 224px;background:var(--im-paper);border-radius:26px;box-shadow:0 25px 100px #25254435;overflow:hidden}#panel[hidden],[hidden]{display:none!important}
 .sidebar{display:flex;flex-direction:column;padding:30px 18px 20px;border-right:1px solid var(--im-line);min-width:0}.brand{display:flex;align-items:center;gap:10px;padding:0 12px 30px;color:var(--im-accent);font-size:18px;font-weight:750;letter-spacing:-.8px}.brand .icon{width:27px;height:27px}.brand small{display:block;white-space:nowrap;font:7px/1.8 ui-monospace,monospace;letter-spacing:1.3px;color:#a8a6bd}.nav-label{font-size:9px;letter-spacing:1.8px;color:#b2b1c2;padding:13px 14px 9px}nav{display:flex;flex-direction:column;gap:6px}nav button{display:flex;gap:11px;align-items:center;border:0;background:transparent;text-align:left;font-size:12px;padding:11px 13px;border-radius:10px;color:#9291aa}nav button.selected{background:#eeeeFA;color:#6d69b4;font-weight:700}nav button .icon{width:17px;height:17px}.side-bottom{margin-top:auto;padding-top:26px;display:grid;gap:10px}.side-bottom button{font-size:11px;border:0;display:flex;align-items:center;gap:8px;background:#f7f7fb}.side-bottom small{font-size:9px;color:#b0aec0;padding-left:10px}
@@ -893,6 +893,7 @@ details.paper>summary{font-size:13px;font-weight:600;color:var(--im-ink)}
 .event-main small.thread-now-line{font-size:10.5px;color:#6f63a6;margin-top:4px;white-space:normal}.thread-now{border-left:2px solid #c3bde2;padding:2px 12px;margin:0 0 14px}.thread-now small{font-size:9px;color:#9993ac}.thread-now b{font-weight:600;color:#4f4868}
 .tl-cal{border:1px solid var(--im-line);border-radius:14px;padding:12px 14px;margin:0 0 18px;max-width:420px;background:var(--im-paper)}.tl-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.tl-cal-head b{font-size:13px}.tl-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.tl-cal-grid span,.tl-cal-grid button{font-size:11px;padding:6px 0;border-radius:9px;line-height:1.2}.tl-week{color:var(--im-muted);font-size:9px!important}.tl-off{color:#c9c6d6}.tl-cal-grid button{background:var(--im-soft);color:var(--im-accent);border:1px solid transparent;font-weight:650;display:flex;flex-direction:column;align-items:center}.tl-cal-grid button small{font-size:8px;font-weight:400}.tl-cal button.is-on{background:var(--im-accent);color:#fff}.tl-cal button.is-on small{color:#fff}.tl-cal-extra{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.tl-steps{justify-content:space-between}
 .tl-parts{display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 16px}.tl-parts button{font-size:10px;padding:4px 10px;border-radius:30px}.tl-parts button.is-on{background:var(--im-accent);color:#fff;border-color:var(--im-accent)}.tl-parts button.is-on small{color:#fff}.ko-line{display:flex;gap:6px;align-items:center;margin-top:4px}.ko-line input{flex:1;min-width:0;font-size:11px}
+.group-picks{display:flex;flex-wrap:wrap;gap:4px 14px;margin:8px 0}.group-picks .mini{margin:0}.person-names{margin:6px 0}.person-names>summary{cursor:pointer;padding:4px 0}.same-row small{opacity:.8}
 `;
   const THEME_CSS = `/* 기억 서재 — 종이 티켓과 LP 테마 (ui.css 위에 덮어씀) */
 :host{--vinyl:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cg%20transform%3D%22translate(9%200)%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2239%22%20fill%3D%22%23111%22%20stroke%3D%22%23f2efe8%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2214%22%20fill%3D%22none%22%20stroke%3D%22%233a3a3a%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2217%22%20fill%3D%22none%22%20stroke%3D%22%233a3a3a%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2220%22%20fill%3D%22none%22%20stroke%3D%22%233a3a3a%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2223%22%20fill%3D%22none%22%20stroke%3D%22%233a3a3a%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2226%22%20fill%3D%22none%22%20stroke%3D%22%233a3a3a%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2229%22%20fill%3D%22none%22%20stroke%3D%22%233a3a3a%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2232%22%20fill%3D%22none%22%20stroke%3D%22%233a3a3a%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2235%22%20fill%3D%22none%22%20stroke%3D%22%233a3a3a%22%20stroke-width%3D%22.7%22%2F%3E%3Cpolygon%20points%3D%2268.07%2C16.57%2069.91%2C17.63%2065.91%2C22.45%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2270.95%2C18.30%2073.11%2C19.83%2067.38%2C25.59%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2273.66%2C20.26%2076.07%2C22.35%2068.25%2C28.94%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2276.19%2C22.46%2078.75%2C25.15%2067.71%2C33.11%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2278.51%2C24.88%2081.13%2C28.21%2066.40%2C37.10%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2280.61%2C27.49%2083.19%2C31.50%2065.90%2C39.78%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2282.62%2C30.50%2084.80%2C34.74%2062.65%2C43.48%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2284.43%2C33.93%2086.01%2C37.87%2068.63%2C42.54%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2285.89%2C37.53%2086.94%2C41.09%2071.35%2C43.73%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2286.98%2C41.25%2087.58%2C44.38%2074.46%2C45.29%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2287.68%2C45.07%2087.93%2C47.71%2080.65%2C47.07%22%20fill%3D%22%23f2efe8%22%2F%3E%3Cpolygon%20points%3D%2287.99%2C48.94%2087.99%2C51.06%2082.92%2C50.00%22%20fill%3D%22%23f2efe8%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2210%22%20fill%3D%22%23f2efe8%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%221.8%22%20fill%3D%22%23111%22%2F%3E%3C%2Fg%3E%0A%20%20%20%20%20%20%3Crect%20x%3D%224%22%20y%3D%2210%22%20width%3D%2258%22%20height%3D%2280%22%20rx%3D%222%22%20fill%3D%22%23f2efe8%22%20stroke%3D%22%23111%22%20stroke-width%3D%222.4%22%2F%3E%0A%20%20%20%20%20%20%3Cpath%20d%3D%22M12%2024h28M12%2030h18%22%20stroke%3D%22%23111%22%20stroke-width%3D%221.6%22%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%2233%22%20y%3D%2278%22%20text-anchor%3D%22middle%22%20font-family%3D%22Georgia%2Cserif%22%20font-size%3D%229%22%20font-weight%3D%22700%22%20fill%3D%22%23111%22%3EMEMORY%3C%2Ftext%3E%3C%2Fsvg%3E");--vinyl-label:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2249%22%20fill%3D%22%23111%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2225.0%22%20fill%3D%22none%22%20stroke%3D%22%232c2c2c%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2227.4%22%20fill%3D%22none%22%20stroke%3D%22%232c2c2c%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2229.8%22%20fill%3D%22none%22%20stroke%3D%22%232c2c2c%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2232.2%22%20fill%3D%22none%22%20stroke%3D%22%232c2c2c%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2234.6%22%20fill%3D%22none%22%20stroke%3D%22%232c2c2c%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2237.0%22%20fill%3D%22none%22%20stroke%3D%22%232c2c2c%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2239.4%22%20fill%3D%22none%22%20stroke%3D%22%232c2c2c%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2241.8%22%20fill%3D%22none%22%20stroke%3D%22%232c2c2c%22%20stroke-width%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2244.2%22%20fill%3D%22none%22%20stroke%3D%22%232c2c2c%22%20stroke-width%3D%22.7%22%2F%3E%3Cpath%20d%3D%22M50%204.5A45.5%2045.5%200%200%201%2092.5%2034%22%20fill%3D%22none%22%20stroke%3D%22%23f2efe8%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20opacity%3D%22.85%22%2F%3E%3Cpath%20d%3D%22M50%2012A38%2038%200%200%201%2084%2032%22%20fill%3D%22none%22%20stroke%3D%22%23f2efe8%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%20opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22M50%2095.5A45.5%2045.5%200%200%201%207.5%2066%22%20fill%3D%22none%22%20stroke%3D%22%23f2efe8%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20opacity%3D%22.85%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2222%22%20fill%3D%22%23f2efe8%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2219.5%22%20fill%3D%22none%22%20stroke%3D%22%23111%22%20stroke-width%3D%22.5%22%20opacity%3D%22.35%22%2F%3E%3C%2Fsvg%3E")}
@@ -1273,6 +1274,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
   let nameForm = { source: "", target: "", display: "", text: true };
   let addressForm = { id: "", from: "", to: "", term: "", note: "" };
   let namePreview = null;
+  let groupForm = { target: "", picked: [], text: false };
   let searchQuery = "";
   let searchKind = "all";
   const pickedFacts = new Set;
@@ -2543,6 +2545,11 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       ${routineRow({ what: "wash", at: lastAt }, "new")}
     </div>${blocks}`;
   }
+  function readGroupForm() {
+    const target = root.querySelector("#groupTarget")?.value.trim() || "";
+    const picked = [...root.querySelectorAll("[data-group-pick]")].filter((x) => x.checked).map((x) => x.dataset.groupPick);
+    groupForm = { target, picked, text: !!root.querySelector("#groupText")?.checked };
+  }
   function readNameForm() {
     const v = (id) => root.querySelector(id);
     nameForm = { source: v("#nameSource")?.value.trim() || "", target: v("#nameTarget")?.value.trim() || "", display: v("#nameDisplay")?.value.trim() || "", text: v("#nameText")?.checked !== false };
@@ -2562,12 +2569,13 @@ pre{font-size:12.5px!important;line-height:1.85!important}
     if (!namePreview || namePreview.room !== room)
       return "";
     const p = namePreview.data;
-    const merge = namePreview.kind === "merge";
+    const group = namePreview.kind === "group";
+    const merge = namePreview.kind === "merge" || group;
     const alias = namePreview.kind === "alias";
     const rows = AREA_ORDER.map((k) => `<tr><th>${esc(p.areas?.[k] || k)}</th><td>${p.counts?.[k] || 0}곳</td></tr>`).join("");
     const samples = (p.samples || []).map((x) => `<div class="quote-card"><small>${esc(x.areaName)} · ${esc(x.label)}</small><p><s>${esc(x.before)}</s></p><p>→ ${esc(x.after)}</p></div>`).join("");
-    const what = alias ? `<p>글 속 <b>${esc(p.source)}</b> → <b>${esc(p.display)}</b> (요약·사건·사실·챕터·할 일·생활 기록의 글만)</p><p class="hint">이름 칸과 원문 대사(번역 포함), 직접 고친 항목은 바꾸지 않습니다. 이름 표는 그대로입니다.</p>` : merge ? `<p>${(p.items || []).map((i) => `<b>${esc(i.source)}</b> → <b>${esc(i.target)}</b>`).join(", ")}</p><p class="hint">이름 칸(말한 사람·들은 사람·인물·누구)만 합칩니다. 글 속 표현은 그대로 둡니다.</p>` : `<p><b>${esc(p.source)}</b> → <b>${esc(p.target)}</b>${p.text ? ` · 글 속에는 <b>${esc(p.display)}</b>(으)로 씁니다` : " · 이름 칸만 바꿉니다"}</p>`;
-    const armedKey = alias ? "aliasApply" : merge ? "mergeApply" : "nameApply";
+    const what = alias ? `<p>글 속 <b>${esc(p.source)}</b> → <b>${esc(p.display)}</b> (요약·사건·사실·챕터·할 일·생활 기록의 글만)</p><p class="hint">이름 칸과 원문 대사(번역 포함), 직접 고친 항목은 바꾸지 않습니다. 이름 표는 그대로입니다.</p>` : merge ? `<p>${(p.items || []).map((i) => `<b>${esc(i.source)}</b> → <b>${esc(i.target)}</b>`).join(", ")}</p><p class="hint">${p.text ? "이름 칸과 글 속 이름을 함께 바꿉니다." : "이름 칸(말한 사람·들은 사람·인물·누구)만 합칩니다. 글 속 표현은 그대로 둡니다."}</p>` : `<p><b>${esc(p.source)}</b> → <b>${esc(p.target)}</b>${p.text ? ` · 글 속에는 <b>${esc(p.display)}</b>(으)로 씁니다` : " · 이름 칸만 바꿉니다"}</p>`;
+    const armedKey = alias ? "aliasApply" : group ? "groupApply" : merge ? "mergeApply" : "nameApply";
     return `<div class="paper"><h2>미리 보기 · 모두 ${p.total || 0}곳</h2>${what}
       <table class="counts">${rows}</table>
       ${samples ? `<h3>바뀌는 예</h3>${samples}` : ""}
@@ -2858,7 +2866,35 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       return `<div class="routine-row alias-row"><span>${esc(a)}</span><input id="${id}" value="${esc(shortOf(canon))}" aria-label="${esc(a)} 대신 글에 쓸 표기">
         <button data-act="aliasPreview" data-alias="${esc(a)}" data-input="${id}">글 속 표기 바꾸기</button></div>`;
     };
-    const table = Object.entries(names.people || {}).filter(([, v]) => v.aliases?.length || v.display).map(([k, v]) => `<li><b>${esc(k)}</b>${v.display ? ` · 글에는 ${esc(v.display)}` : ""}${v.aliases?.length ? ` · 별칭: ${v.aliases.map(esc).join(", ")}` : ""}${v.aliases?.length ? v.aliases.map((a) => aliasRow(k, a)).join("") : ""}</li>`).join("");
+    const count = new Map(used.map((u) => [u.name, u.count]));
+    const g = groupForm;
+    const pickable = used.filter((u) => u.count && u.name !== g.target);
+    const groupPaper = `<div class="paper"><h2>여러 이름 한꺼번에 묶기</h2>
+      <p class="hint">한 사람이 여러 이름(애칭·별명·멸칭·오타·표기)으로 따로 저장돼 있으면 기준 이름을 고르고 묶을 이름을 모두 체크하세요. 한 번에 합쳐지고, 한 번에 되돌릴 수 있습니다. 묶은 이름은 다른 이름으로 남아 다음 정리부터 같은 사람으로 봅니다.</p>
+      <label>기준 이름<input id="groupTarget" list="nameKnown" value="${esc(g.target)}" placeholder="예: 카드에 적힌 이름"></label>
+      <div class="group-picks">${pickable.length ? pickable.map((u) => `<label class="mini"><input type="checkbox" data-group-pick="${esc(u.name)}" ${g.picked.includes(u.name) ? "checked" : ""}>${esc(u.name)} <small>${u.count}곳</small></label>`).join("") : '<p class="hint">묶을 이름이 없습니다.</p>'}</div>
+      <label class="mini"><input id="groupText" type="checkbox" ${g.text ? "checked" : ""}>글 속 이름도 기준 이름으로 바꾸기 <small>(끄면 요약 속 "꼬맹이라고 놀렸다" 같은 표현은 그대로 두고 인물 칸만 묶습니다)</small></label>
+      <div class="buttons"><button class="primary" data-act="groupPreview">묶기 미리 보기</button>${g.picked.length ? `<button class="ghost" data-act="groupClear">체크 모두 풀기</button>` : ""}</div></div>`;
+    const ms = names.modelSame || {};
+    const sameRow = (x) => `<div class="routine-row same-row"><span><b>${esc(x.name)}</b> (${count.get(x.name) || 0}곳) → <b>${esc(x.person)}</b> · ${x.sure === "high" ? "거의 확실" : "아마도"}${x.why ? `<br><small>${esc(x.why)}</small>` : ""}</span>
+      <button data-act="sameToGroup" data-source="${esc(x.name)}" data-target="${esc(x.person)}">묶기에 담기</button><button class="ghost" data-act="nameSuggest" data-source="${esc(x.name)}" data-target="${esc(x.person)}">미리 보기</button><button class="ghost" data-act="nameDismiss" data-source="${esc(x.name)}" data-target="${esc(x.person)}">다른 사람</button></div>`;
+    const samePaper = `<div class="paper"><h2>같은 사람 찾기 (모델)${ms.items?.length ? ` · ${ms.items.length}건` : ""}</h2>
+      <p class="hint">애칭·별명·멸칭·직함은 글자만으로는 누구인지 알 수 없어서, 기억 정리 모델이 그 이름이 나온 장면을 읽고 같은 사람을 찾아 근거와 함께 알려 줍니다. 자동으로 합치지는 않습니다. 맞으면 '묶기에 담기'로 위 칸에 모아 한 번에 묶고, 아니면 '다른 사람'을 누르세요. 모델을 한 번 부릅니다(연결에 따라 비용이 들 수 있음).</p>
+      <div class="buttons"><button class="primary" data-act="sameFind">${ms.at ? "다시 찾기" : "모델에게 찾아 달라기"}</button>${ms.at ? `<small>${esc(day(ms.at))}에 찾음</small>` : ""}</div>
+      ${ms.items?.length ? ms.items.map(sameRow).join("") : ms.at ? '<p class="hint">남은 후보가 없습니다.</p>' : ""}</div>`;
+    let addN = 0;
+    const personBox = (k) => {
+      const v = names.people?.[k] || { aliases: [] };
+      const total = [k, ...v.aliases || []].reduce((n, x) => n + (count.get(x) || 0), 0);
+      const inputId = `aliasAdd${addN++}`;
+      const rows = (v.aliases || []).map((a) => `${aliasRow(k, a)}<div class="routine-row"><span><small>${count.get(a) ? `${count.get(a)}곳에 따로 쓰임` : ""}</small></span><button class="ghost" data-act="aliasRemove" data-person="${esc(k)}" data-alias="${esc(a)}">${armed === `aliasRemove:${k}|${a}` ? "한 번 더 누르면 뗍니다" : `‘${esc(a)}’ 떼기`}</button></div>`).join("");
+      return `<details class="person-names" data-person="${esc(k)}"><summary><b>${esc(k)}</b>${v.seeded ? " <small>카드</small>" : ""} · 다른 이름 ${(v.aliases || []).length}개 · ${total}곳</summary>
+        ${v.display ? `<p class="hint">글에는 ${esc(v.display)}(으)로 씁니다.</p>` : ""}${rows || '<p class="hint">다른 이름이 없습니다.</p>'}
+        <div class="routine-row"><input id="${inputId}" placeholder="다른 이름 더하기 (예: 꼬맹이)" aria-label="${esc(k)}의 다른 이름 더하기"><button data-act="aliasAdd" data-person="${esc(k)}" data-input="${inputId}">더하기</button></div></details>`;
+    };
+    const peoplePaper = `<div class="paper"><h2>인물별 이름 · ${known.length}명</h2>
+      <p class="hint">인물마다 같은 사람으로 보는 다른 이름입니다. 잘못 묶인 이름은 떼면 다시 따로 보고, 다시 자동으로 묶지 않습니다(이미 바뀐 기록은 그대로). 아직 기억에 안 나온 별명은 미리 더해 두면 처음부터 같은 사람으로 봅니다.</p>
+      ${known.length ? known.map(personBox).join("") : '<p class="hint">아직 인물이 없습니다.</p>'}</div>`;
     const auto = (names.autoMerged || []).map((r) => {
       const key = `nameAutoUndo:${r.id}`;
       return `<div class="routine-row"><span>${esc(day(r.at))} · <b>${esc(r.source)}</b> → <b>${esc(r.target)}</b> (${r.changes}곳)${r.why ? `<br><small>단어장: ${esc(r.why)}</small>` : ""}</span>
@@ -2872,10 +2908,12 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       ${previewBox()}
       ${addressPaper(names.address, addressForm, armed, names.known || [])}
       ${form}
+      ${groupPaper}
+      ${samePaper}
       <div class="paper"><h2>자동으로 합친 이름 · ${names.autoMerged?.length || 0}건</h2><p class="hint">번역 단어장에 짝지어 둔 이름(예: Daniel = 다니엘)이 기억에 따로 저장돼 있으면 한 사람으로 자동으로 합칩니다. 남기는 이름은 기억을 정리하는 언어를 따릅니다(한국어로 정리하면 한국어 이름, 영어로 정리하면 영어 이름). 되돌리면 그 합침으로 바뀐 곳이 원래대로 돌아가고(그 뒤에 다시 고친 곳은 그대로), 그 짝은 다시 자동으로 합치지 않습니다.</p>${auto ? auto : '<p class="hint">없습니다.</p>'}</div>
       <div class="paper"><h2>같은 사람일 수 있음 · ${names.suggestions?.length || 0}건</h2><p class="hint">철자나 소리가 비슷할 뿐 확실하지 않아 자동으로 합치지 않습니다. 같은 사람이면 미리 보기 뒤 합치고, 다른 사람이면 '다른 사람'을 눌러 다시 묻지 않게 하세요.</p>${sug || '<p class="hint">없습니다.</p>'}</div>
       <div class="paper"><h2>이미 저장된 중복 · ${names.duplicates?.length || 0}명</h2><p class="hint">별칭이나 이름만 부른 형태(조사 포함)처럼 규칙으로 같은 사람인 이름이 따로 저장된 경우입니다. 합치면 기록은 하나도 버리지 않고 이야기 순서대로 모읍니다(같은 기록이 두 번 저장된 것만 하나로).</p>${dup ? `<ul>${dup}</ul><div class="buttons"><button data-act="mergePreview">중복 합치기 미리 보기</button></div>` : '<p class="hint">없습니다.</p>'}</div>
-      <div class="paper"><h2>별칭 표</h2>${table ? `<ul>${table}</ul>` : '<p class="hint">아직 별칭이 없습니다.</p>'}</div>
+      ${peoplePaper}
       <div class="paper"><h2>최근 이름 바꾸기</h2>${history ? `<ul>${history}</ul>` : '<p class="hint">없습니다.</p>'}${last ? `<div class="buttons"><button class="ghost" data-act="nameUndo">${armed === "nameUndo" ? "한 번 더 누르면 되돌립니다" : `마지막 바꾸기 되돌리기 (${esc(last.source)} → ${esc(last.target)})`}</button></div>` : ""}</div>`;
   }
   function addressPaper(a, form, armedNow, known) {
@@ -3867,7 +3905,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
   async function handle(actName, el) {
     const id = el?.dataset?.id;
     const chat = encodeURIComponent(room);
-    if (actName !== "fresh" && !actName.startsWith("deleteFact") && actName !== "closeThread" && actName !== "factBulkDelete" && actName !== "rebuildChapters" && actName !== "deleteRoutine" && !["trackerUndoApplied", "nameApply", "mergeApply", "aliasApply", "nameUndo", "nameAutoUndo", "backupDownload", "restoreApply", "restoreUndo", "addressDelete", "stateReset", "placeDelete", "keepDelete", "noteDelete", "noteRebuildAll", "trackerDelete", "trackerDropStart"].includes(actName))
+    if (actName !== "fresh" && !actName.startsWith("deleteFact") && actName !== "closeThread" && actName !== "factBulkDelete" && actName !== "rebuildChapters" && actName !== "deleteRoutine" && !["trackerUndoApplied", "nameApply", "mergeApply", "aliasApply", "nameUndo", "nameAutoUndo", "groupApply", "aliasRemove", "backupDownload", "restoreApply", "restoreUndo", "addressDelete", "stateReset", "placeDelete", "keepDelete", "noteDelete", "noteRebuildAll", "trackerDelete", "trackerDropStart"].includes(actName))
       armed = "";
     switch (actName) {
       case "meterRefresh":
@@ -4156,6 +4194,72 @@ pre{font-size:12.5px!important;line-height:1.85!important}
           namePreview = null;
           names = null;
         }, `${form.source} → ${form.target}: 이름을 바꿨습니다.`);
+      }
+      case "groupPreview": {
+        readGroupForm();
+        if (!groupForm.target || !groupForm.picked.length) {
+          lastError = "기준 이름과 묶을 이름을 골라 주세요.";
+          return render();
+        }
+        const form = { target: groupForm.target, sources: groupForm.picked, text: groupForm.text };
+        return act(async () => {
+          namePreview = { kind: "group", room, form, data: await api("POST", `/chats/${chat}/names/group-preview`, form) };
+        }, "", { reload: false });
+      }
+      case "groupApply": {
+        if (armed !== "groupApply") {
+          armed = "groupApply";
+          return render();
+        }
+        armed = "";
+        const { form, data } = namePreview;
+        return act(async () => {
+          await api("POST", `/chats/${chat}/names/group-apply`, { ...form, token: data.token, confirm: true });
+          namePreview = null;
+          groupForm = { target: "", picked: [], text: false };
+          names = null;
+        }, `${form.sources.length}개 이름을 ${form.target}(으)로 묶었습니다.`);
+      }
+      case "groupClear":
+        readGroupForm();
+        groupForm = { ...groupForm, picked: [] };
+        return render();
+      case "sameToGroup": {
+        readGroupForm();
+        const target = el.dataset.target;
+        const picked = groupForm.target === target ? groupForm.picked : [];
+        groupForm = { target, picked: [...new Set([...picked, el.dataset.source])], text: groupForm.text };
+        notice = `‘${el.dataset.source}’을(를) ${target} 묶기에 담았습니다. 위 「여러 이름 한꺼번에 묶기」에서 미리 보기 하세요.`;
+        return render();
+      }
+      case "sameFind":
+        return act(async () => {
+          const r = await api("POST", `/chats/${chat}/names/model-same`);
+          names = null;
+          notice = r.note || `${r.asked}개 이름을 살펴 ${r.items.length}건을 찾았습니다.`;
+        }, "", { reload: false });
+      case "aliasRemove": {
+        const key = `aliasRemove:${el.dataset.person}|${el.dataset.alias}`;
+        if (armed !== key) {
+          armed = key;
+          return render();
+        }
+        armed = "";
+        return act(async () => {
+          await api("POST", `/chats/${chat}/names/alias`, { action: "remove", person: el.dataset.person, alias: el.dataset.alias });
+          names = null;
+        }, `${el.dataset.person}에서 ‘${el.dataset.alias}’을(를) 뗐습니다.`);
+      }
+      case "aliasAdd": {
+        const alias = root.querySelector(`#${el.dataset.input}`)?.value.trim() || "";
+        if (!alias) {
+          lastError = "더할 이름을 적어 주세요.";
+          return render();
+        }
+        return act(async () => {
+          await api("POST", `/chats/${chat}/names/alias`, { action: "add", person: el.dataset.person, alias });
+          names = null;
+        }, `${el.dataset.person}에 ‘${alias}’을(를) 더했습니다.`);
       }
       case "mergePreview":
         return act(async () => {
@@ -5367,6 +5471,8 @@ pre{font-size:12.5px!important;line-height:1.85!important}
         const mode = e.target.value === "simulator" ? "simulator" : "character";
         act(() => api("POST", `/chats/${encodeURIComponent(room)}/mode`, { mode }), mode === "simulator" ? "세계 시뮬레이터로 바꿨습니다. 다음 정리부터 적용됩니다." : "캐릭터 RP로 바꿨습니다. 다음 정리부터 적용됩니다.");
       }
+      if (e.target.dataset?.groupPick !== undefined || e.target.id === "groupTarget" || e.target.id === "groupText")
+        readGroupForm();
       if (e.target.id === "setDatesFromText") {
         const on = e.target.checked;
         act(async () => {
@@ -5682,7 +5788,7 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       const EMBEDDED = typeof __WORLD_ARCHIVE_EMBEDDED__ !== "undefined" && __WORLD_ARCHIVE_EMBEDDED__ === true;
       if (!EMBEDDED && document.getElementById("marinara-world-archive-root"))
         return;
-      const VERSION = "0.7.6";
+      const VERSION = "0.8.4-beta";
       const PANEL_CONTRACT = 2;
       const UPDATE_MSG = "세계관 칸을 쓰려면 기억 서재(또는 설정집)를 업데이트해 주세요. 지금은 보기만 할 수 있습니다.";
       const BASE = "/api/world-archive";
@@ -5881,6 +5987,14 @@ pre{white-space:pre-wrap;word-break:break-word;font:12.5px/1.65 var(--wa-mono);m
 
 /* automatic updates */
 .auto-line{display:flex;gap:8px;align-items:flex-start}.auto-line .dot{margin-top:6px}
+/* v0.8.4: 정리할 모델 band — the one coloured strip on the page */
+.model-band{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;margin:0 0 18px;padding:10px 14px;background:#f5e3b5;color:#3d2a05;border:1.5px solid #a8741a;border-left-width:6px;border-radius:3px;font:600 13.5px/1.5 var(--wa-serif)}
+.model-band button{flex:none;background:#a8741a;color:#fff8e6;border:1.5px solid #a8741a;font-weight:700}
+.model-band button:hover{background:#8a5e12;border-color:#8a5e12}
+.model-band.small{margin:0;padding:8px 10px;font-size:12px}
+:host([data-theme=dark]) .model-band{background:#3b2d12;color:#f6e2b0;border-color:#d9a640}
+:host([data-theme=dark]) .model-band button{background:#d9a640;color:#241a05;border-color:#d9a640}
+.pick-flash{outline:3px solid #d9a640;outline-offset:2px}
 .dot{display:inline-block;flex:none;width:8px;height:8px;border-radius:50%;border:1.5px solid var(--wa-ink)}
 .dot.on{background:var(--wa-ink)}
 .dot.run{background:var(--wa-ink);animation:blink 1s infinite}
@@ -5962,6 +6076,7 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
 .view-lang button{border:0;border-radius:999px;padding:3px 11px;background:transparent;color:var(--wa-ink);font:12.5px/1.5 var(--wa-sans);letter-spacing:0;cursor:pointer}.view-lang button.on{background:var(--wa-ink);color:var(--wa-paper)}
 .back-check{margin:14px 0 0;padding:12px 14px;border:1px solid var(--wa-ink);border-radius:10px}.back-check h4{margin:0 0 8px;font:700 14px/1.45 var(--wa-serif)}.back-check dl{margin:0}.back-check dt{font-size:12.5px;color:var(--wa-muted);margin-top:8px}.back-check dd{margin:2px 0 0}.back-check dd.to{font-family:var(--wa-serif)}
 .wt-rgrp{margin:16px 0 2px;font:700 14px/1.45 var(--wa-serif);letter-spacing:0;color:var(--wa-ink)}.wt-rgrp small{font:12.5px var(--wa-sans);color:var(--wa-muted);margin-left:6px}
+.caps button .rec{font-size:10.5px;margin-left:6px;padding:0 6px;border:1px dashed currentColor;border-radius:9px;opacity:.85;font-weight:600}.budget-rec{margin:6px 0 0}.law-out{margin:6px 0 0}
 .topic-bar{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}.topic-bar .cap{font-size:12.5px;padding:3px 12px;border-color:var(--wa-line);color:var(--wa-ink);cursor:pointer}
 .topic-bar .cap.on{background:var(--wa-ink);border-color:var(--wa-ink);color:var(--wa-paper)}.topic-bar .cap small{opacity:.7;margin-left:3px}.topic-bar .cap.opt{border-style:dashed}
 .wt-empty{color:var(--wa-muted);font-size:12.5px;margin:6px 0}
@@ -6239,7 +6354,9 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
           await loadEntities();
           st.loaded = true;
         }
-        const defs = (type) => (st.fields[type] || []).filter((x) => !x.optional || (world()?.personFields || []).includes(x.key));
+        const ANIMAL_RE = /\b(?:cats?|kittens?|dogs?|pupp(?:y|ies)|hounds?|wol(?:f|ves)|fox(?:es)?|owls?|ravens?|crows?|snakes?|serpents?|rats?|mice|mouse|toads?|phoenix(?:es)?|dragons?|stags?|deer|bears?|rabbits?|hares?|horses?|ponies|pony|kneazles?|half-kneazle|leopards?|panthers?|birds?|ferrets?)\b|고양이|강아지|늑대|여우|부엉이|올빼미|까마귀|뱀|쥐|두꺼비|불사조|드래곤|사슴|곰|토끼|니즐|표범|새$|개$|말$|용$/i;
+        const isAnimal = (e) => ANIMAL_RE.test(String(e?.fields?.species || "").trim());
+        const defs = (type, e) => (st.fields[type] || []).filter((x) => !x.optional || (world()?.personFields || []).includes(x.key)).map((x) => x.key === "hair" && isAnimal(e) ? { ...x, label: "털 · 깃털" } : x);
         const count = (type) => st.entities.filter((e) => e.type === type).length;
         const fmtDate = (iso) => {
           const d = new Date(iso);
@@ -6311,6 +6428,14 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
             return "지금 이 세계관을 읽고 있습니다.";
           return `지금은 「${esc(s.name)}」을(를) 읽고 있습니다.`;
         }
+        function modelBandHtml(small) {
+          const w = world();
+          if (!w || st.readOnly || w.auto?.enabled && w.auto?.connectionId)
+            return "";
+          const has = !!w.auto?.connectionId;
+          const text = has ? "자동 반영이 꺼져 있어요 — 정리할 모델은 기억 서재와 따로예요" : "정리할 모델을 아직 안 골랐어요 — 기억 서재와 따로 골라요";
+          return `<div class="model-band${small ? " small" : ""}" role="status"><span>${text}</span><button type="button" data-act="pick-model">${has ? "켜기" : "고르기"}</button></div>`;
+        }
         function autoHtml(compact) {
           const s = roomState();
           if (s.kind !== "this")
@@ -6318,10 +6443,8 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
           const w = world();
           const a = st.auto;
           const job = a?.job;
-          if (!w.auto?.enabled)
-            return `<div class="auto-line"><span class="dot"></span><span class="sub">자동 반영이 꺼져 있습니다.</span>${compact ? "" : ' <button class="quiet" type="button" data-act="go" data-view="world">켜기</button>'}</div>`;
-          if (!w.auto.connectionId)
-            return `<div class="auto-line"><span class="dot"></span><span class="sub">자동 반영에 쓸 연결을 골라 주세요.</span> <button class="quiet" type="button" data-act="go" data-view="world">고르기</button></div>`;
+          if (!w.auto?.enabled || !w.auto.connectionId)
+            return modelBandHtml(compact);
           const running = job?.state === "running";
           const status = running ? `${esc(job.stage || "읽는 중")}` : `메시지 ${w.auto.every}개마다 읽습니다${a?.pending != null ? ` · 아직 안 읽은 메시지 ${a.pending}개` : ""}`;
           const last = job && !running && job.state === "done" ? `<div class="sub">지난번: 새 설정 ${job.added}개 · 바뀐 칸 ${job.changed}개${job.dropped ? ` · 근거가 없어 뺀 것 ${job.dropped}개` : ""}${job.fieldsDropped ? ` · 근거와 안 맞아 뺀 칸 ${job.fieldsDropped}개` : ""}</div>` : "";
@@ -6364,7 +6487,7 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
       ${roomState().kind === "this" && p ? `
       <div class="paper">
         <div class="row" style="justify-content:space-between"><h2 style="margin:0">이번 답변에 들어갈 내용</h2><span class="pill">${p.chars.toLocaleString()} / ${p.budget.toLocaleString()}자</span></div>
-        <p class="sub" style="margin:8px 0 0">설정 ${p.included.length}개${p.omitted.length ? ` · 글자 수 한도 때문에 ${p.omitted.length}개 빠짐` : ""}${p.skipped > 0 ? ` · 장면 밖이라 뺀 것 ${p.skipped}개` : ""}. 프리셋의 {{세계}} 자리에 이대로 들어갑니다.</p>
+        <p class="sub" style="margin:8px 0 0">설정 ${p.included.length}개${p.omitted.length ? ` · 글자 수 한도 때문에 ${p.omitted.length}개 빠짐` : ""}${p.skipped > 0 ? ` · 장면 밖이라 뺀 것 ${p.skipped}개` : ""}. 프리셋의 {{세계}} 자리에 이대로 들어갑니다.</p>${lawOutHtml(p)}
         <pre>${esc(p.text) || "(비어 있음)"}</pre>
       </div>
       <div class="paper">
@@ -6610,7 +6733,7 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
         }
         function detailHtml(e) {
           const k = KIND[e.type];
-          const d = defs(e.type);
+          const d = defs(e.type, e);
           const f = e.fields || {};
           const src = e.sources || {};
           const tag = (k) => e.hidden?.[k] ? '<span class="hid-cap" title="프로필 블록에만 있고 이야기에는 아직 나오지 않았습니다">아직 드러나지 않음</span>' : "";
@@ -6629,6 +6752,8 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
           const extra = (e.extra || []).filter((x) => x.value).map((x) => `<div class="sec"><small>${esc(x.label)}</small><p>${esc(x.value)}</p></div>`).join("");
           const memo = e.description ? `<div class="sec"><small>${d.length ? "메모" : "내용"}${tag("description")}</small><p>${esc(e.description)}</p></div>` : "";
           const once = isOnce(e) ? '<div class="sec"><small>한 번 나옴</small><p>대화의 한 묶음에서만 나왔어요. 설정집에는 두고 {{세계}}에는 넣지 않아요. 다시 나오거나 고정하면 들어가요.</p></div>' : "";
+          const nameOfRel = (id) => st.entities.find((x) => x.entityId === id)?.name || "?";
+          const relDiffers = (st.relations || []).filter((r) => r.differs && (r.from === e.entityId || r.to === e.entityId)).map((r) => `<div class="sec"><small>${esc(r.type)} · 서로 다른 말을 해요</small><p>지금: <b>${esc(nameOfRel(r.from))}</b> → <b>${esc(nameOfRel(r.to))}</b> 안 ↔ 다른 말: <b>${esc(nameOfRel(r.differs.from))}</b> → <b>${esc(nameOfRel(r.differs.to))}</b> 안</p>${r.differs.evidence ? `<p class="ev">${quoted(r.differs.evidence)}</p>` : ""}${st.readOnly ? "" : `<div class="row"><button class="quiet" type="button" data-act="rel-keep" data-id="${esc(r.relationId)}">지금대로 두기</button><button class="quiet" type="button" data-act="rel-flip" data-id="${esc(r.relationId)}">방향 바꾸기</button></div>`}</div>`).join("");
           const differs = Object.entries(e.differs || {}).map(([k, x]) => `<div class="sec"><small>${esc(d.find((y) => y.key === k)?.label || k)} · 서로 다른 말을 해요</small><p>${esc(e.fields?.[k] || "")} ↔ ${esc(x.value)}</p>${x.evidence ? `<p class="ev">${quoted(x.evidence)}</p>` : ""}</div>`).join("");
           const rumors = Object.entries(e.rumors || {}).map(([k, r]) => `<div class="sec"><small>${esc(d.find((x) => x.key === k)?.label || k)} · 확인 안 됨 · ${esc(r.by || "소문")}의 말</small><p>${esc(r.value)}</p></div>`).join("");
           const rels = (st.relations || []).filter((r) => r.from === e.entityId || r.to === e.entityId).map((r) => {
@@ -6654,7 +6779,7 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
           ${e.pinned ? '<span class="pill">늘 먼저 넣기</span>' : ""}${e.nameCheck ? `<span class="pill" title="근거 문장에는 「${esc(e.nameCheck.said)}」이(가) 나옵니다. 이름을 확인해 주세요(고치면 사라집니다).">이름 확인 필요</span>` : ""}
         </div>
         ${facts ? `<div class="fact-caps">${facts}</div>` : ""}
-        ${once}${differs}${rumors}${e.type === "rule" || e.type === "system" ? appliesHtml(e) : ""}${e.type === "group" ? baseHtml(e) : ""}${e.type === "place" ? stayingHtml(e) : ""}${e.timetable ? timetableHtml(e) : ""}${e.calendar ? calendarHtml(e) : ""}${secs}${extra}${memo}${e.type === "group" ? rosterHtml(e) : ""}
+        ${once}${differs}${relDiffers}${rumors}${e.type === "rule" || e.type === "system" ? appliesHtml(e) : ""}${e.type === "group" ? baseHtml(e) : ""}${e.type === "place" ? stayingHtml(e) : ""}${e.timetable ? timetableHtml(e) : ""}${e.calendar ? calendarHtml(e) : ""}${secs}${extra}${memo}${e.type === "group" ? rosterHtml(e) : ""}
         ${f.state ? `<div class="state"><small>지금${tag("state")}</small><p>${esc(f.state)}</p>${was("state")}${wait("state")}</div>` : ""}
         ${relSec}
         ${empty ? '<p class="sub" style="margin-top:16px">아직 적힌 칸이 없습니다. 「고치기」에서 채워 주세요.</p>' : ""}
@@ -6753,7 +6878,7 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
           const isNew = st.editing === "new";
           const v = st.draft || e || {};
           const k = KIND[type];
-          const d = defs(type);
+          const d = defs(type, v);
           const f = v.fields || {};
           const lines = d.filter((x) => x.kind === "line");
           const texts = d.filter((x) => x.kind === "text" && x.key !== "state");
@@ -6791,7 +6916,21 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
         <div class="actions"><button class="primary" type="button" data-act="save">저장</button><button class="quiet" type="button" data-act="cancel">취소</button></div>
       </form>`;
         }
+        function connSelectHtml(id, chosen, single) {
+          const list = st.connections || [];
+          const pick = chosen || (single && list.length === 1 ? list[0].id : "");
+          return `<select id="${id}"><option value="">${st.connections == null ? "불러오는 중…" : list.length ? "(골라 주세요)" : "(마리나라에 연결이 없어요)"}</option>${list.map((c) => `<option value="${esc(c.id)}" ${c.id === pick ? "selected" : ""}>${esc(c.name)}${c.model ? ` · ${esc(c.model)}` : ""}</option>`).join("")}</select>`;
+        }
         function newWorldHtml(first) {
+          if (st.connections == null && !st.connLoading) {
+            st.connLoading = true;
+            loadConnections().finally(() => {
+              st.connLoading = false;
+              const old = root.getElementById("nw-conn");
+              if (old && !old.value)
+                old.outerHTML = connSelectHtml("nw-conn", "", true);
+            });
+          }
           return `
       <div class="eyebrow">WORLD ARCHIVE · NEW</div>
       <h1>${first ? "첫 세계관 만들기" : "새 세계관"}</h1>
@@ -6799,18 +6938,26 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
       <form class="paper" onsubmit="return false">
         <label class="f" for="nw-name">세계관 이름</label><input id="nw-name" maxlength="120" placeholder="예: 별빛 학원">
         <label class="f" for="nw-desc">시대·배경<em>설정 맨 앞에 들어갑니다</em></label><textarea id="nw-desc" maxlength="4000" placeholder="예: 1988년, 산 위의 기숙학교."></textarea>
+        <label class="f" for="nw-conn">정리할 모델(마리나라 연결)<em>대화를 읽고 설정을 정리할 모델이에요. 기억 서재가 쓰는 모델과 따로입니다. 같은 걸 골라도 돼요. 나중에 「세계관 정보」에서 골라도 돼요</em></label>
+        <div style="max-width:420px">${connSelectHtml("nw-conn", "", true)}</div>
+        <label class="toggle" style="margin-top:14px"><input type="checkbox" id="nw-auto" checked> 자동 반영 켜기</label>
         <div class="actions"><button class="primary" type="button" data-act="create-world">만들기</button>${first ? "" : '<button class="quiet" type="button" data-act="go" data-view="overview">취소</button>'}</div>
       </form>`;
         }
-        const BUDGETS = [3000, 5000, 8000, 12000];
+        const BUDGETS = [3000, 5000, 6000, 8000, 12000, 20000, 30000];
+        const BUDGET_REC = { ko: 3000, en: 6000 };
+        const lawOutHtml = (p) => p?.lawOmitted ? `<p class="sub law-out"><b>규칙 · 시스템 ${p.lawOmitted}개가 글자 수 때문에 빠졌어요</b> — ${p.suggest === "pin" ? "30,000자로도 다 안 들어가요. 꼭 필요한 규칙은 카드에서 「늘 먼저 넣기」를 켜 주세요" : `추천 ${Number(p.suggest).toLocaleString()}자`}</p>` : "";
         function budgetHtml(w) {
           const cur = w.injectChars;
           const custom = st.budgetCustom || !BUDGETS.includes(cur);
           const p = st.preview && st.preview.worldId === w.worldId ? st.preview : null;
-          const now = p ? `<p class="sub budget-now">지금 들어가는 글: ${Number(p.chars || 0).toLocaleString()}자 / ${Number(p.budget || cur).toLocaleString()}자${p.omitted?.length ? ` · <b>글자가 모자라 설정 ${p.omitted.length}개가 빠졌어요</b>` : ""}</p>` : "";
+          const lang = w.summaryLang === "en" || w.summaryLang === "ko" ? w.summaryLang : p?.lang || "ko";
+          const rec = BUDGET_REC[lang];
+          const now = p ? `<p class="sub budget-now">지금 들어가는 글: ${Number(p.chars || 0).toLocaleString()}자 / ${Number(p.budget || cur).toLocaleString()}자${p.omitted?.length ? ` · <b>글자가 모자라 설정 ${p.omitted.length}개가 빠졌어요</b>` : ""}</p>${lawOutHtml(p)}` : "";
           return `<label class="f" for="w-budget">{{세계}}에 넣을 글자 수<em>넘치면 고정하지 않은 설정부터 빠집니다. 늘리면 모델에 보내는 글도 그만큼 길어져요</em></label>
-        <div class="caps" role="radiogroup" aria-label="{{세계}}에 넣을 글자 수">${BUDGETS.map((n) => `<button type="button" role="radio" aria-checked="${!custom && cur === n}" class="${!custom && cur === n ? "on" : ""}" data-act="budget" data-n="${n}">${n.toLocaleString()}자</button>`).join("")}<button type="button" role="radio" aria-checked="${custom}" class="${custom ? "on" : ""}" data-act="budget" data-n="custom">직접 입력</button></div>
-        <input id="w-budget" type="number" min="300" max="20000" step="100" value="${cur}" style="max-width:200px" ${custom ? "" : "hidden"} aria-label="직접 입력(300~20000자)">${now}`;
+        <div class="caps" role="radiogroup" aria-label="{{세계}}에 넣을 글자 수">${BUDGETS.map((n) => `<button type="button" role="radio" aria-checked="${!custom && cur === n}" class="${!custom && cur === n ? "on" : ""}" data-act="budget" data-n="${n}">${n.toLocaleString()}자${n === rec ? '<small class="rec">추천</small>' : ""}</button>`).join("")}<button type="button" role="radio" aria-checked="${custom}" class="${custom ? "on" : ""}" data-act="budget" data-n="custom">직접 입력</button></div>
+        <p class="sub budget-rec">추천: ${lang === "en" ? "영어로 정리하는 세계관은 6,000자(설정이 많으면 8,000자)" : "한국어로 정리하는 세계관은 3,000자(설정이 많으면 5,000자)"}. 영어는 같은 내용이 글자로 약 2배 길어요 — 영어 6,000자 ≈ 1,600토큰, 한국어 3,000자 ≈ 1,200토큰.</p>
+        <input id="w-budget" type="number" min="300" max="40000" step="100" value="${cur}" style="max-width:200px" ${custom ? "" : "hidden"} aria-label="직접 입력(300~40000자)">${now}`;
         }
         function worldHtml() {
           const w = world();
@@ -6821,7 +6968,7 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
         <label class="f" for="w-name">이름</label><input id="w-name" maxlength="120" value="${esc(w.name)}">
         <label class="f" for="w-desc">시대·배경<em>설정 맨 앞에 들어갑니다</em></label><textarea id="w-desc" maxlength="4000" style="min-height:120px">${esc(w.description)}</textarea>
         ${budgetHtml(w)}
-        <label class="f" for="w-mode">넣는 방식<em>장면 방식은 최근 메시지 12개에 이름이 나온 설정만 넣습니다</em></label><select id="w-mode" style="max-width:360px"><option value="all" ${w.injectMode === "scene" ? "" : "selected"}>전부 넣기</option><option value="scene" ${w.injectMode === "scene" ? "selected" : ""}>장면에 나온 것만(고정·규칙·시스템은 늘)</option></select>
+        <label class="f" for="w-mode">넣는 방식<em>어느 쪽이든 고정 → 장면 인물(짧게라도) → 규칙 · 시스템(짧게라도) → 자세히 → 남는 자리에 나머지 순서예요. 장면 방식은 최근 메시지 12개에 이름이 나온 것과 그곳의 규칙을 먼저 넣고, 다른 곳의 규칙은 넣지 않아요</em></label><select id="w-mode" style="max-width:360px"><option value="all" ${w.injectMode === "scene" ? "" : "selected"}>전부 넣기</option><option value="scene" ${w.injectMode === "scene" ? "selected" : ""}>장면에 나온 것 먼저(남는 자리에 나머지)</option></select>
         <label class="f" for="w-year">학년도 시작 달<em>시간표와 학사일정을 학년도로 나눕니다(이야기 속 날짜를 알 때)</em></label><select id="w-year" style="max-width:200px">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${(w.yearStart || 9) === i + 1 ? "selected" : ""}>${i + 1}월</option>`).join("")}</select>
         <label class="f">{{세계}} 맨 끝 두 줄<em>글자 수 안에서 고정 설정 다음으로 먼저 자리를 잡습니다</em></label>
         <label class="check"><input type="checkbox" id="w-tail-cast" ${w.tail?.cast !== false ? "checked" : ""}> [이미 있는 인물] — 이름 목록(600자까지, 최근 순 · 넘으면 「외 N명」)</label>
@@ -6839,10 +6986,11 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
       <form class="paper" onsubmit="return false">
         <h2>자동 반영</h2>
         <p class="sub" style="margin:0 0 4px">이 세계관을 읽는 방에서 답변이 오면, 아직 안 읽은 대화를 읽고 새 인물·장소·규칙과 새로 밝혀진 사실을 바로 설정에 넣습니다. 원문에 근거가 있는 것만 넣고, 직접 쓴 칸은 덮어쓰지 않습니다. 바뀐 내용은 「기록」에서 하나씩 되돌릴 수 있습니다. 가장 최근 메시지 두 개는 리롤될 수 있어 다음 차례에 읽습니다.</p>
+        <p class="sub" style="margin:0 0 4px"><b>기억 서재가 쓰는 모델과 따로입니다. 같은 걸 골라도 돼요.</b></p>
         <label class="toggle" style="margin-top:14px"><input type="checkbox" id="a-on" ${w.auto?.enabled ? "checked" : ""}> 자동 반영 켜기</label>
         <div class="grid2">
-          <div><label class="f" for="a-conn">읽을 때 쓸 연결<em>저렴하고 긴 글을 잘 읽는 모델</em></label>
-            <select id="a-conn"><option value="">${st.connections == null ? "불러오는 중…" : "(골라 주세요)"}</option>${(st.connections || []).map((c) => `<option value="${esc(c.id)}" ${c.id === w.auto?.connectionId ? "selected" : ""}>${esc(c.name)}${c.model ? ` · ${esc(c.model)}` : ""}</option>`).join("")}</select></div>
+          <div><label class="f" for="a-conn">정리할 모델(마리나라 연결)<em>저렴하고 긴 글을 잘 읽는 모델</em></label>
+            ${connSelectHtml("a-conn", w.auto?.connectionId || "", false)}</div>
           <div><label class="f" for="a-every">몇 메시지마다 읽을까요<em>2~50</em></label><input id="a-every" type="number" min="2" max="50" value="${w.auto?.every ?? 6}" style="max-width:140px"></div>
         </div>
         <div class="actions"><button class="primary" type="button" data-act="save-auto">저장</button></div>
@@ -6879,6 +7027,7 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
           rename: (c) => `<b>${esc(c.before)}</b> → <b>${esc(c.after)}</b> · 번역 단어장의 이름으로`,
           "relation-add": (c) => `관계 <b>${esc(c.name)}</b> · ${esc(c.relation?.type || "")}${c.relation?.note ? ` (${esc(c.relation.note)})` : ""}`,
           "relation-note": (c) => `관계 <b>${esc(c.name)}</b> · ${c.before ? `${esc(c.before)} → ` : ""}${esc(c.after)}`,
+          "relation-differs": (c) => `관계 <b>${esc(c.name)}</b> · ${esc(c.relation?.type || "")} 서로 다른 말 — 그대로 둠`,
           "relation-flip": (c) => `관계 <b>${esc(c.name)}</b> · ${esc(c.relation?.type || "")} 방향 바뀜`,
           "relation-remove": (c) => `관계 <b>${esc(c.name)}</b> · ${esc(c.relation?.type || "")} 끝남`,
           cell: (c) => `<b>${esc(c.name)}</b> · ${esc(String(c.key || "").replace("|", " "))}: ${c.before ? `${esc(c.before)} → ` : ""}${c.after ? esc(c.after) : "지움"}${c.moved ? ` · 시간표로 옮김(${esc((st.fields[c.moved.type] || []).find((f) => f.key === c.moved.key)?.label || c.moved.key)} 칸에서)` : ""}`,
@@ -7089,7 +7238,7 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
         const ruleText = (e) => e.description || e.fields?.how || e.fields?.category || "";
         const LAW_NAME = /([^\s마]법(\s|$)|령(\s|$)|규칙|제도)|\b(?:laws?|decrees?|statutes?|acts?|codes?|charters?|treaty|treaties|rules?|regulations?|edicts?)\b/i;
         function isOnce(e) {
-          return ["rule", "system", "custom", "history"].includes(e.type) && !(e.appliesTo && e.appliesTo !== "world") && !e.pinned && e.provenance?.source !== "manual" && !Object.values(e.sources || {}).includes("manual") && !LAW_NAME.test(e.name) && Number.isFinite(e.seen?.n) && e.seen.n < 2;
+          return world()?.onceReady !== false && ["rule", "system", "custom", "history"].includes(e.type) && !(e.appliesTo && e.appliesTo !== "world") && !e.pinned && e.provenance?.source !== "manual" && !Object.values(e.sources || {}).includes("manual") && !LAW_NAME.test(e.name) && Number.isFinite(e.seen?.n) && e.seen.n < 2;
         }
         const topicRank = (t) => {
           const i = (st.topics || []).indexOf(t);
@@ -7441,7 +7590,8 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
           const skew = st.readOnly ? `<p class="msg bad" role="status">${esc(UPDATE_MSG)}</p>` : !target && st.serverVersion && st.serverVersion !== VERSION ? `<p class="msg bad" role="status">서버 쪽 World Archive(v${esc(st.serverVersion)})와 이 화면(v${esc(VERSION)})의 판이 달라요. 서버 쪽을 업데이트해 주세요 — 서버에서 설치 명령을 다시 실행하면 됩니다.</p>` : "";
           const nav = EMBEDDED && st.loaded && world() && st.view !== "tabs" && !st.detail && !st.editing && (["log", "scores", "world", "overview"].includes(st.view) || KIND[st.view]) ? subtabsHtml(worldMap(), null) : "";
           const viewBar = EMBEDDED && st.loaded && st.worldId ? `<div class="emb-view" data-no-tr>${viewLangHtml()}</div>` : "";
-          el.main.innerHTML = viewBar + skew + (st.msg && !(st.readOnly && st.msg === UPDATE_MSG) ? `<p class="msg ${st.bad ? "bad" : ""}" role="status">${esc(st.msg)}</p>` : "") + nav + mainHtml();
+          const band = st.loaded && st.view !== "new-world" && !(st.view === "overview" && roomState().kind === "this") ? modelBandHtml(false) : "";
+          el.main.innerHTML = band + viewBar + skew + (st.msg && !(st.readOnly && st.msg === UPDATE_MSG) ? `<p class="msg ${st.bad ? "bad" : ""}" role="status">${esc(st.msg)}</p>` : "") + nav + mainHtml();
           el.main.scrollTop = keep;
           lastScreen = screen;
           if (st.query)
@@ -7455,6 +7605,19 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
           koFix([el.side, el.top, el.rail, el.main]);
           if (st.viewKo)
             koView();
+          if (st.pickModel && st.view === "world" && !st.busy && st.connections != null) {
+            st.pickModel = false;
+            const on = root.getElementById("a-on");
+            const sel = root.getElementById("a-conn");
+            if (on)
+              on.checked = true;
+            if (sel) {
+              sel.closest("form")?.scrollIntoView({ block: "start" });
+              sel.focus({ preventScroll: true });
+              sel.classList.add("pick-flash");
+              setTimeout(() => sel.classList.remove("pick-flash"), 1600);
+            }
+          }
         }
         const koCache = new Map;
         const koFailed = new Set;
@@ -7636,7 +7799,16 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
               return run(loadHistory);
             if (b.dataset.view === "scores")
               return run(loadScores);
-            if (b.dataset.view === "world" && st.connections == null) {
+            if ((b.dataset.view === "world" || b.dataset.view === "new-world") && st.connections == null) {
+              render();
+              return run(loadConnections);
+            }
+            render();
+          },
+          "pick-model": () => {
+            go("world");
+            st.pickModel = true;
+            if (st.connections == null) {
               render();
               return run(loadConnections);
             }
@@ -7913,7 +8085,7 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
             await loadRoom();
           }, "연결을 끊었습니다."),
           "create-world": () => run(async () => {
-            const w = await api("POST", "/worlds", { name: val("nw-name"), description: val("nw-desc") });
+            const w = await api("POST", "/worlds", { name: val("nw-name"), description: val("nw-desc"), auto: { enabled: !!root.getElementById("nw-auto")?.checked, connectionId: val("nw-conn") || null } });
             st.worldId = w.worldId;
             store.set("world-archive-world", w.worldId);
             go("overview");
@@ -8025,6 +8197,10 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
             await api("DELETE", `/worlds/${st.worldId}/relations/${b.dataset.id}`);
             await loadEntities();
           }, "관계를 뺐습니다. 기록에서 되돌릴 수 있습니다."),
+          "rel-keep": (b) => run(async () => {
+            await api("PATCH", `/worlds/${st.worldId}/relations/${b.dataset.id}`, { differs: null });
+            await loadEntities();
+          }, "지금 방향 그대로 둡니다."),
           "rel-flip": (b) => run(async () => {
             const x = (st.relations || []).find((y) => y.relationId === b.dataset.id);
             if (!x)

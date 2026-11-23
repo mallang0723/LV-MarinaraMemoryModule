@@ -5824,6 +5824,7 @@ ${footer}`;
             used: N.usedNames(store, ledger, people),
             duplicates: N.duplicates(store, ledger, table),
             suggestions: N.suggestions(store, ledger, table),
+            modelSame: { at: sameFound.get(chatId)?.at || null, items: N.openSameNames(store, ledger, table, sameFound.get(chatId)?.items) },
             history: historyView(table),
             autoMerged: autoMergedView(table),
             address: addressView(chatId),
@@ -5862,6 +5863,76 @@ ${footer}`;
           if (!items.length)
             throw Error("\uD569\uCE60 \uC911\uBCF5 \uC774\uB984\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
           return checkToken(N.planMany(store, ledger, table, items), req.body?.token);
+        });
+      }));
+      const sameFound = new Map;
+      const groupItems = (body) => {
+        const target = A.tidy(body?.target);
+        const sources = [...new Set((Array.isArray(body?.sources) ? body.sources : []).map((x) => A.tidy(x)).filter((x) => x && A.fold(x) !== A.fold(target)))];
+        if (!target)
+          throw Error("\uAE30\uC900 \uC774\uB984\uC744 \uACE8\uB77C \uC8FC\uC138\uC694.");
+        if (!sources.length)
+          throw Error("\uBB36\uC744 \uC774\uB984\uC744 \uD558\uB098 \uC774\uC0C1 \uACE8\uB77C \uC8FC\uC138\uC694.");
+        if (sources.length > 40)
+          throw Error("\uD55C \uBC88\uC5D0 40\uAC1C\uAE4C\uC9C0 \uBB36\uC744 \uC218 \uC788\uC2B5\uB2C8\uB2E4.");
+        return sources.map((source) => ({ source, target, text: body?.text === true }));
+      };
+      app.post("/chats/:id/names/group-preview", guard(async (req) => {
+        const chatId = safeChatId(req.params.id);
+        const { store, ledger, table } = namesState(chatId);
+        return planView(A.using(table, () => N.planMany(store, ledger, table, groupItems(req.body))));
+      }));
+      app.post("/chats/:id/names/group-apply", guard(async (req) => {
+        const chatId = safeChatId(req.params.id);
+        if (req.body?.confirm !== true)
+          throw Error("\uBBF8\uB9AC \uBCF4\uAE30\uB97C \uD655\uC778\uD55C \uB4A4 \uBB36\uC5B4 \uC8FC\uC138\uC694.");
+        refuseBusy(chatId);
+        const items = groupItems(req.body);
+        return applyPlanned(chatId, (store, ledger, table) => checkToken(N.planMany(store, ledger, table, items), req.body?.token));
+      }));
+      app.post("/chats/:id/names/model-same", guard(async (req) => {
+        const chatId = safeChatId(req.params.id);
+        const { store, ledger, table } = namesState(chatId);
+        const ask = A.using(table, () => N.sameNameAsk(store, ledger, table));
+        if (!ask.names.length)
+          return { items: [], asked: 0, note: "\uB204\uAD6C\uC778\uC9C0 \uBAA8\uB974\uB294 \uC774\uB984\uC774 \uC5C6\uC2B5\uB2C8\uB2E4." };
+        const model = await memoryModel();
+        const reply = await askModel(model, N.buildSameNamePrompt(ask), { maxTokens: 3000 });
+        const found = N.parseSameNameReply(reply, ask, table);
+        sameFound.set(chatId, { at: new Date().toISOString(), items: found });
+        log(`chat ${chatId}: same-name search asked ${ask.names.length} name(s), ${found.length} pair(s) offered`);
+        const now = namesState(chatId);
+        return { items: N.openSameNames(now.store, now.ledger, now.table, found), asked: ask.names.length };
+      }));
+      app.post("/chats/:id/names/alias", guard(async (req) => {
+        const chatId = safeChatId(req.params.id);
+        const action = String(req.body?.action || "");
+        const person = A.tidy(req.body?.person);
+        const alias = A.tidy(req.body?.alias);
+        refuseBusy(chatId);
+        return withRoom(chatId, async () => {
+          const { store, ledger, table: saved } = namesState(chatId);
+          const table = structuredClone(saved);
+          if (action === "remove")
+            A.removeAlias(table, person, alias);
+          else if (action === "add") {
+            if (!alias)
+              throw Error("\uB354\uD560 \uC774\uB984\uC744 \uC801\uC5B4 \uC8FC\uC138\uC694.");
+            const used = A.using(table, () => N.usedNames(store, ledger, []).find((u) => A.fold(u.name) === A.fold(alias) && u.count));
+            if (used)
+              throw Error(`\u2018${alias}\u2019\uC740(\uB294) \uC774\uBBF8 \uAE30\uC5B5\uC5D0 ${used.count}\uACF3 \uC4F0\uC600\uC2B5\uB2C8\uB2E4. \u300C\uC5EC\uB7EC \uC774\uB984 \uD55C\uAEBC\uBC88\uC5D0 \uBB36\uAE30\u300D\uB85C \uD569\uCCD0 \uC8FC\uC138\uC694.`);
+            const owner = A.canonOf(alias, table);
+            if (owner && A.fold(owner) !== A.fold(A.canonOf(person, table) || person))
+              throw Error(`\u2018${alias}\u2019\uC740(\uB294) \uC774\uBBF8 ${owner}\uC758 \uB2E4\uB978 \uC774\uB984\uC785\uB2C8\uB2E4.`);
+            if (!table.people?.[A.canonOf(person, table) || person])
+              A.addPerson(table, person);
+            A.addAlias(table, alias, person, { rewrite: false });
+          } else
+            throw Error("add \uB610\uB294 remove\uC5EC\uC57C \uD569\uB2C8\uB2E4.");
+          saveNames(chatId, table);
+          recalls.delete(chatId);
+          log(`chat ${chatId}: ${action === "add" ? "added" : "removed"} other name ${alias} ${action === "add" ? "to" : "from"} ${person}`);
+          return { people: Object.fromEntries(Object.entries(table.people || {}).map(([k, v]) => [k, { aliases: v.aliases || [], display: v.display || null, seeded: !!v.seeded }])) };
         });
       }));
       const aliasTextOptions = (body) => ({ alias: body?.alias, display: body?.display });
@@ -6566,6 +6637,24 @@ var require_aliases = __commonJS(function(exports, module) {
         (table.dismissed ||= []).push(d);
     touch(table);
   }
+  function removeAlias(table, person, alias) {
+    const canon = canonOf(person, table) || tidy(person);
+    const entry = table.people?.[canon];
+    const name = tidy(alias);
+    if (!entry || !name)
+      throw Error("\uADF8 \uC778\uBB3C\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
+    if (fold(name) === fold(canon))
+      throw Error("\uAE30\uC900 \uC774\uB984\uC740 \uB5C4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uB2E4\uB978 \uC774\uB984\uC744 \uAE30\uC900\uC73C\uB85C \uBC14\uAFB8\uB824\uBA74 \uC774\uB984 \uBC14\uAFB8\uAE30\uB97C \uC368 \uC8FC\uC138\uC694.");
+    const before = entry.aliases.length;
+    entry.aliases = entry.aliases.filter((a) => fold(a) !== fold(name));
+    if (entry.aliases.length === before)
+      throw Error("\uADF8 \uC778\uBB3C\uC758 \uB2E4\uB978 \uC774\uB984\uC774 \uC544\uB2D9\uB2C8\uB2E4.");
+    if (entry.display && fold(entry.display) === fold(name))
+      entry.display = null;
+    dismiss(table, name, canon);
+    touch(table);
+    return canon;
+  }
   function dismiss(table, source, target) {
     table.dismissed ||= [];
     if (!table.dismissed.some((d) => fold(d[0]) === fold(source) && fold(d[1]) === fold(target)))
@@ -6754,6 +6843,7 @@ var require_aliases = __commonJS(function(exports, module) {
   }
   module.exports = {
     touch,
+    removeAlias,
     rewriteDeep,
     NAME_FIELDS,
     TEXT_FIELDS,
@@ -18430,6 +18520,94 @@ var require_names_generated = __commonJS(function(exports, module) {
     }
     return out;
   }
+  var SAME_MAX_NAMES = 40;
+  var SAME_MAX_SCENES = 3;
+  var SAME_SNIPPET = 160;
+  function nameContexts(store, ledger, name, max = SAME_MAX_SCENES) {
+    const docs = { scenes: store, ledger };
+    const want = A.fold(name);
+    const hit = new Set;
+    for (const field of fieldsOf(store, ledger)) {
+      if (field.doc !== "scenes" || field.path[0] !== "scenes" || !["name", "names", "list"].includes(field.kind))
+        continue;
+      const v = getPath(docs.scenes, field.path);
+      const list = field.kind === "name" ? [v] : field.kind === "names" && typeof v === "string" ? v.split(/\s*[\u00B7,\u3001/]\s*/) : Array.isArray(v) ? v : [];
+      if (list.some((n) => A.fold(A.tidy(n)) === want))
+        hit.add(field.path[1]);
+    }
+    const cut = (t) => {
+      const x = A.tidy(t);
+      return x.length > SAME_SNIPPET ? `${x.slice(0, SAME_SNIPPET)}\u2026` : x;
+    };
+    return [...hit].sort((a, b) => b - a).slice(0, max).map((i) => {
+      const sc = store.scenes[i];
+      const quotes = (sc.events || []).flatMap((e) => e.quotes || []);
+      const line = quotes.find((q) => A.fold(A.tidy(q.by)) === want) || quotes.find((q) => String(q.to || "").split(/\s*[\u00B7,\u3001/]\s*/).some((n) => A.fold(A.tidy(n)) === want));
+      return { id: sc.id, title: sc.title || "", summary: cut(sc.summary || (sc.events || []).map((e) => e.text).join(" ")), line: line ? `${A.tidy(line.by)}${line.to ? ` \u2192 ${A.tidy(line.to)}` : ""}: ${cut(line.q || line.text || "")}` : null };
+    });
+  }
+  function sameNameAsk(store, ledger, table) {
+    const people = knownPeople(store, ledger, table);
+    const used = usedNames(store, ledger, people);
+    const resolved = (n) => A.using(table, () => L.matchName(n, people) || A.canonOf(n, table));
+    const unknown = used.filter((u) => u.count && !people.includes(u.name) && !resolved(u.name)).slice(0, SAME_MAX_NAMES);
+    const loose = people.filter((p) => !table.people?.[p]?.seeded && (used.find((u) => u.name === p)?.count || 0) > 0 && (used.find((u) => u.name === p)?.count || 0) <= 3);
+    const ask = [...unknown.map((u) => u.name), ...loose.filter((p) => !unknown.some((u) => u.name === p))].slice(0, SAME_MAX_NAMES);
+    return {
+      people: people.map((p) => ({ name: p, aliases: (table.people?.[p]?.aliases || []).slice(0, 8), count: used.find((u) => u.name === p)?.count || 0 })),
+      names: ask.map((n) => ({ name: n, count: used.find((u) => u.name === n)?.count || 0, contexts: nameContexts(store, ledger, n) }))
+    };
+  }
+  var SAME_PROMPT = `\uB108\uB294 \uB864\uD50C\uB808\uC774 \uAE30\uC5B5\uC758 \uC778\uBB3C \uC774\uB984\uC744 \uC815\uB9AC\uD558\uB294 \uB3C4\uC6B0\uBBF8\uC57C. \uD55C \uC0AC\uB78C\uC774 \uC5EC\uB7EC \uC774\uB984\uC73C\uB85C \uB530\uB85C \uC800\uC7A5\uB3FC \uC788\uC5B4: \uB2E4\uB978 \uC5B8\uC5B4 \uD45C\uAE30(Daniel/\uB300\uB2C8\uC5BC), \uC624\uD0C0, \uC131\uB9CC\xB7\uC774\uB984\uB9CC, \uC560\uCE6D\xB7\uBCC4\uBA85, \uC9C1\uD568\xB7\uD638\uCE6D(\uBCF4\uC2A4, \uC120\uC0DD\uB2D8), \uBE44\uC544\uB0E5\uAC70\uB9AC\uB294 \uBA78\uCE6D.
+[\uC544\uC9C1 \uB204\uAD6C\uC778\uC9C0 \uBAA8\uB974\uB294 \uC774\uB984]\uB9C8\uB2E4 [\uC778\uBB3C] \uAC00\uC6B4\uB370 \uAC19\uC740 \uC0AC\uB78C\uC774 \uC788\uB294\uC9C0 \uC7A5\uBA74 \uB0B4\uC6A9\uC744 \uADFC\uAC70\uB85C \uD310\uB2E8\uD574.
+- \uADFC\uAC70\uAC00 \uC7A5\uBA74\uC5D0 \uC788\uC744 \uB54C\uB9CC \uC9DD\uC9C0\uC5B4. \uC774\uB984\uC774 \uBE44\uC2B7\uD558\uB2E4\uB294 \uAC83\uB9CC\uC73C\uB85C\uB294 \uC548 \uB3FC. \uD655\uC2E4\uD558\uC9C0 \uC54A\uC73C\uBA74 \uBE7C.
+- \uC11C\uB85C \uB2E4\uB978 \uB450 \uC0AC\uB78C\uC774 \uAC19\uC740 \uC7A5\uBA74\uC5D0 \uD568\uAED8 \uC788\uC73C\uBA74 \uAC19\uC740 \uC0AC\uB78C\uC774 \uC544\uB2C8\uC57C.
+- \uC9C1\uD568\xB7\uD638\uCE6D\uC774 \uC5EC\uB7EC \uC0AC\uB78C\uC5D0\uAC8C \uC4F0\uC774\uBA74(\uC608: \uC544\uAC00\uC528\uB97C \uB450 \uC0AC\uB78C\uC5D0\uAC8C) \uBE7C.
+- \uBAA8\uB974\uB294 \uC774\uB984\uB07C\uB9AC \uAC19\uC740 \uC0AC\uB78C\uC774\uACE0 [\uC778\uBB3C]\uC5D0 \uC5C6\uC73C\uBA74, \uB458 \uC911 \uB354 \uB9CE\uC774 \uC4F0\uC778 \uC774\uB984\uC744 person\uC5D0 \uC368.
+JSON \uD558\uB098\uB85C\uB9CC \uB2F5\uD574: {"same":[{"name":"\uBAA8\uB974\uB294 \uC774\uB984","person":"\uAC19\uC740 \uC0AC\uB78C\uC758 \uC774\uB984","sure":"high"|"medium","why":"\uADFC\uAC70 \uD55C \uBB38\uC7A5(\uC7A5\uBA74 \uBC88\uD638 \uD3EC\uD568)","scenes":["S12"]}]}`;
+  function buildSameNamePrompt(ask) {
+    const people = ask.people.map((p) => `- ${p.name}${p.aliases.length ? ` (\uB2E4\uB978 \uC774\uB984: ${p.aliases.join(", ")})` : ""} \xB7 ${p.count}\uACF3`).join(`
+`);
+    const names = ask.names.map((n) => [`- ${n.name} \xB7 ${n.count}\uACF3`, ...n.contexts.map((c) => `  ${c.id}${c.title ? ` \u300C${c.title}\u300D` : ""}: ${c.summary}${c.line ? ` / \uB300\uC0AC ${c.line}` : ""}`)].join(`
+`)).join(`
+`);
+    return [{ role: "system", content: SAME_PROMPT }, { role: "user", content: `## \uC778\uBB3C
+${people || "(\uC5C6\uC74C)"}
+
+## \uC544\uC9C1 \uB204\uAD6C\uC778\uC9C0 \uBAA8\uB974\uB294 \uC774\uB984
+${names}` }];
+  }
+  function parseSameNameReply(reply, ask, table, now = new Date().toISOString()) {
+    let data = null;
+    try {
+      data = JSON.parse(String(reply).replace(/^[^{]*/, "").replace(/[^}]*$/, ""));
+    } catch {
+      return [];
+    }
+    const asked = new Map(ask.names.map((n) => [A.fold(n.name), n.name]));
+    const targets = new Map([...ask.people.map((p) => [A.fold(p.name), p.name]), ...ask.names.map((n) => [A.fold(n.name), n.name])]);
+    const out = [];
+    const seen = new Set;
+    for (const item of Array.isArray(data?.same) ? data.same : []) {
+      const name = asked.get(A.fold(A.tidy(item?.name)));
+      const person = targets.get(A.fold(A.tidy(item?.person))) || A.using(table, () => A.canonOf(A.tidy(item?.person), table));
+      if (!name || !person || A.fold(name) === A.fold(person))
+        continue;
+      if (A.dismissed(table, name, person))
+        continue;
+      const key = `${A.fold(name)}\x00${A.fold(person)}`;
+      if (seen.has(key))
+        continue;
+      seen.add(key);
+      out.push({ name, person, sure: item.sure === "high" ? "high" : "medium", why: A.tidy(item.why).slice(0, 200), scenes: (Array.isArray(item.scenes) ? item.scenes : []).map(String).filter((x) => /^S\d+$/.test(x)).slice(0, 4), at: now });
+    }
+    return out;
+  }
+  function openSameNames(store, ledger, table, items = []) {
+    const people = knownPeople(store, ledger, table);
+    const one = (n) => A.using(table, () => L.matchName(n, people) || A.canonOf(n, table)) || n;
+    return (items || []).filter((x) => !A.dismissed(table, x.name, x.person) && A.fold(one(x.name)) !== A.fold(one(x.person)));
+  }
   var AUTO_KEEP = 40;
   var hangulName = (s) => /[\uAC00-\uD7A3]/.test(s) && !/[A-Za-z]/.test(s);
   var words = (s) => A.tidy(s).split(" ").filter(Boolean).length;
@@ -18526,7 +18704,7 @@ var require_names_generated = __commonJS(function(exports, module) {
     A.touch(table);
     return { undone: rec.id, source: rec.source, target: rec.target, restored, kept };
   }
-  module.exports = { glossaryMerges, applyAutoMerge, undoAutoMerge, AUTO_KEEP, AREAS, fieldsOf, plan, planAliasText, planMany, apply, undo, usedNames, knownPeople, duplicates, suggestions, lookAlike, mergeRoutine, getPath };
+  module.exports = { nameContexts, sameNameAsk, buildSameNamePrompt, parseSameNameReply, openSameNames, SAME_MAX_NAMES, glossaryMerges, applyAutoMerge, undoAutoMerge, AUTO_KEEP, AREAS, fieldsOf, plan, planAliasText, planMany, apply, undo, usedNames, knownPeople, duplicates, suggestions, lookAlike, mergeRoutine, getPath };
 });
 
 // src/memory/core/features.cjs
@@ -22755,7 +22933,7 @@ function createReference({ api, manager, host, log = () => {}, allowed = ALLOWED
 }
 
 // src/version.js
-var VERSION = "1.5.0-lv.2";
+var VERSION = "1.6.0-lv.1";
 
 // src/backend.js
 var MACRO_NAME = "memory_ledger";
