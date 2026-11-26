@@ -22933,7 +22933,7 @@ function createReference({ api, manager, host, log = () => {}, allowed = ALLOWED
 }
 
 // src/version.js
-var VERSION = "1.6.0-lv.3-v1";
+var VERSION = "1.6.0-lv.3";
 
 // src/backend.js
 var MACRO_NAME = "memory_ledger";

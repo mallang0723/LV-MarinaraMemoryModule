@@ -1,6 +1,6 @@
 {
   "name": "memory-library-lv",
-  "version": "1.6.0-lv.3-v1",
+  "version": "1.6.0-lv.3",
   "private": true,
   "type": "module",
   "scripts": {

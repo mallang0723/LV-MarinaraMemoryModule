@@ -1,10 +1,10 @@
-# 원작 0.39.0 (`b680822`까지) 동등성 표 — 이식판 1.6.0-lv.3-v1
+# 원작 0.39.0 (`b680822`까지) 동등성 표 — 이식판 1.6.0-lv.3
 
 0.35.2 이후 새로 생긴 원작 기능만 담았습니다(0.39.0 행은 맨 위)(0.35.2까지의 표는 [upstream-0.35-map.md](upstream-0.35-map.md)와 CHANGELOG 1.4.0). 판정: **있음**(원작 코드·화면 그대로) / **대역**(원작 코드는 그대로 두고 호스트 쪽 입구가 대신함) / **없음**(이유).
 
 | 원작 기능 (버전) | 판정 | 비고 |
 |---|---|---|
-| 프런트엔드 UUID 호환성 (1.6.0-lv.3-v1) | 자체 기능(이식판) | `src/shim/marinara.js`의 단일 `uid(ctx)` 헬퍼가 `ctx.uuid.v4()`를 우선 사용하고, 없는 1.2.5 개발판에서는 `crypto.getRandomValues`로 RFC 4122 v4 생성. `createLink(ctx)`가 요청 ID 생성에 컨텍스트 전달. 원본 UI에 해당 호출이 없어 추가 빌드 앵커 패치 없음(원본 바이트 불변). `tests/shim.test.js`와 `tests/dist-frontend.test.js`로 호스트 API·HTTP 대체 경로·번들 직접 접근 금지 검증 |
+| 프런트엔드 UUID 호환성 (1.6.0-lv.3) | 자체 기능(이식판) | `src/shim/marinara.js`의 단일 `uid(ctx)` 헬퍼가 `ctx.uuid.v4()`를 우선 사용하고, 없는 1.2.5 개발판에서는 `crypto.getRandomValues`로 RFC 4122 v4 생성. `createLink(ctx)`가 요청 ID 생성에 컨텍스트 전달. 원본 UI에 해당 호출이 없어 추가 빌드 앵커 패치 없음(원본 바이트 불변). `tests/shim.test.js`와 `tests/dist-frontend.test.js`로 호스트 API·HTTP 대체 경로·번들 직접 접근 금지 검증 |
 | 떠다니는 버튼 표시 설정 (1.6.0-lv.2) | 자체 기능(이식판) | 서랍 설정 카드에 기본 ON 스위치. `floatingButton`을 기존 사용자별 `settings.json`에 저장하고 즉시 반영. `patch.mjs`의 런처 브리지에서 원본 런처 생성·드래그를 유지하며 `src/adapter/launcher.js`가 표시만 제어(원본 바이트 불변). OFF여도 메뉴·서랍으로 열기 가능. 설정 재로딩·사용자 격리·빠른 전환·저장 실패 테스트 포함 |
 | 입력창 메뉴 `기억 서재`·서랍 탭 `기억`으로 열기 (1.6.0-lv.2) | 자체 기능(이식판) | `src/adapter/entries.js`를 `frontend.js` → `shell.js`에서 연결. 기존 `openMemory`·`isOpen` 재사용, 열린 창 유지. 서랍 설정 카드 유지, 탭 ID `memory-library`로 설정집과 구분. Lumiverse 1.2.5·1.3.0의 API 유무 확인·실패 무시·해제 시 등록 정리. `tests/entries.test.js` |
 | 이름 정리: 여러 이름 한꺼번에 묶기(기준 이름 하나에 최대 40개, 미리 보기 → 적용, 한 번에 되돌리기, 기본은 이름 칸만·글까지는 선택) (0.39.0) — 이름 정리 | 있음 | `names.cjs`·`service.cjs`(`names/group-preview`·`group-apply`) 그대로, 화면 그대로. 시험 `tests/upstream/test-names-group.cjs` 통과 |
