@@ -3,19 +3,14 @@
 // (ctx.sendToBackend / ctx.onBackendMessage, types/dom.d.ts:1270-1271), answered by the router in the backend worker.
 // Nothing here touches the network: the originals' own fetch fallbacks are closed (see `fetch` below).
 
-/** Unique id without relying on crypto.randomUUID (missing on a phone's plain-http origin: not a secure context). */
-export function uid() {
-    try { const c = globalThis.crypto; if (c && typeof c.randomUUID === 'function') return c.randomUUID(); } catch { /* insecure origin */ }
-    try {
-        const c = globalThis.crypto;
-        if (c && typeof c.getRandomValues === 'function') {
-            const b = c.getRandomValues(new Uint8Array(16));
-            b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
-            const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
-            return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-        }
-    } catch { /* fall through */ }
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}${Math.random().toString(36).slice(2, 8)}`;
+/** Host UUID API first; RFC 4122 v4 on older hosts, including plain HTTP origins. */
+export function uid(ctx) {
+    if (typeof ctx?.uuid?.v4 === 'function') return ctx.uuid.v4();
+    const b = globalThis.crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 /** A fetch Response look-alike (the originals read ok / status / json() / text() / clone()). */
@@ -43,7 +38,7 @@ export function createLink(ctx, { timeoutMs = 60_000, slowTimeoutMs = 330_000, n
     /** Resolves with the backend's reply frame {ok, data|error, code?, status?}; rejects only when the channel itself fails. */
     function request(method, path, body, { timeout, signal } = {}) {
         if (!alive) return Promise.reject(new Error('확장이 종료됐어요'));
-        const requestId = `${uid()}:${now()}`;
+        const requestId = `${uid(ctx)}:${now()}`;
         return new Promise((resolve, reject) => {
             const limit = timeout ?? (SLOW.test(path) ? slowTimeoutMs : timeoutMs);
             const timer = setTimeout(() => { pending.delete(requestId); reject(Object.assign(new Error('서버 응답이 없어요. 잠시 뒤 다시 시도해 주세요.'), { timeout: true })); }, limit);

@@ -12,18 +12,71 @@ function bridge() {
     return { f, ctx };
 }
 
-test('uid works on a plain-http origin (no randomUUID, no crypto at all) and is unique', () => {
-    const c = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+test('uid prefers the host UUID API and preserves its receiver', () => {
+    const uuid = { v4() { assert.equal(this, uuid); return '00000000-0000-4000-8000-000000000001'; } };
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
     try {
-        for (const fake of [{}, { getRandomValues: a => { for (let i = 0; i < a.length; i++) a[i] = (i * 37 + 11) & 255; return a; } }, undefined]) {
-            Object.defineProperty(globalThis, 'crypto', { value: fake, configurable: true, writable: true });
-            const ids = new Set(Array.from({ length: 50 }, () => uid()));
-            assert.equal(ids.size, fake?.getRandomValues ? 1 : 50, 'fixed random source gives one id, fallback gives distinct ones');
-            assert.ok([...ids].every(x => typeof x === 'string' && x.length >= 20));
-        }
-        Object.defineProperty(globalThis, 'crypto', { value: { randomUUID: () => 'x'.repeat(36) }, configurable: true, writable: true });
-        assert.equal(uid(), 'x'.repeat(36));
-    } finally { if (c) Object.defineProperty(globalThis, 'crypto', c); }
+        Object.defineProperty(globalThis, 'crypto', { get() { throw Error('browser crypto must not be read'); }, configurable: true });
+        assert.equal(uid({ uuid }), '00000000-0000-4000-8000-000000000001');
+    } finally {
+        if (original) Object.defineProperty(globalThis, 'crypto', original);
+        else delete globalThis.crypto;
+    }
+});
+
+test('uid uses getRandomValues on old hosts over HTTP and sets v4 and variant bits', () => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    let calls = 0;
+    const crypto = {
+        get randomUUID() { throw Error('blocked browser API must not be read'); },
+        getRandomValues(bytes) {
+            assert.equal(this, crypto);
+            assert.ok(bytes instanceof Uint8Array);
+            assert.equal(bytes.length, 16);
+            bytes.fill(255);
+            bytes[0] = calls++;
+            return bytes;
+        },
+    };
+    try {
+        Object.defineProperty(globalThis, 'crypto', { value: crypto, configurable: true });
+        assert.equal(uid(), '00ffffff-ffff-4fff-bfff-ffffffffffff');
+        assert.equal(uid({}), '01ffffff-ffff-4fff-bfff-ffffffffffff');
+        assert.equal(uid({ uuid: { v4: null } }), '02ffffff-ffff-4fff-bfff-ffffffffffff');
+        assert.equal(calls, 3);
+    } finally {
+        if (original) Object.defineProperty(globalThis, 'crypto', original);
+        else delete globalThis.crypto;
+    }
+});
+
+test('uid produces distinct RFC 4122 v4 IDs with the platform random source', () => {
+    const ids = new Set(Array.from({ length: 100 }, () => uid({})));
+    assert.equal(ids.size, 100);
+    for (const id of ids) assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+});
+
+test('uid propagates host lifecycle errors', () => {
+    assert.throws(() => uid({ uuid: { v4() { throw Error('Extension unloaded'); } } }), /Extension unloaded/);
+});
+
+test('each link captures its own host UUID context for request IDs', async () => {
+    function makeLink(id) {
+        let receive;
+        const ctx = {
+            uuid: { v4: () => id },
+            onBackendMessage(fn) { receive = fn; return () => {}; },
+            sendToBackend(frame) { receive({ requestId: frame.requestId, ok: true, data: frame.requestId }); },
+        };
+        return createLink(ctx, { now: () => 123 });
+    }
+    const first = makeLink('00000000-0000-4000-8000-000000000001');
+    const second = makeLink('00000000-0000-4000-8000-000000000002');
+    try {
+        assert.equal(await first.call('GET', 'status'), '00000000-0000-4000-8000-000000000001:123');
+        assert.equal(await second.call('GET', 'status'), '00000000-0000-4000-8000-000000000002:123');
+        assert.equal(await first.call('GET', 'status'), '00000000-0000-4000-8000-000000000001:123');
+    } finally { first.dispose(); second.dispose(); }
 });
 
 test('apiFetch: ok replies, errors with status, permission -> 403, never throws for backend errors', async () => {

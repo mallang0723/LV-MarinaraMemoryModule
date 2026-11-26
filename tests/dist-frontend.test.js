@@ -1,8 +1,7 @@
-// AGENTS 3: the phone opens the app over plain http (not a secure context): no bare crypto.randomUUID / crypto.subtle /
-// navigator.clipboard / navigator.share in what ships. Reads the built dist/frontend.js.
+// Check every shipped frontend bundle for HTTP/LAN compatibility, including guarded accesses and comments.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 
 const file = new URL('../dist/frontend.js', import.meta.url);
 const src = existsSync(file) ? readFileSync(file, 'utf8') : '';
@@ -13,20 +12,32 @@ test('dist/frontend.js exists and carries the memory screen', () => {
     assert.ok(!/mountAnon|acm-root|anonymousCommunity|anon\/rp-material/.test(src), 'no anon community code in the bundle');
 });
 
-test('every randomUUID use is guarded (0 bare crypto.randomUUID() calls)', () => {
-    const uses = [...src.matchAll(/randomUUID/g)];
-    assert.ok(uses.length >= 1);
-    let bare = 0;
-    for (const m of uses) {
-        const ctx = src.slice(Math.max(0, m.index - 80), m.index + 60);
-        const guarded = /typeof\s+[\w$.]+\.randomUUID\s*===\s*["']function["']/.test(ctx) || /\?\.randomUUID\?\.\(/.test(ctx) || /randomUUID\s*===\s*["']function["']/.test(ctx);
-        const call = /crypto\.randomUUID\s*\(/.test(src.slice(m.index - 7, m.index + 20));
-        if (!guarded && call) bare++;
+test('built frontend bundles contain no blocked UUID access, including aliases and comments', () => {
+    const dist = new URL('../dist/', import.meta.url);
+    const files = readdirSync(dist).filter(name => /^frontend.*\.js$/.test(name));
+    assert.ok(files.length > 0, 'run npm run build');
+    // Match host access forms regardless of receiver, so crypto and global aliases also fail.
+    const accesses = [
+        /(?:\?\.|\.)\s*randomUUID\b/,
+        /(?:\?\.)?\[\s*["'`]randomUUID["'`]\s*\]/,
+        /\{[^}]*\brandomUUID\b[^}]*\}\s*=/,
+    ];
+    for (const name of files) {
+        const bundle = readFileSync(new URL(name, dist), 'utf8');
+        for (const re of accesses) assert.ok(!re.test(bundle), `${name}: blocked UUID access ${re}`);
+        // This bundle has no legitimate textual mentions either; guard those as well.
+        assert.ok(!/randomUUID/.test(bundle), `${name}: unexpected blocked API name`);
     }
-    assert.equal(bare, 0);
-    // the textual check the QA guide asks for: no crypto.randomUUID() that is not the guarded form
-    const unguarded = src.split('\n').filter(l => /crypto\.randomUUID\(\)/.test(l) && !/typeof|\?\.|=== ["']function["']|if \(/.test(l));
-    assert.deepEqual(unguarded, []);
+});
+
+test('release versions agree with the built frontend and backend', () => {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    const manifest = JSON.parse(readFileSync(new URL('../spindle.json', import.meta.url), 'utf8'));
+    assert.equal(manifest.version, pkg.version);
+    for (const entry of ['frontend', 'backend']) {
+        const bundle = readFileSync(new URL(`../dist/${entry}.js`, import.meta.url), 'utf8');
+        assert.ok(bundle.includes(`"${pkg.version}"`), `${entry} release version is stale`);
+    }
 });
 
 test('no crypto.subtle, navigator.clipboard, navigator.share, execCommand copy in the shipped frontend', () => {
