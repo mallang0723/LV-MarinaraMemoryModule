@@ -104,6 +104,25 @@ test('ext/settings: module switches and the interceptor budget are saved per use
     assert.equal(other.moduleMemory, true, 'per user');
 });
 
+test('ext/settings: floating button defaults on and persists off per user across a restart', async () => {
+    const { f, stop } = boot();
+    assert.equal((await f.rpc('GET', 'ext/settings')).data.floatingButton, true);
+    const saved = await f.rpc('POST', 'ext/settings', { floatingButton: false });
+    assert.equal(saved.data.settings.floatingButton, false);
+    assert.equal(JSON.parse(f.files.get('u1:memory/settings.json')).floatingButton, false);
+    assert.equal((await f.rpc('GET', 'ext/settings', undefined, 'u2')).data.floatingButton, true);
+    await stop();
+    const stopReloaded = start({ ...f.api, log: { info() {} } }, { store: { debounceMs: 0 } });
+    try {
+        assert.equal((await f.rpc('GET', 'ext/settings')).data.floatingButton, false);
+        assert.equal((await f.rpc('GET', 'ext/settings', undefined, 'u2')).data.floatingButton, true);
+        await f.rpc('POST', 'memory-module/settings', { connection: 'conn-a' });
+        assert.equal((await f.rpc('GET', 'ext/settings')).data.floatingButton, false, 'upstream settings saves preserve it');
+        await f.rpc('POST', 'ext/settings', { floatingButton: true });
+        assert.equal((await f.rpc('GET', 'ext/settings')).data.floatingButton, true);
+    } finally { await stopReloaded(); }
+});
+
 test('the disposer removes everything and flushes writes', async () => {
     const { f, stop } = boot({ store: { debounceMs: 60000 } });
     await f.rpc('POST', 'ext/settings', { window: 6 });

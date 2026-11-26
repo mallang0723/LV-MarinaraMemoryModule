@@ -14,7 +14,7 @@ const TRANSLATOR_GLOSSARY_SOURCE = '번역 프리셋·단어장';
 
 export const MEMORY_MARKER = '[Memory: what the characters remember from earlier in this story';
 export const RECALL_BUDGET_MS = 6000;
-const LV_KEYS = ['moduleMemory', 'autoInject', 'interceptorBudgetMs', 'window'];   // Lumiverse-only settings kept in the same settings.json
+const LV_KEYS = ['moduleMemory', 'autoInject', 'floatingButton', 'interceptorBudgetMs', 'window'];   // Lumiverse-only settings kept in the same settings.json
 
 export function sanitize(text, max = 60000) {
     let out = String(text).replace(/\{\{/g, '{​{').replace(/\}\}/g, '}​}');
@@ -72,7 +72,7 @@ export function createManager({ api, log = () => {}, tunables = {}, version = '0
             settings, chatEnabled, preloadRoom,
             handle: frame => router.handle(frame, userId),
             /** Settings of the extension itself (Lumiverse-only keys) next to the upstream ones, in the same file. */
-            lvSettings: () => { const s = settings(); return { moduleMemory: s.moduleMemory !== false, autoInject: s.autoInject !== false, interceptorBudgetMs: s.interceptorBudgetMs || RECALL_BUDGET_MS, window: s.window || 30 }; },
+            lvSettings: () => { const s = settings(); return { moduleMemory: s.moduleMemory !== false, autoInject: s.autoInject !== false, floatingButton: s.floatingButton !== false, interceptorBudgetMs: s.interceptorBudgetMs || RECALL_BUDGET_MS, window: s.window || 30 }; },
             saveLvSettings(body) { return u.run(() => { const next = { ...settings() }; for (const k of LV_KEYS) if (k in (body || {})) next[k] = body[k]; u.X.saveSettings(next); return Object.fromEntries(LV_KEYS.filter(k => next[k] !== undefined).map(k => [k, next[k]])); }); },
             /** The room's two tag lists of \"하단 블록 빼고 읽기\" (settings.chats[id].hideBlocks). */
             saveHideBlocks(chatId, body) {

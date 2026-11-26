@@ -2,24 +2,26 @@
 //  - drawer tab `기억 서재` (registerDrawerTab): a home card with an "open" button, this chat's status and the switches.
 //    The original screen is a full overlay (shadow DOM on document.body, like the original), opened from the tab, from the
 //    input bar's Extras (registerInputBarAction) and from Ctrl+K (the backend forwards the command).
-//  - the screen is mounted the first time it is opened.
+//  - the original launcher is mounted with the screen; its visibility is a per-user setting.
 // Host facts: types/dom.d.ts:122-153 (drawer tab: root / onActivate; onActivate is not fired when the same tab is re-opened,
 // so the card reads the current chat when it is built and on chat events), :384-398 (input bar action), :1255 (getActiveChat),
 // :1136 (ctx.events.on), AGENTS 2 (state subscriptions give no first value).
 import { STYLE } from './style.js';
+import { addEntries, ENTRY_LABEL } from './adapter/entries.js';
 
-export const TITLE_MEMORY = '기억 서재';
+export const TITLE_MEMORY = ENTRY_LABEL;
 const NEED = { generation: '생성(generation)', chats: '채팅(chats)', chat_mutation: '메시지(chat_mutation)', characters: '캐릭터(characters)', interceptor: '기억 주입(interceptor)' };
-const ICON_MEMORY = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>';
 
-export function createShell(ctx, { link, getChatId, openMemory, doc = globalThis.document }) {
+export function createShell(ctx, { link, getChatId, openMemory, isOpen, setFloatingButtonVisible = () => {}, doc = globalThis.document }) {
     let alive = true;
     const disposers = [];
-    const handles = [];
     let info = null;          // ext/info
     let ext = null;           // ext/settings
+    let settingsRevision = 0, pendingSaves = 0;
+    let settingsWrite = Promise.resolve();
     let chatInfo = null;      // memory-module/chats/:id (short form)
-    let memTab = null, memRoot = null;
+    let memRoot = null;
+    let openEntry = openMemory;
 
     const el = (tag, attrs = {}, ...kids) => {
         const n = doc.createElement(tag);
@@ -37,15 +39,24 @@ export function createShell(ctx, { link, getChatId, openMemory, doc = globalThis
     // ---------- data ----------
     async function refresh() {
         if (!alive) return;
+        const revision = settingsRevision;
         info = await safe(() => link.call('GET', 'ext/info'), info);
-        ext = await safe(() => link.call('GET', 'ext/settings'), ext);
+        const loaded = await safe(() => link.call('GET', 'ext/settings'), ext);
+        if (revision === settingsRevision && !pendingSaves) ext = loaded;
         const chatId = getChatId();
         chatInfo = chatId ? await safe(() => link.call('GET', `memory-module/chats/${encodeURIComponent(chatId)}`), null) : null;
         paint();
     }
     async function saveExt(patch) {
-        try { const r = await link.call('POST', 'ext/settings', patch); ext = { ...(ext || {}), ...r.settings }; } catch (e) { note(e); }
-        await refresh();
+        const revision = ++settingsRevision;
+        pendingSaves++;
+        ext = { ...(ext || {}), ...patch };
+        paint();
+        // Apply immediately, but keep rapid toggles in order when writing per-user settings.
+        const write = settingsWrite = settingsWrite.catch(() => {}).then(() => link.call('POST', 'ext/settings', patch));
+        try { const r = await write; if (revision === settingsRevision) ext = { ...ext, ...r.settings }; } catch (e) { note(e); }
+        finally { pendingSaves--; }
+        if (revision === settingsRevision) await refresh();
     }
     const missing = () => Object.entries(NEED).filter(([k]) => info && info.permissions && info.permissions[k] === false).map(([, l]) => l);
 
@@ -71,7 +82,7 @@ export function createShell(ctx, { link, getChatId, openMemory, doc = globalThis
                 el('p', { text: '긴 RP를 장면·사실·미해결 장부로 정리해 두었다가 답변 직전에 프롬프트에 넣어 줘요.' }),
                 chatId ? (c ? el('p', { class: 'am-ok', text: c.enabled ? '이 방은 기억이 켜져 있어요.' : '이 방은 기억이 꺼져 있어요.' }) : el('p', { class: 'am-hint', text: '이 방의 기억 상태를 읽지 못했어요. 권한을 확인해 주세요.' })) : el('p', { class: 'am-hint', text: '채팅을 열어 두면 그 방의 기억을 보여 줘요.' }),
                 stat,
-                el('button', { class: 'am-btn', type: 'button', text: '기억 서재 열기', onclick: () => openMemory() }),
+                el('button', { class: 'am-btn', type: 'button', text: '기억 서재 열기', onclick: () => openEntry() }),
                 chatId && c ? el('div', { class: 'am-row' },
                     el('button', { class: 'am-btn am-quiet', type: 'button', text: c.enabled ? '이 방 끄기' : '이 방 켜기', onclick: () => toggleRoom() }),
                     el('button', { class: 'am-btn am-quiet', type: 'button', text: '이어서 정리', onclick: () => continueRoom() })) : null),
@@ -79,6 +90,7 @@ export function createShell(ctx, { link, getChatId, openMemory, doc = globalThis
             el('div', { class: 'am-card' },
                 el('h2', { text: '설정' }),
                 el('p', { class: 'am-hint', text: ext?.windowInfo?.label || '창 크기 확인 중' }),
+                switchRow('떠다니는 버튼 표시', ext?.floatingButton !== false, v => saveExt({ floatingButton: v }), '꺼도 입력창 메뉴의 기억 서재와 서랍의 기억 탭에서 열 수 있어요.'),
                 switchRow('기억 서재 사용', ext ? ext.moduleMemory !== false : true, v => saveExt({ moduleMemory: v }), '끄면 어느 방에서도 기억을 넣지도, 갱신하지도 않아요.'),
                 switchRow('프롬프트에 자동으로 넣기', ext ? ext.autoInject !== false : true, v => saveExt({ autoInject: v }), `프리셋에 {{memory_ledger}} 매크로를 넣어 쓰면 이 칸을 꺼도 돼요. 매크로를 넣어 두면 그 자리의 내용이 최신으로 바뀌어요.`),
                 el('label', { class: 'am-field' }, '기억 주입에 쓸 수 있는 시간', budget),
@@ -87,6 +99,7 @@ export function createShell(ctx, { link, getChatId, openMemory, doc = globalThis
     }
     function paint() {
         if (!alive) return;
+        setFloatingButtonVisible(ext?.floatingButton !== false);
         if (memRoot) memRoot.replaceChildren(el('style', { text: STYLE }), memoryCard());
     }
 
@@ -108,23 +121,15 @@ export function createShell(ctx, { link, getChatId, openMemory, doc = globalThis
     }
 
     // ---------- registration ----------
-    function register() {
-        try {
-            memTab = ctx.ui.registerDrawerTab({ id: 'memory', title: TITLE_MEMORY, shortName: '기억', headerTitle: TITLE_MEMORY, description: '장면·사실·미해결 장부를 보고 고치기', keywords: ['기억', '서재', '장부', '장면', 'memory', 'ledger'], iconSvg: ICON_MEMORY });
+    disposers.push(addEntries({
+        ctx, open: openMemory, isOpen, doc,
+        mountTab(tab, press) {
+            openEntry = press;
             memRoot = el('div', { class: 'am-drawer' });
-            memTab.root.replaceChildren(memRoot);
-            handles.push(memTab);
-            disposers.push(memTab.onActivate(() => refresh()));
-        } catch { memTab = null; }
-        for (const [id, label, open, icon] of [['memory-open', '기억 서재 열기', () => openMemory(), ICON_MEMORY]]) {
-            try {
-                const a = ctx.ui.registerInputBarAction({ id, label, iconSvg: icon });
-                handles.push(a);
-                disposers.push(a.onClick(open));
-            } catch { /* optional surface */ }
-        }
-    }
-    register();
+            tab.root.replaceChildren(memRoot);
+            if (typeof tab.onActivate === 'function') return tab.onActivate(() => refresh());
+        },
+    }));
     paint();
     void refresh();
 
@@ -145,7 +150,6 @@ export function createShell(ctx, { link, getChatId, openMemory, doc = globalThis
         dispose() {
             alive = false;
             for (const d of disposers) { try { d(); } catch { /* ignore */ } }
-            for (const h of handles) { try { h.destroy(); } catch { /* ignore */ } }
         },
     };
 }

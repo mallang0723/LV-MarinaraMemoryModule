@@ -1,7 +1,7 @@
 // Turns the unmodified 기억 서재 screen (runtime.orig.js, an IIFE that installs a launcher + shadow-DOM panel into Marinara's page)
 // into `export function mountMemory(marinara, LV)`: same screen, same routes (served by src/memory/routes.js through the shim).
 // Patch points are anchors that must match exactly once (src/patch-util.mjs). Only what must differ on Lumiverse is changed:
-// the transport (fetch -> LV.fetch), the active chat, where the panel is attached, the launcher (removed), the Marinara-only
+// the transport (fetch -> LV.fetch), the active chat, where the panel is attached, the launcher bridge, the Marinara-only
 // speaker-tag switch (removed), Marinara wording, and "choose a connection / recall option = saved at once" (AGENTS 2).
 import { createHash } from 'node:crypto';
 import { replaceAnchor, replaceRange } from '../../patch-util.mjs';
@@ -31,8 +31,8 @@ export function patchMemory({ runtime, uiCss, themeCss, version, worldPanel = ''
     s = replaceAnchor(s, "response = await fetch(path.startsWith('/api/') ? path : BASE + path, init);", "response = await LV.fetch(path.startsWith('/api/') ? path : BASE + path, init);", { name: 'fetch' });
     s = replaceAnchor(s, "return localStorage.getItem('marinara-active-chat-id') || '';", "return LV.activeChatId() || '';", { name: 'active chat id' });
     s = replaceAnchor(s, '(document.body || document.documentElement).append(element);', 'LV.mountHost(element);', { name: 'mount host' });
-    // launcher: removed (drawer tab / input-bar action / Ctrl+K open the panel); its click handler becomes LV.toggle
-    s = replaceAnchor(s, "    launcher = makeLauncher();\n    makeDraggable(launcher);\n    launcher.addEventListener('click', () => (open ? closeLibrary() : openLibrary()));", "    LV.toggle = () => (open ? closeLibrary() : openLibrary());", { name: 'launcher handler' });
+    // Keep the original launcher and dragging. Our shell controls visibility; other entries share its open path.
+    s = replaceAnchor(s, "    launcher = makeLauncher();\n    makeDraggable(launcher);\n    launcher.addEventListener('click', () => (open ? closeLibrary() : openLibrary()));", "    launcher = makeLauncher();\n    makeDraggable(launcher);\n    LV.toggle = () => (open ? closeLibrary() : openLibrary());\n    launcher.addEventListener('click', LV.toggle);", { name: 'launcher handler' });
     s = replaceAnchor(s, '<style>${UI_CSS}${EXTRA_CSS}${THEME_CSS}</style>', '<style>${UI_CSS}${EXTRA_CSS}${THEME_CSS}${LV.css}</style>', { name: 'css order' });
     // speaker tags: a Marinara-only group-bubble feature, not on Lumiverse
     s = replaceAnchor(s, `        <label class="setting-switch"><span>말풍선 태그 되살리기<small>화자 색상이 켜진 '합쳐서' 그룹 RP에서 모델이 원래의 숨은 화자 태그를 출력하도록 지침을 보강합니다. 보이는 이름표 없이 따옴표만 쓰는 대사에도 적용됩니다.</small></span><input type="checkbox" id="setTags" \${info.speakerTags ? 'checked' : ''}></label>\n`, '', { name: 'speaker tags switch' });
@@ -235,6 +235,6 @@ export function patchMemory({ runtime, uiCss, themeCss, version, worldPanel = ''
         s = replaceAnchor(s, '  install();\n  host.onCleanup?.(cleanup);\n})();', () => '  /* 세계관 설정집 화면 (연동 v2 · 세계관 칸) */\n  (() => {\n    const fetch = (input, init) => LV.fetch(input, init);\n    const localStorage = { getItem: (k) => (k === \'marinara-active-chat-id\' ? (LV.activeChatId() || null) : globalThis.localStorage.getItem(k)), setItem: (k, v) => { if (k !== \'marinara-active-chat-id\') globalThis.localStorage.setItem(k, v); }, removeItem: (k) => { if (k !== \'marinara-active-chat-id\') globalThis.localStorage.removeItem(k); } };\n    const __WORLD_ARCHIVE_EMBEDDED__ = true;\n' + worldPanel + '\n  })();\n  install();\n  host.onCleanup?.(cleanup);\n})();', { name: 'world panel embed' });
     }
     // return a handle instead of installing at evaluation time
-    s = replaceAnchor(s, '  install();\n  host.onCleanup?.(cleanup);\n})();', '  install();\n  host.onCleanup?.(cleanup);\n  return { toggle: () => LV.toggle(), open: () => { if (!open) LV.toggle(); }, close: closeLibrary, isOpen: () => open, dispose: cleanup, setRoom: id => { room = id; } };\n}', { name: 'iife close' });
+    s = replaceAnchor(s, '  install();\n  host.onCleanup?.(cleanup);\n})();', '  install();\n  host.onCleanup?.(cleanup);\n  return { launcher, toggle: () => LV.toggle(), open: () => { if (!open) LV.toggle(); }, close: closeLibrary, isOpen: () => open, dispose: cleanup, setRoom: id => { room = id; } };\n}', { name: 'iife close' });
     return s;
 }

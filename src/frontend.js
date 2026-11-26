@@ -2,6 +2,7 @@
 import { selectedMessageParts } from './common/message-selection.js';
 import { createLink, createMarinara, createFetch } from './shim/marinara.js';
 import { createShell } from './shell.js';
+import { setLauncherVisible } from './adapter/launcher.js';
 import { createOverlayGuard } from './overlay-guard.js';
 import { attachSummarizationFrontend } from './common/host-settings.js';
 import { mountMemory } from './memory/ui/runtime.generated.js';
@@ -31,6 +32,7 @@ export function setup(ctx, opts = {}) {
 
     // ---- memory library and host-message selection ----
     let memory = null;
+    let launcherVisible = true;
     const memoryLV = {
         css: MEMORY_OVERRIDES,
         selectionParts: range => selectedMessageParts(range, doc),
@@ -51,11 +53,13 @@ export function setup(ctx, opts = {}) {
             if (m && m.length >= 3) { const lum = (0.2126 * +m[0] + 0.7152 * +m[1] + 0.0722 * +m[2]) / 255; win.localStorage?.setItem('memory-module-theme', lum < 0.5 ? 'dark' : 'light'); }
         } catch { /* storage or style unavailable */ }
     };
-    const mountMemoryNow = () => { if (memory || !alive) return memory; seedTheme(); try { memory = mountMemory(marinara, memoryLV); } catch (e) { console.warn('[memory-library] 기억 서재 화면을 열지 못했어요', e); } return memory; };
+    const mountMemoryNow = () => { if (memory || !alive) return memory; seedTheme(); try { memory = mountMemory(marinara, memoryLV); setLauncherVisible(memory?.launcher, launcherVisible); } catch (e) { console.warn('[memory-library] 기억 서재 화면을 열지 못했어요', e); } return memory; };
     const openMemory = () => { const m = mountMemoryNow(); return m?.open(); };
 
     let shell = null;
-    shell = createShell(ctx, { link, getChatId, openMemory, doc });
+    shell = createShell(ctx, { link, getChatId, openMemory, isOpen: () => memory?.isOpen() === true, doc,
+        setFloatingButtonVisible: visible => { launcherVisible = visible; setLauncherVisible(memory?.launcher, visible); },
+    });
 
     // Install selection while the library is closed, including before its first opening.
     mountMemoryNow();

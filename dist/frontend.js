@@ -305,18 +305,88 @@ var STYLE = `
 .am-stat b{color:var(--lumiverse-text,#222);font-weight:600}
 `;
 
+// src/adapter/entries.js
+var ENTRY_LABEL = "기억 서재";
+var TAB_TITLE = "기억";
+var ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>';
+function addEntries({ ctx, open, isOpen = () => false, doc = globalThis.document, mountTab }) {
+  const handles = [], offs = [];
+  let alive = true;
+  const press = () => {
+    try {
+      if (alive && !isOpen())
+        open();
+    } catch {}
+  };
+  try {
+    if (typeof ctx?.ui?.registerDrawerTab === "function") {
+      const tab = ctx.ui.registerDrawerTab({
+        id: "memory-library",
+        title: ENTRY_LABEL,
+        shortName: TAB_TITLE,
+        headerTitle: ENTRY_LABEL,
+        description: "장면·사실·미해결 장부를 보고 고치기 · Memory library: scenes, facts and ledger",
+        keywords: ["기억", "서재", "장면", "사실", "장부", "memory", "library", "scenes", "facts", "ledger"],
+        iconSvg: ICON
+      });
+      handles.push(tab);
+      if (mountTab) {
+        offs.push(mountTab(tab, press));
+      } else {
+        const card = doc.createElement("div");
+        card.style.cssText = "padding:12px;display:flex;flex-direction:column;gap:10px";
+        const note = doc.createElement("p");
+        note.textContent = "롤플레이를 읽어 정리한 기억 서재를 엽니다.";
+        note.style.cssText = "margin:0;font-size:13px;opacity:.8";
+        const btn = doc.createElement("button");
+        btn.type = "button";
+        btn.textContent = `${ENTRY_LABEL} 열기`;
+        btn.style.cssText = "padding:8px 12px;border-radius:8px;cursor:pointer";
+        btn.addEventListener("click", press);
+        offs.push(() => btn.removeEventListener("click", press));
+        card.append(note, btn);
+        tab.root.replaceChildren(card);
+      }
+    }
+  } catch {}
+  try {
+    if (typeof ctx?.ui?.registerInputBarAction === "function") {
+      const action = ctx.ui.registerInputBarAction({ id: "memory-open", label: ENTRY_LABEL, iconSvg: ICON });
+      handles.push(action);
+      offs.push(action.onClick(press));
+    }
+  } catch {}
+  return () => {
+    if (!alive)
+      return;
+    alive = false;
+    for (const off of offs) {
+      try {
+        if (typeof off === "function")
+          off();
+      } catch {}
+    }
+    for (const handle of handles) {
+      try {
+        handle?.destroy?.();
+      } catch {}
+    }
+  };
+}
+
 // src/shell.js
-var TITLE_MEMORY = "기억 서재";
+var TITLE_MEMORY = ENTRY_LABEL;
 var NEED = { generation: "생성(generation)", chats: "채팅(chats)", chat_mutation: "메시지(chat_mutation)", characters: "캐릭터(characters)", interceptor: "기억 주입(interceptor)" };
-var ICON_MEMORY = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>';
-function createShell(ctx, { link, getChatId, openMemory, doc = globalThis.document }) {
+function createShell(ctx, { link, getChatId, openMemory, isOpen, setFloatingButtonVisible = () => {}, doc = globalThis.document }) {
   let alive = true;
   const disposers = [];
-  const handles = [];
   let info = null;
   let ext = null;
+  let settingsRevision = 0, pendingSaves = 0;
+  let settingsWrite = Promise.resolve();
   let chatInfo = null;
-  let memTab = null, memRoot = null;
+  let memRoot = null;
+  let openEntry = openMemory;
   const el = (tag, attrs = {}, ...kids) => {
     const n = doc.createElement(tag);
     for (const [k, v] of Object.entries(attrs)) {
@@ -352,20 +422,32 @@ function createShell(ctx, { link, getChatId, openMemory, doc = globalThis.docume
   async function refresh() {
     if (!alive)
       return;
+    const revision = settingsRevision;
     info = await safe(() => link.call("GET", "ext/info"), info);
-    ext = await safe(() => link.call("GET", "ext/settings"), ext);
+    const loaded = await safe(() => link.call("GET", "ext/settings"), ext);
+    if (revision === settingsRevision && !pendingSaves)
+      ext = loaded;
     const chatId = getChatId();
     chatInfo = chatId ? await safe(() => link.call("GET", `memory-module/chats/${encodeURIComponent(chatId)}`), null) : null;
     paint();
   }
   async function saveExt(patch) {
+    const revision = ++settingsRevision;
+    pendingSaves++;
+    ext = { ...ext || {}, ...patch };
+    paint();
+    const write = settingsWrite = settingsWrite.catch(() => {}).then(() => link.call("POST", "ext/settings", patch));
     try {
-      const r = await link.call("POST", "ext/settings", patch);
-      ext = { ...ext || {}, ...r.settings };
+      const r = await write;
+      if (revision === settingsRevision)
+        ext = { ...ext, ...r.settings };
     } catch (e) {
       note(e);
+    } finally {
+      pendingSaves--;
     }
-    await refresh();
+    if (revision === settingsRevision)
+      await refresh();
   }
   const missing = () => Object.entries(NEED).filter(([k]) => info && info.permissions && info.permissions[k] === false).map(([, l]) => l);
   const switchRow = (label, checked, onChange, hint) => el("div", { class: "am-card-row" }, el("div", { class: "am-row" }, el("label", {}, (() => {
@@ -382,11 +464,12 @@ function createShell(ctx, { link, getChatId, openMemory, doc = globalThis.docume
     const budgetOptions = [4, 6, 8, 10].map((s) => el("option", { value: String(s * 1000), text: `${s}초`, ...Number(ext?.interceptorBudgetMs || 6000) === s * 1000 ? { selected: true } : {} }));
     const budget = el("select", { "aria-label": "기억 주입 시간 한도" }, budgetOptions);
     budget.addEventListener("change", () => saveExt({ interceptorBudgetMs: Number(budget.value) }));
-    return el("div", { class: "am-tab" }, el("div", { class: "am-card" }, el("h2", { text: TITLE_MEMORY }), el("p", { text: "긴 RP를 장면·사실·미해결 장부로 정리해 두었다가 답변 직전에 프롬프트에 넣어 줘요." }), chatId ? c ? el("p", { class: "am-ok", text: c.enabled ? "이 방은 기억이 켜져 있어요." : "이 방은 기억이 꺼져 있어요." }) : el("p", { class: "am-hint", text: "이 방의 기억 상태를 읽지 못했어요. 권한을 확인해 주세요." }) : el("p", { class: "am-hint", text: "채팅을 열어 두면 그 방의 기억을 보여 줘요." }), stat, el("button", { class: "am-btn", type: "button", text: "기억 서재 열기", onclick: () => openMemory() }), chatId && c ? el("div", { class: "am-row" }, el("button", { class: "am-btn am-quiet", type: "button", text: c.enabled ? "이 방 끄기" : "이 방 켜기", onclick: () => toggleRoom() }), el("button", { class: "am-btn am-quiet", type: "button", text: "이어서 정리", onclick: () => continueRoom() })) : null), warn(), el("div", { class: "am-card" }, el("h2", { text: "설정" }), el("p", { class: "am-hint", text: ext?.windowInfo?.label || "창 크기 확인 중" }), switchRow("기억 서재 사용", ext ? ext.moduleMemory !== false : true, (v) => saveExt({ moduleMemory: v }), "끄면 어느 방에서도 기억을 넣지도, 갱신하지도 않아요."), switchRow("프롬프트에 자동으로 넣기", ext ? ext.autoInject !== false : true, (v) => saveExt({ autoInject: v }), `프리셋에 {{memory_ledger}} 매크로를 넣어 쓰면 이 칸을 꺼도 돼요. 매크로를 넣어 두면 그 자리의 내용이 최신으로 바뀌어요.`), el("label", { class: "am-field" }, "기억 주입에 쓸 수 있는 시간", budget), el("div", { class: "am-hint", text: "루미버스는 인터셉터를 기본 10초까지 기다려요. 회상은 이 시간을 넘기면 빠른 방식으로 대신해요." }), el("div", { class: "am-hint", text: "같은 {{memory_ledger}} 매크로를 쓰는 다른 기억 확장(예: LV-AnonMemory의 기억 서재)과 함께 켜지 마세요. 하나만 쓰거나 한쪽의 기억을 꺼 주세요." })));
+    return el("div", { class: "am-tab" }, el("div", { class: "am-card" }, el("h2", { text: TITLE_MEMORY }), el("p", { text: "긴 RP를 장면·사실·미해결 장부로 정리해 두었다가 답변 직전에 프롬프트에 넣어 줘요." }), chatId ? c ? el("p", { class: "am-ok", text: c.enabled ? "이 방은 기억이 켜져 있어요." : "이 방은 기억이 꺼져 있어요." }) : el("p", { class: "am-hint", text: "이 방의 기억 상태를 읽지 못했어요. 권한을 확인해 주세요." }) : el("p", { class: "am-hint", text: "채팅을 열어 두면 그 방의 기억을 보여 줘요." }), stat, el("button", { class: "am-btn", type: "button", text: "기억 서재 열기", onclick: () => openEntry() }), chatId && c ? el("div", { class: "am-row" }, el("button", { class: "am-btn am-quiet", type: "button", text: c.enabled ? "이 방 끄기" : "이 방 켜기", onclick: () => toggleRoom() }), el("button", { class: "am-btn am-quiet", type: "button", text: "이어서 정리", onclick: () => continueRoom() })) : null), warn(), el("div", { class: "am-card" }, el("h2", { text: "설정" }), el("p", { class: "am-hint", text: ext?.windowInfo?.label || "창 크기 확인 중" }), switchRow("떠다니는 버튼 표시", ext?.floatingButton !== false, (v) => saveExt({ floatingButton: v }), "꺼도 입력창 메뉴의 기억 서재와 서랍의 기억 탭에서 열 수 있어요."), switchRow("기억 서재 사용", ext ? ext.moduleMemory !== false : true, (v) => saveExt({ moduleMemory: v }), "끄면 어느 방에서도 기억을 넣지도, 갱신하지도 않아요."), switchRow("프롬프트에 자동으로 넣기", ext ? ext.autoInject !== false : true, (v) => saveExt({ autoInject: v }), `프리셋에 {{memory_ledger}} 매크로를 넣어 쓰면 이 칸을 꺼도 돼요. 매크로를 넣어 두면 그 자리의 내용이 최신으로 바뀌어요.`), el("label", { class: "am-field" }, "기억 주입에 쓸 수 있는 시간", budget), el("div", { class: "am-hint", text: "루미버스는 인터셉터를 기본 10초까지 기다려요. 회상은 이 시간을 넘기면 빠른 방식으로 대신해요." }), el("div", { class: "am-hint", text: "같은 {{memory_ledger}} 매크로를 쓰는 다른 기억 확장(예: LV-AnonMemory의 기억 서재)과 함께 켜지 마세요. 하나만 쓰거나 한쪽의 기억을 꺼 주세요." })));
   }
   function paint() {
     if (!alive)
       return;
+    setFloatingButtonVisible(ext?.floatingButton !== false);
     if (memRoot)
       memRoot.replaceChildren(el("style", { text: STYLE }), memoryCard());
   }
@@ -415,25 +498,19 @@ function createShell(ctx, { link, getChatId, openMemory, doc = globalThis.docume
     }
     await refresh();
   }
-  function register() {
-    try {
-      memTab = ctx.ui.registerDrawerTab({ id: "memory", title: TITLE_MEMORY, shortName: "기억", headerTitle: TITLE_MEMORY, description: "장면·사실·미해결 장부를 보고 고치기", keywords: ["기억", "서재", "장부", "장면", "memory", "ledger"], iconSvg: ICON_MEMORY });
+  disposers.push(addEntries({
+    ctx,
+    open: openMemory,
+    isOpen,
+    doc,
+    mountTab(tab, press) {
+      openEntry = press;
       memRoot = el("div", { class: "am-drawer" });
-      memTab.root.replaceChildren(memRoot);
-      handles.push(memTab);
-      disposers.push(memTab.onActivate(() => refresh()));
-    } catch {
-      memTab = null;
+      tab.root.replaceChildren(memRoot);
+      if (typeof tab.onActivate === "function")
+        return tab.onActivate(() => refresh());
     }
-    for (const [id, label, open, icon] of [["memory-open", "기억 서재 열기", () => openMemory(), ICON_MEMORY]]) {
-      try {
-        const a = ctx.ui.registerInputBarAction({ id, label, iconSvg: icon });
-        handles.push(a);
-        disposers.push(a.onClick(open));
-      } catch {}
-    }
-  }
-  register();
+  }));
   paint();
   refresh();
   disposers.push(link.onEvent((msg) => {
@@ -465,13 +542,19 @@ function createShell(ctx, { link, getChatId, openMemory, doc = globalThis.docume
           d();
         } catch {}
       }
-      for (const h of handles) {
-        try {
-          h.destroy();
-        } catch {}
-      }
     }
   };
+}
+
+// src/adapter/launcher.js
+function setLauncherVisible(launcher, visible = true) {
+  if (!launcher)
+    return;
+  launcher.hidden = !visible;
+  if (visible)
+    launcher.style.removeProperty("display");
+  else
+    launcher.style.setProperty("display", "none", "important");
 }
 
 // src/overlay-guard.js
@@ -485,7 +568,7 @@ svg{width:22px;height:22px;display:block}
 /* desktop with a mouse: the screens' own close button and Escape are enough */
 @media (min-width:721px) and (hover:hover){button{display:none}}
 `;
-var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+var ICON2 = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 function createOverlayGuard({ doc = globalThis.document, win = globalThis.window } = {}) {
   const stack = [];
   let host = null, btn = null, ignoreAt = 0, seq = 0;
@@ -500,7 +583,7 @@ function createOverlayGuard({ doc = globalThis.document, win = globalThis.window
     st.textContent = GUARD_CSS;
     btn = doc.createElement("button");
     btn.type = "button";
-    btn.innerHTML = ICON;
+    btn.innerHTML = ICON2;
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -646,7 +729,7 @@ function attachSummarizationFrontend(ctx, { fetch: fetchSetting = globalThis.fet
 
 // src/memory/ui/runtime.generated.js
 function mountMemory(marinara, LV) {
-  const VERSION = "1.6.0-lv.1";
+  const VERSION = "1.6.0-lv.2-v1";
   const UI_CSS = `:host{all:initial;color:#34374b;font:14px/1.65 "Pretendard","Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--im-accent:#7777c8;--im-ink:#34374b;--im-muted:#8e91a6;--im-line:#e9e9f2;--im-paper:#fff;--im-canvas:#f5f5fb;--im-soft:#eeeefa}
 *{box-sizing:border-box}button,input,select,textarea{font:inherit}button{cursor:pointer;color:inherit;border:1px solid var(--im-line);background:var(--im-paper);padding:9px 14px;border-radius:11px;transition:background .15s,transform .15s,box-shadow .15s}button:hover{background:var(--im-soft)}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #aaa7e5;outline-offset:3px}.icon{width:19px;height:19px;flex:none;display:inline-block;vertical-align:middle}#launch{position:fixed;right:20px;bottom:126px;z-index:2147483600;display:flex;align-items:center;gap:8px;color:#fff;background:#7777c8;border:0;border-radius:24px;padding:11px 19px;box-shadow:0 7px 20px #7777c84d}#backdrop{position:fixed;inset:0;background:#20233654;z-index:2147483601}#panel{position:fixed;z-index:2147483602;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1320px,96vw);height:min(900px,91vh);display:grid;grid-template-columns:192px minmax(0,1fr) 224px;background:var(--im-paper);border-radius:26px;box-shadow:0 25px 100px #25254435;overflow:hidden}#panel[hidden],[hidden]{display:none!important}
 .sidebar{display:flex;flex-direction:column;padding:30px 18px 20px;border-right:1px solid var(--im-line);min-width:0}.brand{display:flex;align-items:center;gap:10px;padding:0 12px 30px;color:var(--im-accent);font-size:18px;font-weight:750;letter-spacing:-.8px}.brand .icon{width:27px;height:27px}.brand small{display:block;white-space:nowrap;font:7px/1.8 ui-monospace,monospace;letter-spacing:1.3px;color:#a8a6bd}.nav-label{font-size:9px;letter-spacing:1.8px;color:#b2b1c2;padding:13px 14px 9px}nav{display:flex;flex-direction:column;gap:6px}nav button{display:flex;gap:11px;align-items:center;border:0;background:transparent;text-align:left;font-size:12px;padding:11px 13px;border-radius:10px;color:#9291aa}nav button.selected{background:#eeeeFA;color:#6d69b4;font-weight:700}nav button .icon{width:17px;height:17px}.side-bottom{margin-top:auto;padding-top:26px;display:grid;gap:10px}.side-bottom button{font-size:11px;border:0;display:flex;align-items:center;gap:8px;background:#f7f7fb}.side-bottom small{font-size:9px;color:#b0aec0;padding-left:10px}
@@ -5353,7 +5436,10 @@ pre{font-size:12.5px!important;line-height:1.85!important}
       searchQuery = searchDraft.trim();
       render();
     });
+    launcher = makeLauncher();
+    makeDraggable(launcher);
     LV.toggle = () => open ? closeLibrary() : openLibrary();
+    launcher.addEventListener("click", LV.toggle);
     root.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && open && !e.isComposing) {
         e.preventDefault();
@@ -8426,7 +8512,7 @@ button.cap:hover{background:var(--wa-soft)}.cap.ghost{border-style:dashed;color:
   })();
   install();
   host.onCleanup?.(cleanup);
-  return { toggle: () => LV.toggle(), open: () => {
+  return { launcher, toggle: () => LV.toggle(), open: () => {
     if (!open)
       LV.toggle();
   }, close: closeLibrary, isOpen: () => open, dispose: cleanup, setRoom: (id) => {
@@ -8479,6 +8565,7 @@ function setup(ctx, opts = {}) {
   };
   const { marinara, runCleanups } = createMarinara(link);
   let memory = null;
+  let launcherVisible = true;
   const memoryLV = {
     css: MEMORY_OVERRIDES,
     selectionParts: (range) => selectedMessageParts(range, doc),
@@ -8507,6 +8594,7 @@ function setup(ctx, opts = {}) {
     seedTheme();
     try {
       memory = mountMemory(marinara, memoryLV);
+      setLauncherVisible(memory?.launcher, launcherVisible);
     } catch (e) {
       console.warn("[memory-library] 기억 서재 화면을 열지 못했어요", e);
     }
@@ -8517,7 +8605,17 @@ function setup(ctx, opts = {}) {
     return m?.open();
   };
   let shell = null;
-  shell = createShell(ctx, { link, getChatId, openMemory, doc });
+  shell = createShell(ctx, {
+    link,
+    getChatId,
+    openMemory,
+    isOpen: () => memory?.isOpen() === true,
+    doc,
+    setFloatingButtonVisible: (visible) => {
+      launcherVisible = visible;
+      setLauncherVisible(memory?.launcher, visible);
+    }
+  });
   mountMemoryNow();
   return () => {
     alive = false;

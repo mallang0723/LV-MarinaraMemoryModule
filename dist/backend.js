@@ -22583,7 +22583,7 @@ function createWorldRoom({ api, manager, host, log = () => {} }) {
 var TRANSLATOR_GLOSSARY_SOURCE = "\uBC88\uC5ED \uD504\uB9AC\uC14B\xB7\uB2E8\uC5B4\uC7A5";
 var MEMORY_MARKER = "[Memory: what the characters remember from earlier in this story";
 var RECALL_BUDGET_MS = 6000;
-var LV_KEYS = ["moduleMemory", "autoInject", "interceptorBudgetMs", "window"];
+var LV_KEYS = ["moduleMemory", "autoInject", "floatingButton", "interceptorBudgetMs", "window"];
 function sanitize(text, max = 60000) {
   let out = String(text).replace(/\{\{/g, "{\u200B{").replace(/\}\}/g, "}\u200B}");
   if (out.length > max) {
@@ -22660,7 +22660,7 @@ function createManager({ api, log = () => {}, tunables = {}, version = "0", host
       handle: (frame) => router.handle(frame, userId),
       lvSettings: () => {
         const s = settings();
-        return { moduleMemory: s.moduleMemory !== false, autoInject: s.autoInject !== false, interceptorBudgetMs: s.interceptorBudgetMs || RECALL_BUDGET_MS, window: s.window || 30 };
+        return { moduleMemory: s.moduleMemory !== false, autoInject: s.autoInject !== false, floatingButton: s.floatingButton !== false, interceptorBudgetMs: s.interceptorBudgetMs || RECALL_BUDGET_MS, window: s.window || 30 };
       },
       saveLvSettings(body) {
         return u.run(() => {
